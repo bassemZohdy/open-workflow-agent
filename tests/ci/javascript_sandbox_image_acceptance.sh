@@ -39,6 +39,7 @@ async def main(directory):
         "workspace_root": str(directory / "workspace"),
         "memory_bytes": None, "timeout_seconds": 15,
     }})
+    assert config.sandbox.process_count == 32
     services = RuntimeServices(config, model=FakeModel(), database_root=directory / "runtime")
     await engine.initialize(services)
     try:
@@ -72,6 +73,7 @@ process.stderr.write('diagnostic');
         assert not list((directory / "workspace").iterdir())
         assert services.model.calls == []
         assert services.sandbox.capabilities()["script"]["runtimes"] == ["javascript"]
+        assert services.sandbox.capabilities()["resourceLimits"]["processCount"] is True
     finally:
         await engine.shutdown()
         services.close()

@@ -28,6 +28,7 @@ from open_workflow_agent.expressions import (
     validate_expression_data,
 )
 from open_workflow_agent.native_extensions import (
+    LANGGRAPH_COMMAND,
     MAX_CHANNEL_VALUE_BYTES,
     MAX_CHANNEL_VALUE_TOTAL_BYTES,
     NATIVE_CHANNEL_VARIABLE,
@@ -103,7 +104,11 @@ def _snapshot(state: ExecutionState) -> str:
     value = {
         "data": state.data,
         "outputs": state.outputs,
-        "variables": state.variables,
+        "variables": {
+            name: value
+            for name, value in state.variables.items()
+            if name != NATIVE_CHANNEL_VARIABLE
+        },
         "context": state.context,
         "jump_to": state.jump_to,
         "stop": state.stop,
@@ -168,6 +173,8 @@ def _decode_snapshot(snapshot: str) -> dict[str, Any]:
         raise ValueError("native snapshot fields are unavailable")
     if not isinstance(value["outputs"], dict) or not isinstance(value["variables"], dict):
         raise ValueError("native snapshot task dictionaries are invalid")
+    if NATIVE_CHANNEL_VARIABLE in value["variables"]:
+        raise ValueError("native snapshot contains a transient channel binding")
     if any(
         type(value[key]) is not bool
         for key in ("stop", "scope_exit", "transition_selected", "ended")
@@ -198,6 +205,13 @@ def _restore(
 ) -> None:
     # Validate the whole snapshot before changing any live execution state.
     value = _decode_snapshot(snapshot) if decoded is None else decoded
+    # A nested graph can execute inside an outer task's live read binding.
+    # Restore that lexical binding from the caller, never from persisted data.
+    channel_binding = (
+        {NATIVE_CHANNEL_VARIABLE: state.variables[NATIVE_CHANNEL_VARIABLE]}
+        if NATIVE_CHANNEL_VARIABLE in state.variables
+        else {}
+    )
     for key in (
         "data",
         "outputs",
@@ -209,6 +223,7 @@ def _restore(
         "transition_selected",
     ):
         setattr(state, key, value[key])
+    state.variables.update(channel_binding)
     state.variables["context"] = state.context
     state.task_visits = value["task_visits"]
     state.execution_path = tuple((ref, visit) for ref, visit in value["execution_path"])
@@ -297,6 +312,10 @@ class LangGraphScopeExecutor:
         self._definition_json = _json_identity(plan.source)
         self._expected_input_json: str | None = None
         self.native_channels: NativeChannelConfig | None = plan.native_channels
+        self.native_commands = any(
+            item.required and item.capability_id == LANGGRAPH_COMMAND
+            for item in plan.native_extensions
+        )
         self._channels_by_id = (
             {channel.channel_id: channel for channel in plan.native_channels.channels}
             if plan.native_channels is not None
@@ -1105,21 +1124,28 @@ class LangGraphScopeExecutor:
         graph = StateGraph(state_schema)
         names = {task.name: _node_name(task) for task in scope.tasks}
 
+        def routed(update: _GraphState) -> _GraphState | Command[str]:
+            if self.native_commands:
+                return Command(update=update, goto=update["next_node"])
+            return update
+
         def node(task: TaskPlan, following: str) -> Any:
-            async def execute(native: _GraphState) -> _GraphState:
+            async def execute(native: _GraphState) -> _GraphState | Command[str]:
                 state = executor._copy_state(prototype)
                 channel_values = self._read(native, state, scope.reference)
                 if state.flow.ended.is_set():
                     state.stop = True
-                    return self._write(
-                        state,
-                        reference=scope.reference,
-                        native_channels=channel_values,
-                        native_channel_updates=(
-                            []
-                            if self.native_channels is not None and scope.reference == "/do"
-                            else None
-                        ),
+                    return routed(
+                        self._write(
+                            state,
+                            reference=scope.reference,
+                            native_channels=channel_values,
+                            native_channel_updates=(
+                                []
+                                if self.native_channels is not None and scope.reference == "/do"
+                                else None
+                            ),
+                        )
                     )
                 executor._token(state).checkpoint()
                 pending = self._resume_interrupts.get(
@@ -1226,16 +1252,18 @@ class LangGraphScopeExecutor:
                 if state.jump_to is not None and not halted:
                     target = names[state.jump_to]
                 state.jump_to = None
-                return self._write(
-                    state,
-                    target,
-                    reference=scope.reference,
-                    native_channels=channel_values,
-                    native_channel_updates=(
-                        channel_updates
-                        if self.native_channels is not None and scope.reference == "/do"
-                        else None
-                    ),
+                return routed(
+                    self._write(
+                        state,
+                        target,
+                        reference=scope.reference,
+                        native_channels=channel_values,
+                        native_channel_updates=(
+                            channel_updates
+                            if self.native_channels is not None and scope.reference == "/do"
+                            else None
+                        ),
+                    )
                 )
 
             return execute
@@ -1244,10 +1272,16 @@ class LangGraphScopeExecutor:
         for index, task in enumerate(scope.tasks):
             following = _node_name(scope.tasks[index + 1]) if index + 1 < len(scope.tasks) else END
             name = _node_name(task)
-            graph.add_node(name, node(task, following), input_schema=state_schema)
-            graph.add_conditional_edges(
-                name, lambda state: state["next_node"], [*names.values(), END]
+            graph.add_node(
+                name,
+                node(task, following),
+                input_schema=state_schema,
+                destinations=(*names.values(), END) if self.native_commands else None,
             )
+            if not self.native_commands:
+                graph.add_conditional_edges(
+                    name, lambda state: state["next_node"], [*names.values(), END]
+                )
         return graph.compile(checkpointer=self.saver)
 
     async def run_scope(

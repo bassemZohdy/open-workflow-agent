@@ -28,6 +28,7 @@ _MAX_CHANNEL_INITIAL_TOTAL_BYTES = 262144
 MAX_CHANNEL_VALUE_BYTES = 65536
 MAX_CHANNEL_VALUE_TOTAL_BYTES = 262144
 LANGGRAPH_CHANNELS = "langgraph.channels@1.0.0"
+LANGGRAPH_COMMAND = "langgraph.command@1.0.0"
 _CHANNEL_ID = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 _TASK_REFERENCE = re.compile(r"^/do/(0|[1-9][0-9]*)$")
 NATIVE_CHANNEL_VARIABLE = "owa_native_channels"

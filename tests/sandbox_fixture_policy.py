@@ -12,3 +12,17 @@ def supported_process_limits() -> dict[str, int | None]:
             None if os.name == "posix" and getattr(os, "getuid", lambda: -1)() == 0 else 32
         ),
     }
+
+
+def javascript_process_limits() -> dict[str, int | None]:
+    """Hosted UID quotas include unrelated runner threads; Docker proves NPROC.
+
+    Node creates threads during startup. A quota of 32 cannot be applied to a
+    shared runner UID already owning more than 32 threads. Physical image gates
+    retain the production default under a dedicated non-root UID; isolated
+    contract runners can select the same profile explicitly.
+    """
+    limits = supported_process_limits()
+    if os.name == "posix" and os.getenv("OWA_TEST_ISOLATED_PROCESS_USER") != "1":
+        limits["process_count"] = None
+    return limits

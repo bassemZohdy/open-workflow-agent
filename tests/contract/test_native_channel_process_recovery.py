@@ -39,8 +39,10 @@ def read(path: Path):
 
 
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+@pytest.mark.parametrize("native_command", [False, True])
+@pytest.mark.parametrize("nested_reader", [False, True])
 def test_process_stop_preserves_committed_native_channel_delta(
-    tmp_path: Path, backend: str
+    tmp_path: Path, backend: str, native_command: bool, nested_reader: bool
 ) -> None:
     required_modules = ["langgraph.checkpoint.memory", "langgraph.func"]
     required_modules.append(f"langgraph.checkpoint.{backend}.aio")
@@ -51,7 +53,12 @@ def test_process_stop_preserves_committed_native_channel_delta(
             pytest.skip("independent LangGraph checkpoint dependency environment is required")
     if backend == "postgresql" and not os.getenv("OWA_TEST_POSTGRES_URL"):
         pytest.skip("actual PostgreSQL datasource required")
-    (tmp_path / "scenario.json").write_text(json.dumps({"backend": backend}), encoding="utf-8")
+    (tmp_path / "scenario.json").write_text(
+        json.dumps(
+            {"backend": backend, "native_command": native_command, "nested_reader": nested_reader}
+        ),
+        encoding="utf-8",
+    )
     producer = recovery = identity = None
     try:
         producer = launch(tmp_path, "start")
@@ -64,6 +71,8 @@ def test_process_stop_preserves_committed_native_channel_delta(
         assert evidence["backend"] == backend
         assert evidence["status"] == "waiting"
         assert evidence["channel_values"] == {"items": ["seed", "first"]}
+        assert evidence["snapshots_checked"] > 0
+        assert evidence["checkpoint_scopes"] == (2 if nested_reader else 1)
         identity = ProducerIdentity(evidence["pid"])
         (tmp_path / "ack.json").write_text(json.dumps({"pid": evidence["pid"]}), encoding="utf-8")
         deadline = time.monotonic() + 15

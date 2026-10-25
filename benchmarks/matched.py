@@ -179,7 +179,7 @@ def _require_linux_rss() -> None:
 
 def _peak_rss_bytes() -> int:
     _require_linux_rss()
-    if resource is None:
+    if sys.platform != "linux" or resource is None:
         raise RuntimeError("process peak RSS measurement is unavailable on this platform")
     # Linux reports ru_maxrss in KiB; this profile is hosted on Linux runners.
     return int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024)

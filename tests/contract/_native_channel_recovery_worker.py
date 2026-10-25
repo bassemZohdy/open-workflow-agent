@@ -16,47 +16,57 @@ from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
 
 
-def plan():
-    return compile_workflow(
-        {
-            "document": {
-                "dsl": "1.0.3",
-                "namespace": "test",
-                "name": "native-channel-process-recovery",
-                "version": "1.0.0",
-                "metadata": {
-                    "owa": {
-                        "nativeExtensions": [{"name": "langgraph.channels", "version": "1.0.0"}],
-                        "nativeExtensionData": {
-                            "langgraph.channels@1.0.0": {
-                                "channels": [
-                                    {
-                                        "id": "items",
-                                        "reducer": "append",
-                                        "initial": ["seed"],
-                                        "writes": [{"task": "/do/0"}, {"task": "/do/2"}],
-                                    }
-                                ],
-                                "reads": [
-                                    {
-                                        "task": "/do/3",
-                                        "as": "owa_native_channels",
-                                        "channels": ["items"],
-                                    }
-                                ],
-                            }
-                        },
-                    }
-                },
+def plan(*, native_command=False, nested_reader=False):
+    definition = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "test",
+            "name": "native-channel-process-recovery",
+            "version": "1.0.0",
+            "metadata": {
+                "owa": {
+                    "nativeExtensions": [{"name": "langgraph.channels", "version": "1.0.0"}],
+                    "nativeExtensionData": {
+                        "langgraph.channels@1.0.0": {
+                            "channels": [
+                                {
+                                    "id": "items",
+                                    "reducer": "append",
+                                    "initial": ["seed"],
+                                    "writes": [{"task": "/do/0"}, {"task": "/do/2"}],
+                                }
+                            ],
+                            "reads": [
+                                {
+                                    "task": "/do/3",
+                                    "as": "owa_native_channels",
+                                    "channels": ["items"],
+                                }
+                            ],
+                        }
+                    },
+                }
             },
-            "do": [
-                {"write_first": {"set": '${ ["first"] }'}},
-                {"pause": {"wait": {"seconds": 300}}},
-                {"write_second": {"set": '${ ["second"] }'}},
-                {"read_items": {"set": {"items": "${ $owa_native_channels.items }"}}},
-            ],
+        },
+        "do": [
+            {"write_first": {"set": '${ ["first"] }'}},
+            {"pause": {"wait": {"seconds": 300}}},
+            {"write_second": {"set": '${ ["second"] }'}},
+            {"read_items": {"set": {"items": "${ $owa_native_channels.items }"}}},
+        ],
+    }
+    metadata = definition["document"]["metadata"]["owa"]
+    if native_command:
+        metadata["nativeExtensions"].append({"name": "langgraph.command", "version": "1.0.0"})
+    if nested_reader:
+        metadata["nativeExtensionData"]["langgraph.channels@1.0.0"]["reads"].append(
+            {"task": "/do/1", "as": "owa_native_channels", "channels": ["items"]}
+        )
+        definition["do"][1]["pause"] = {
+            "do": [{"inside": {"wait": {"seconds": 300}}}],
+            "output": {"as": "${ {observed: $owa_native_channels.items} }"},
         }
-    )
+    return compile_workflow(definition)
 
 
 async def run(directory: Path, mode: str) -> None:
@@ -76,7 +86,10 @@ async def run(directory: Path, mode: str) -> None:
     if not engine.native.task_nodes_available:
         raise RuntimeError("native LangGraph dependency is required")
     await engine._timer_dispatcher.stop()
-    workflow = plan()
+    workflow = plan(
+        native_command=scenario.get("native_command", False),
+        nested_reader=scenario.get("nested_reader", False),
+    )
     try:
         if mode == "start":
             handle = services.invocations.create(
@@ -99,9 +112,28 @@ async def run(directory: Path, mode: str) -> None:
                 graph = driver.compile_scope(
                     workflow.scopes[0], engine.executor, ExecutionState(data={})
                 )
-                return await graph.aget_state(driver.checkpoint_config("/do", 1))
+                snapshots = []
+                observed_scopes = set()
+                for scope in workflow.scopes:
+                    async for checkpoint in saver.alist(
+                        driver.checkpoint_config(scope.reference, 1)
+                    ):
+                        observed_scopes.add(scope.reference)
+                        values = checkpoint.checkpoint["channel_values"]
+                        candidates = [values, values.get("__start__", {})]
+                        candidates.extend(value for _, _, value in checkpoint.pending_writes or [])
+                        for value in candidates:
+                            if isinstance(value, dict) and "snapshot" in value:
+                                snapshots.append(json.loads(value["snapshot"]))
+                assert snapshots
+                assert all("owa_native_channels" not in value["variables"] for value in snapshots)
+                return (
+                    await graph.aget_state(driver.checkpoint_config("/do", 1)),
+                    len(snapshots),
+                    len(observed_scopes),
+                )
 
-            saved = await engine.native._with_saver(inspect_native_checkpoint)
+            saved, checked, scopes = await engine.native._with_saver(inspect_native_checkpoint)
             channel_values = saved.values.get("native_channels")
             if channel_values != {"items": ["seed", "first"]}:
                 raise RuntimeError(
@@ -116,6 +148,8 @@ async def run(directory: Path, mode: str) -> None:
                     "backend": scenario["backend"],
                     "status": handle.status,
                     "channel_values": channel_values,
+                    "snapshots_checked": checked,
+                    "checkpoint_scopes": scopes,
                 },
             )
             while not (directory / "ack.json").exists():

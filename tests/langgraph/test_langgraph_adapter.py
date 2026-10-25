@@ -28,7 +28,10 @@ def test_channel_extension_advertisement_tracks_native_backend_availability(monk
 
     engine = LangGraphWorkflowEngine()
     monkeypatch.setattr(native, "LANGGRAPH_AVAILABLE", True)
-    assert engine.capabilities().as_dict()["nativeExtensions"] == ["langgraph.channels@1.0.0"]
+    assert engine.capabilities().as_dict()["nativeExtensions"] == [
+        "langgraph.channels@1.0.0",
+        "langgraph.command@1.0.0",
+    ]
 
     monkeypatch.setattr(native, "LANGGRAPH_AVAILABLE", False)
     assert engine.capabilities().as_dict()["nativeExtensions"] == []

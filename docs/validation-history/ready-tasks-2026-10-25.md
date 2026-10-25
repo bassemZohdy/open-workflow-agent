@@ -161,3 +161,45 @@ Sources: [FileLock advisory](https://github.com/advisories/GHSA-v4x8-3wr5-3wq8),
 Local logs, JUnit files, source hashes and both old/corrected advisory reports are
 retained under `tmp/completion-6f9ef5d/`. Passing focused selections are not a
 whole-source or full-feature qualification.
+
+## Final source 67279ed and source df6b725 follow-up
+
+The final `67279ed` CI outcome is 18 successful jobs and three failures: the
+benchmark typing environment and Windows control-observation fixture described
+above, plus ADK reaching its 40-minute suite budget at 99% (exit 124). No assertion
+failure was reported before that timeout. PostgreSQL, optional Framework,
+External Sandbox, Security and Docs all passed. A timed-out suite is not passing
+acceptance. The next source uses a finite 45-minute native-suite budget to include
+the added physical JavaScript recovery cases; operation and ownership deadlines
+remain unchanged.
+
+At `df6b725e4f096df2e361c715c646e64b5f031be1`, optional Framework, External
+Sandbox, Security and Docs pass. Both production-image gates pass packaged
+JavaScript execution. Root has 5,088 passes, four JavaScript failures, 3,251
+skips and 90.11% coverage; LangGraph native has 1,513 passes, four JavaScript
+failures and 1,499 skips. Each PostgreSQL operation job has 242 passes, four
+JavaScript failures and 183 skips. Both matched benchmark jobs and their
+four-cell aggregate pass. CI's remaining jobs retain their own final statuses;
+this partial record is not an aggregate green result.
+
+The new JavaScript failures report Linux startup aborts (exit -6), followed by
+missing business-commit proof or bounded readiness timeout. A controlled Linux
+probe under a dedicated non-root UID reproduces exit -6 with 49 existing user
+threads and `RLIMIT_NPROC=32`; Node reports failure creating a startup thread.
+The same probe succeeds with quota 128. This supports a shared-UID quota
+explanation, but the hosted failure logs do not retain the runner's thread count.
+Shared-host JavaScript fixtures now explicitly omit that quota. Production
+defaults are unchanged; the packaged image gate asserts the default 32-process
+quota and its capability under a dedicated arbitrary UID, with independent
+Docker PID/memory limits. Isolated contract runners also require the default
+quota through `OWA_TEST_ISOLATED_PROCESS_USER=1`. No secrets, environment or
+output controls are relaxed.
+
+Separately, frozen local source `df6b725` passes 19 tests per SDK in Docker
+(nine explicit opposite-SDK/platform skips), including both databases, known and
+uncertain JavaScript process stops, physical interpreter drift, and both control
+observation variants. All 1,139 input hashes remain unchanged. These test images
+extend the `a6a95cd` production images; runtime code, locks and metadata match
+between those commits. This remains focused local evidence, not an exact-source
+production-image rebuild. Reports and the thread-quota probe are retained under
+`tmp/javascript-sandbox-20261025/`.

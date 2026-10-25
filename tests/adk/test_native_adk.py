@@ -80,7 +80,10 @@ async def test_native_adk_dynamic_plan_invocation(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_adk_rejects_required_langgraph_channel_extension_before_native_mutation(tmp_path):
+@pytest.mark.parametrize("extension", ["langgraph.channels", "langgraph.command"])
+async def test_adk_rejects_required_langgraph_channel_extension_before_native_mutation(
+    tmp_path, extension
+):
     if not ADK_AVAILABLE:
         pytest.skip("google-adk optional extra is not installed")
 
@@ -113,6 +116,11 @@ async def test_adk_rejects_required_langgraph_channel_extension_before_native_mu
         {"write_phase": {"set": "ready"}},
         {"read_phase": {"set": "${ $owa_native_channels.phase }"}},
     ]
+    if extension == "langgraph.command":
+        workflow["document"]["metadata"]["owa"] = {
+            "nativeExtensions": [{"name": extension, "version": "1.0.0"}]
+        }
+        workflow["do"] = [{"never": {"call": "llm:1.0.0@default"}}]
     plan = compile_workflow(workflow)
     services = RuntimeServices(
         RuntimeConfig(), model=FakeModel({"response": "must-not-run"}), database_root=tmp_path

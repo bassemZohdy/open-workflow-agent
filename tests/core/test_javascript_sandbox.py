@@ -25,14 +25,14 @@ from open_workflow_agent.sandbox import (
     SandboxSecretReference,
     compile_sandbox_workflow,
 )
-from sandbox_fixture_policy import supported_process_limits
+from sandbox_fixture_policy import javascript_process_limits
 
 
 @pytest.fixture
 def backend(tmp_path):
     return InternalSandboxBackend(
         SandboxConfig(
-            **supported_process_limits(),
+            **javascript_process_limits(),
             enabled=True,
             script_runtimes=["javascript"],
             executable_search_path=javascript_path(),

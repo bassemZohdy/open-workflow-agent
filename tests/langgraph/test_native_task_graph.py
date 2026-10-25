@@ -167,6 +167,73 @@ async def test_native_channel_reducer_replaces_last_value_and_appends_json_array
     assert state == {"items": ["seed", "next"], "status": "new"}
 
 
+@pytest.mark.parametrize("kind", ["do", "for", "fork"])
+async def test_native_reader_binding_stays_live_but_out_of_nested_checkpoints(services, kind):
+    outer = (
+        {
+            "fork": {
+                "branches": [
+                    {"first": {"set": {"ok": "first"}}},
+                    {"second": {"set": {"ok": "second"}}},
+                ]
+            }
+        }
+        if kind == "fork"
+        else {"do": [{"inside": {"set": {"ok": True}}}]}
+    )
+    if kind == "for":
+        outer["for"] = {"in": "${ [1, 2] }"}
+    outer["output"] = {"as": "${ {observed: $owa_native_channels.value, nested: .} }"}
+    workflow = generate_default_workflow()
+    workflow["do"] = [{"outer": outer}]
+    workflow["document"]["metadata"] = {
+        "owa": {
+            "nativeExtensions": [{"name": "langgraph.channels", "version": "1.0.0"}],
+            "nativeExtensionData": {
+                "langgraph.channels@1.0.0": {
+                    "channels": [
+                        {
+                            "id": "value",
+                            "reducer": "last_value",
+                            "initial": {"marker": "private"},
+                            "writes": [],
+                        }
+                    ],
+                    "reads": [
+                        {"task": "/do/0", "as": "owa_native_channels", "channels": ["value"]}
+                    ],
+                }
+            },
+        }
+    }
+    plan = compile_workflow(workflow)
+    engine = LangGraphWorkflowEngine()
+    await engine.initialize(services)
+    engine.native.database_path = None
+    try:
+        result = await engine.invoke(plan, _handle(services, plan), {})
+        assert result.status == "completed", result.error
+        assert result.output == {
+            "observed": {"marker": "private"},
+            "nested": [{"ok": "first"}, {"ok": "second"}] if kind == "fork" else {"ok": True},
+        }
+        checkpoints = list(engine.native.checkpointer.list(None))
+        threads = {checkpoint.config["configurable"]["thread_id"] for checkpoint in checkpoints}
+        assert len(threads) >= 2
+        snapshots = []
+        for checkpoint in checkpoints:
+            values = checkpoint.checkpoint["channel_values"]
+            candidates = [values, values.get("__start__", {})]
+            candidates.extend(value for _, _, value in checkpoint.pending_writes or [])
+            for value in candidates:
+                if isinstance(value, dict) and "snapshot" in value:
+                    snapshots.append(json.loads(value["snapshot"]))
+        assert snapshots
+        assert all("owa_native_channels" not in value["variables"] for value in snapshots)
+    finally:
+        await engine.shutdown()
+
+
 async def test_native_last_value_channel_is_admitted_written_and_read_by_a_later_task(services):
     workflow = generate_default_workflow()
     workflow["document"]["metadata"] = {

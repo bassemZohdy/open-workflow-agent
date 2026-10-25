@@ -19,7 +19,7 @@ from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.errors import InvocationStateError
 from open_workflow_agent.sandbox import compile_sandbox_workflow
 from open_workflow_agent.services import RuntimeServices
-from sandbox_fixture_policy import supported_process_limits
+from sandbox_fixture_policy import javascript_process_limits
 from test_process_crash_recovery import _environment
 from test_workflow_version_recovery import _common_snapshot
 
@@ -45,7 +45,7 @@ def runtime(tmp_path, backend, *, interpreter=None):
             "model": {"provider": "fake"},
             "persistence": {"datasource": datasource},
             "sandbox": {
-                **supported_process_limits(),
+                **javascript_process_limits(),
                 "enabled": True,
                 "script_runtimes": ["javascript"],
                 "workspace_root": str(tmp_path / "workspace"),

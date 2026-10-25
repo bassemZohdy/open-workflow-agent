@@ -266,6 +266,15 @@ use a Proactor event loop for child processes. Selector-loop awaited execution
 fails closed; Windows LangGraph/PostgreSQL's Selector-only profile therefore
 does not provide awaited executable operations.
 
+On Linux, `RLIMIT_NPROC` counts threads belonging to the same user, including
+other applications. Node needs several threads during startup. A shared runner
+whose user already exceeds the selected quota can therefore abort Node before
+the script runs. Shared-host JavaScript test fixtures explicitly omit that one
+quota; they do not alter runtime defaults or claim process-count enforcement.
+The image gate keeps the default quota of 32 under a dedicated arbitrary UID,
+plus Docker's independent PID and memory limits. Isolated contract runners use
+`OWA_TEST_ISOLATED_PROCESS_USER=1` to require the default quota as well.
+
 For an enabled internal JavaScript profile, recovery includes the resolved
 interpreter path, physical binary SHA-256 and byte count. A changed interpreter
 rejects continuation before ownership/native/common mutation. No interpreter is

@@ -12,6 +12,7 @@ from typing import Any
 
 import httpx
 import pytest
+from _grpc_recovery_worker import native_snapshot
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.errors import InvocationStateError
@@ -19,6 +20,9 @@ from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine
+from test_workflow_version_recovery import _common_snapshot
+
+pytestmark = pytest.mark.usefixtures("explicit_workflow_delivery")
 
 
 @pytest.mark.asyncio
@@ -42,6 +46,7 @@ from open_workflow_agent_langgraph import LangGraphWorkflowEngine
         "context-binding",
         "workflow-identity",
         "workflow-definition",
+        "transient-channel-binding",
     ],
 )
 async def test_langgraph_corrupt_root_or_nested_checkpoint_rejects_before_recovery_dispatch(
@@ -177,10 +182,16 @@ async def test_langgraph_corrupt_root_or_nested_checkpoint_rejects_before_recove
             snapshot["variables"]["workflow"]["definition"]["document"]["name"] = (
                 "private-checkpoint-sentinel"
             )
+        elif damage == "transient-channel-binding":
+            snapshot["variables"]["owa_native_channels"] = {"private-checkpoint-sentinel": True}
         if damage == "duplicate-keys":
             channels["snapshot"] = channels["snapshot"][:-1] + ',"stop":false}'
         else:
             channels[channel] = json.dumps(snapshot if channel == "snapshot" else counters)
+        if damage == "transient-channel-binding":
+            bindings = json.loads(channels["receipt_bindings"])
+            bindings["state_digest"] = driver._state_digest(channels)
+            channels["receipt_bindings"] = json.dumps(bindings)
         thread = saved.config["configurable"]["thread_id"]
         namespace = saved.config["configurable"].get("checkpoint_ns", "")
         # Follow the installed SDK's storage layout: PostgreSQL inlines
@@ -189,17 +200,17 @@ async def test_langgraph_corrupt_root_or_nested_checkpoint_rejects_before_recove
         if backend == "postgresql":
             json_types = importlib.import_module("psycopg.types.json")
 
+            update = "jsonb_set(checkpoint, ARRAY['channel_values', %s], %s, false)"
+            values = [channel, json_types.Jsonb(channels[channel])]
+            if damage == "transient-channel-binding":
+                update = (
+                    f"jsonb_set({update}, ARRAY['channel_values', 'receipt_bindings'], %s, false)"
+                )
+                values.append(json_types.Jsonb(channels["receipt_bindings"]))
             updated = await saver.conn.execute(
-                "UPDATE checkpoints SET checkpoint = "
-                "jsonb_set(checkpoint, ARRAY['channel_values', %s], %s, false) "
+                "UPDATE checkpoints SET checkpoint = " + update + " "
                 "WHERE thread_id = %s AND checkpoint_ns = %s AND checkpoint_id = %s",
-                (
-                    channel,
-                    json_types.Jsonb(channels[channel]),
-                    thread,
-                    namespace,
-                    checkpoint["id"],
-                ),
+                (*values, thread, namespace, checkpoint["id"]),
             )
         else:
             encoding, payload = saver.serde.dumps_typed(checkpoint)
@@ -214,6 +225,11 @@ async def test_langgraph_corrupt_root_or_nested_checkpoint_rejects_before_recove
         altered = await saver.aget_tuple(saved.config)
         assert altered is not None
         assert altered.checkpoint["channel_values"][channel] == channels[channel]
+        if damage == "transient-channel-binding":
+            assert (
+                altered.checkpoint["channel_values"]["receipt_bindings"]
+                == channels["receipt_bindings"]
+            )
 
     try:
         await recovered.native._with_saver(corrupt)
@@ -222,6 +238,8 @@ async def test_langgraph_corrupt_root_or_nested_checkpoint_rejects_before_recove
             result = await asyncio.wait_for(recovered.resume(loaded, {}, plan), 20)
             assert result.status == "completed" and calls == ["/once", "/next"]
         else:
+            common_before = _common_snapshot(restarted, handle.invocation_id)
+            native_before = native_snapshot(restarted, loaded, backend)
             with pytest.raises(InvocationStateError) as failure:
                 await asyncio.wait_for(recovered.resume(loaded, {}, plan), 20)
             assert "private-checkpoint-sentinel" not in json.dumps(failure.value.as_dict())
@@ -229,6 +247,8 @@ async def test_langgraph_corrupt_root_or_nested_checkpoint_rejects_before_recove
             saved = restarted.invocations.get(handle.invocation_id)
             assert saved is not None and saved._persisted_payload == before
             assert loaded._persisted_payload == before and loaded.status == "waiting"
+            assert _common_snapshot(restarted, handle.invocation_id) == common_before
+            assert native_snapshot(restarted, loaded, backend) == native_before
     finally:
         await recovered.shutdown()
         restarted.close()

@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[2]
     ],
 )
 def test_report_identifies_the_actual_hosted_or_local_runner(
-    monkeypatch, hosted: str | None, legacy: str | None, expected: str
+    monkeypatch: pytest.MonkeyPatch, hosted: str | None, legacy: str | None, expected: str
 ) -> None:
     for variable, value in (("RUNNER_NAME", hosted), ("GITHUB_RUNNER", legacy)):
         if value is None:
@@ -38,7 +38,7 @@ def test_report_identifies_the_actual_hosted_or_local_runner(
     assert metadata["runner"]["name"] == expected
 
 
-def test_benchmark_type_gate_selects_its_optional_postgresql_driver():
+def test_benchmark_type_gate_selects_its_optional_postgresql_driver() -> None:
     workflow = yaml.load((ROOT / ".github/workflows/ci.yml").read_text(), Loader=yaml.BaseLoader)
     step = next(s for s in workflow["jobs"]["root"]["steps"] if s.get("name") == "Type check")
     assert "uv run --locked --extra postgres mypy benchmarks" in step["run"]

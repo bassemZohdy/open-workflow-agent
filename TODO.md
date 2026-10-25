@@ -359,6 +359,13 @@ treated as a deferred task or as additional feature completion.
   acceptance/rejection regressions are authored; engine-specific and exact-head
   hosted qualification remain pending.
 - [ ] **S4-02** (L) — Add declared native channels/reducers, Command/Send, memory, streams, state updates, replay and time travel.
+  A bounded required `langgraph.command@1.0.0` candidate now uses real SDK
+  Command updates and per-scope transitions without a new public payload.
+  Required/optional root/nested routes and ADK admission rejection pass locally.
+  Nested-reader checkpoint privacy is repaired and forged stored bindings reject
+  before mutation on SQLite/PostgreSQL. Four Command/default × root/nested
+  SQLite process-stop cells pass. Full qualification and the remaining Send,
+  memory, streams, state-update, replay and time-travel scope stay open.
   The first scoped channel/reducer slice is authored for the exact
   `langgraph.channels@1.0.0` extension using private reducer-backed LangGraph
   state. Its focused core (10 cases) and native channel (3 cases) tests pass.

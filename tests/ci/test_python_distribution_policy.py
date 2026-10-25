@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_distribution_identity_and_no_shim_decision_match_real_package_metadata():
+def test_distribution_identity_and_no_shim_decision_match_real_package_metadata() -> None:
     policy = json.loads((ROOT / "resources/python-distribution-policy.json").read_text())
     canonical = policy["canonical_adk"]
     project = ROOT / canonical["project"]
@@ -28,7 +28,7 @@ def test_distribution_identity_and_no_shim_decision_match_real_package_metadata(
     assert root_metadata["project"]["scripts"]["owa"] == "open_workflow_agent.cli:main"
 
 
-def test_current_delivery_policy_has_no_package_index_publisher():
+def test_current_delivery_policy_has_no_package_index_publisher() -> None:
     policy = json.loads((ROOT / "resources/python-distribution-policy.json").read_text())
     assert policy["package_index_publication"] == "disabled"
     assert policy["delivery"] == ["pinned_source_checkout", "qualified_oci_images"]

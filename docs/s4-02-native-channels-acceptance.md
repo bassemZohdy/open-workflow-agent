@@ -1,4 +1,4 @@
-# S4-02 Native channels: first slice
+# S4-02 Native channels and bounded Command routing
 
 Status: implementation authored; S4-02 remains open. The focused core
 admission/normalization tests pass (10 cases), as do the native LangGraph
@@ -30,9 +30,47 @@ Each channel has `{id,reducer,initial,writes}`. The supported reducers are `appe
 
 LangGraph stores the channel map in a private reducer-backed LangGraph state channel. Node updates are reducer deltas so the graph can apply each node's channel contribution through its native state mechanism. The process-stop regression above covers restart/resume and checks that a committed delta is not duplicated. The channel map is not copied into the OWA execution snapshot or public invocation result. Channel values are bounded to 65,536 compact JSON bytes each and 262,144 aggregate bytes; the same limits are checked before emitting updates and while admitting checkpoint state. Initial values have matching finite caps.
 
-The first slice deliberately excludes value schemas, nested or parallel
-writers, Command/Send, memory, streams, state-update APIs, replay, and time
+The channel slice deliberately excludes value schemas, nested or parallel
+writers, Send, memory, streams, state-update APIs, replay, and time
 travel. Focused coverage now exercises admission, task-order reduction, reader
 visibility, checkpoint privacy, and oversized output rejection. Capability
 advertising and task completion remain gated on exact-source hosted and
 PostgreSQL validation.
+
+## Nested-reader privacy and Command candidate — 2026-10-25
+
+A reader on a root compound task previously left its temporary expression
+binding in nested native checkpoints. Three regressions first reproduced that
+leak for `do`, `for`, and `fork`. Snapshot encoding now removes the binding in
+every scope, and decoding rejects a stored binding before recovery mutation.
+Nested execution preserves the live caller binding so the parent task's output
+transform still reads its declared value. Negative recovery fixtures inject
+the binding into actual SDK checkpoints and recompute the state digest; rejection
+must preserve complete common rows and invocation-scoped native rows and prevent
+a second HTTP dispatch. Both SQLite and PostgreSQL injection cases pass locally.
+
+The exact required declaration `langgraph.command@1.0.0` now selects actual SDK
+`Command(update=..., goto=...)` returns for admitted OWS task transitions. There
+is no additional public payload. Destinations are restricted to nodes in the
+current compiled scope or its end; updates contain only private execution state
+and declared reducer deltas. An optional declaration retains the existing routing
+path. This candidate does not accept arbitrary host Command objects, parent-graph
+routing or cross-scope destinations. It does not implement Send or public state
+updates. ADK rejects the required declaration before native storage, common
+mutation or provider dispatch.
+
+Four actual-SDK tests cover required/optional declarations and root/nested
+transitions, including a jump over an undeployed model call. Two ADK rejection
+cases pass. The physical process-stop grid now combines Command/default routing
+with root/nested readers on each database. All four Windows SQLite cells pass:
+the producer inspects actual checkpoint histories and pending writes for privacy,
+is killed, and a different process recovers exactly one committed reducer delta.
+PostgreSQL process-stop acceptance and full exact-source qualification remain
+required. These focused results do not complete S4-02's wider scope.
+
+The broader local LangGraph/native-state/SQLite process selection has 111
+passes and one stale capability-list expectation; that expectation is corrected
+and the adapter/Command selection passes all 11 cases. PostgreSQL forged-binding
+cases pass again in the final candidate. All 195 CI guard tests pass. Formatting,
+runtime typing and documentation links pass; full-source native and hosted checks
+remain separate acceptance gates.
