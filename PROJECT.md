@@ -60,18 +60,20 @@ bound fresh data. Authorized bounded physical cleanup retains recovery proof.
 Cross-worker setup exclusion, cancellation and process-exit lock recovery have
 finite evidence. Historical common payloads and markers are retained.
 
-Source `74294b5` adds a private preauthorized resolution control. It atomically
+Source `602449e` adds a private preauthorized resolution control. It atomically
 records completion from matching native proof or acknowledged abandonment with
 an explicitly unknown outcome. Decisions are immutable and never redispatch a
-write. Its **475-case** memory/journal/ownership/lifecycle/resolution cohort
-passes on both Windows and frozen Linux with zero skips and 1,197 unchanged
-Linux source inputs. Earlier cohorts, failed attempts and focused qualification
+write. It also repairs concurrent first-use checkpoint migrations. Its
+**523-case** memory/journal/ownership/lifecycle/resolution/native-checkpoint cohort
+passes on both Windows and frozen Linux with zero skips and 1,198 unchanged
+Linux source inputs; eight shared authority checks pass on each platform using
+fresh PostgreSQL databases. Earlier cohorts, failed attempts and focused qualification
 limits remain in the [native memory acceptance record](docs/s4-02-native-memory-acceptance.md).
 This is component evidence, not full repository/release qualification.
 
 Native memory admission stays closed. Next complete versioned public workflow
-bindings, authenticated/authorized resolution controls and their full public
-recovery qualification. Terminal invocations are not reopened, and the private
+bindings including bounded native search, authenticated/authorized resolution
+controls and their full public recovery qualification. Terminal invocations are not reopened, and the private
 resolution method is not an authenticated API or a force-retry operation.
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault

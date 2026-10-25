@@ -566,12 +566,72 @@ This qualifies private control and evidence semantics. It does not qualify
 public resolution authorization, API discovery/control or workflow bindings,
 reopen terminal invocations, promote any research row or complete S4-02.
 
+### Premerge context and checkpoint follow-up
+
+The following review retained the green `74294b5` component evidence but found
+two additional gaps before merging:
+
+- An accepted long task context exceeded the resolution-only 8 KiB read bound.
+  Both stores reproduced failure. Source `a830e3c` stores the common mutation key
+  rather than copying the full identity into the audit payload, retaining its
+  8 KiB bound. Its identity index uses the existing write-profile limit plus
+  the resolution operation prefix's two-byte envelope difference. The expanded
+  **477-case** cohort passes on Windows and frozen Linux with zero skips and
+  1,197 unchanged Linux inputs. Reports are in `a830e3c/` and
+  `memory-resolution-final-qualified-windows.xml`; the red cases remain in
+  `memory-resolution-context-red.xml`.
+- The separate fresh-database Linux shared-authority run passed seven cases and
+  failed concurrent PostgreSQL first invocation before the actions entered. A
+  diagnostic run confirmed `AsyncPostgresSaver.setup()` raised `UniqueViolation`
+  (`23505`). Warm-store checks had not covered simultaneous first migration.
+  Failed reports remain in `memory-resolution-final-shared-cold-failed-linux.xml`
+  and `memory-resolution-shared-debug-linux.xml`.
+
+Source `602449e0a2eee91c5686c61ee71165cb1da77eca` applies the existing cross-process
+setup lock and a finite migration deadline to native checkpoint savers as well
+as memory stores, without replacing their SDK SQL or checkpoint formats. The
+new empty-store concurrent checkpoint test passes on SQLite/PostgreSQL; its
+native adapter/graph/fencing selection passes 46 cases on Windows, with eight
+unrelated cases deselected. Eight shared authority checks pass against a fresh
+Windows PostgreSQL test database, with 44 unrelated cases deselected; see
+`checkpoint-repair-cold-contract-windows.xml`.
+
+### Final combined qualification — `602449e`
+
+The final runtime source above passes **523 cases with zero skips on each of
+Windows and frozen Linux**, with eight unrelated cases deselected. The selection
+comprises the 477-case memory/journal/ownership/lifecycle/resolution cohort and
+46 native checkpoint/adapter/graph/fencing cases, including simultaneous first
+use of an empty SQLite/PostgreSQL checkpoint store. All **1,198 frozen Linux
+source inputs remain unchanged**, using the same immutable dependency image,
+matching locks and restrictions recorded above, with a fresh
+`owa_memory_602449e` PostgreSQL database. Reports are under
+`tmp/merge-20261025/602449e/` and
+`memory-resolution-checkpoint-qualified-windows.xml`.
+
+Eight shared authority checks additionally pass on Linux against its separate
+fresh `owa_memory_602449e_contract` database, with 44 unrelated cases deselected;
+see `checkpoint-repair-cold-contract-linux.xml`. The Windows fresh-database
+eight-case result above uses identical runtime bytes. Neither successful cold
+run relies on tables warmed by the larger cohort. Earlier cold failures remain
+failed evidence; the final checkpoint repair supplies their green replacement.
+Ruff, formatting, strict typing, Markdown links and four inventory checks pass.
+The final core-only resolution/tracking selection passes 37 cases with 23
+expected optional skips (21 PostgreSQL cases and two SDK modules); see
+`memory-checkpoint-final-core-only.xml`. Core remains independent of both SDKs. These are finite component/native
+regression results, not full repository/release qualification or completion of
+S4-02; public memory admission remains closed.
+
 ## Remaining work before enabling the capability
 
 - Define and validate the versioned workflow bindings, logical record/schema and
   retention semantics within the approved metadata extension boundary.
 - Connect the private provider factories and read receipts to those validated
   workflow bindings without making external services mandatory.
+- Complete bounded native search and its declared filter/index/semantic profile.
+  The tracker maps B052/B053 to T51's put/get/search/delete, restart and
+  cross-thread contract and B079 to T68's embedded-store profile. Repeatable
+  point reads alone do not establish those search or complete public outcomes.
 - Qualify the complete public binding profile over the private namespace bounds,
   bounded physical cleanup and logical expiry, preserving recovery proof.
   Connect explicit resolution of uncertain dispatched writes to authenticated,
