@@ -1,4 +1,4 @@
-# S4-02 native memory — private providers and repeatable reads
+# S4-02 native memory — private stores, repeatable reads and fenced transactions
 
 Status: started after the main integration at `f013a2e`; S4-02 remains open.
 This is a private component in the LangGraph adapter, not an enabled workflow
@@ -70,7 +70,52 @@ invocation recovery reconciles both directions between observations and effect
 indexes, and verifies their descriptors, values and digests. Missing or damaged
 evidence fails recovery. This detects inconsistent stored evidence; it is not a
 claim of protection against coherently rewriting all durable state. Observation
-retention/deletion policy and native writes remain unimplemented.
+retention/deletion policy remains unimplemented. The next section describes
+the private native write transaction foundation; it is not yet a workflow API.
+
+## Private native mutation transaction
+
+Core `MemoryMutation` defines a copied finite JSON request, original principal
+namespace, installed binding, logical occurrence/key and immutable request
+digest. Its slot excludes the value and binding so changing either for an
+already committed logical write is rejected. Put and delete have distinct slots.
+The original running common invocation, principal binding and lease token must
+match before the SDK worker starts.
+
+The adapter's private `apply_native_mutation` is a trusted, preauthorized
+primitive. It is not registered as a catalog function or agent tool and the
+provider exposes no workflow writer. Public memory write authorization and the
+common intent/completion protocol must be integrated before enabling it.
+Provider setup creates a separate `owa_memory_mutations_v1` native marker table.
+Each worker-owned SDK connection commits one SDK put/delete and its native marker
+in the same native database transaction. The original pinned SDK batch SQL is
+reused, with semantic indexing and TTL disabled.
+
+SQLite owns the transaction and explicitly rolls back on every exception. This
+avoids the pinned SDK cursor's commit-on-exception behavior. The existing common
+SQLite ownership fence installs connection-local triggers on both the SDK store
+and marker tables; it locks the attached common ownership row through commit.
+The marker also fences deletion of an absent item. A final fenced marker update
+checks lease expiry after SDK SQL. PostgreSQL uses one native transaction,
+the common ownership row lock, invocation-scoped advisory serialization for
+deduplication/quota checks, and a second lease check before commit. Connection,
+statement and lock waits use the finite backend limits; this is not a hard
+wall-clock bound under arbitrary network or operating-system failure.
+
+Retries with a matching native marker skip SDK mutation SQL. They therefore
+cannot restore an old value after another invocation updates the record, or
+delete a record recreated after an earlier delete. A changed descriptor or
+damaged marker fails before mutation. An invocation can retain at most 64 native
+mutation markers; concurrent final-slot requests are serialized. Cancellation
+drains the worker transaction before returning or allowing ownership/connection
+cleanup; a committed write can therefore outlive caller cancellation and is
+recognized on retry.
+
+Native markers are not common effect completion receipts. A missing/deleted
+marker cannot yet be reconciled against a separate common intent or checkpoint
+dependency. The low-level primitive must remain private until that recovery
+protocol, public authorization/bindings, write/namespace retention and remaining
+qualification are complete. No native memory capability is enabled here.
 
 ## Verification scope
 
@@ -136,15 +181,59 @@ cases per platform before the explicit SQLite datasource correction added its
 two regression cases. This is focused component evidence, not full
 repository/release qualification or completion of S4-02.
 
+### Fenced native transaction follow-up — `f76fed9`
+
+Source `f76fed98c8e24f86066bfda5c61866c7841ad1b2` passes **169 selected cases
+with zero skips on each of Windows and frozen Linux**. This includes the
+earlier 118-case reader/provider/admission cohort, 36 SDK cases in
+`tests/langgraph/test_native_memory_mutations.py` and 15 framework-neutral cases
+in `tests/core/test_memory_mutations.py`:
+
+- Actual SQLite/PostgreSQL put/delete and missing-item delete, repeat detection,
+  another invocation's later write, changed values/bindings/bounds and damaged
+  markers. Original principal, namespace and lease binding are required.
+- Rejection of stale generations, including cached markers; rollback of both
+  SDK data and marker after an exception following SDK SQL or lease expiry at
+  the final guard; sanitized provider failures.
+- Cancellation draining before cleanup, concurrent duplicate requests and two
+  different writes competing for an invocation's last marker quota slot.
+- Abrupt child-process exit after native commit, ownership takeover, a later
+  logical write, and retry of the earlier operation without restoring old data.
+- Finite/canonical record validation and copied caller data/descriptors.
+
+Linux reuses the immutable dependency image and controls recorded above, with
+matching dependency locks, a fresh `owa_memory_f76fed9` PostgreSQL database and
+no installation at startup. All **1,180 frozen source inputs remain unchanged**.
+Reports are `tmp/merge-20261025/f76fed9/memory-linux-result.json`, its adjacent
+XML/log/manifest, and `memory-mutations-final-windows.xml`. Ruff, formatting
+and strict typing pass. Eight shared authorization isolation/denial checks pass
+on actual LangGraph with SQLite/PostgreSQL, with 44 unrelated cases deselected;
+see `memory-mutations-shared-contract.xml`. That contract run used `f5a5bb3`;
+runtime code is unchanged in the final test-only follow-up.
+
+The preceding `f5a5bb3` cohort passed 163 cases per platform. The follow-up fixes
+missing optional-SDK collection guards, moves framework-neutral checks into the
+core suite and adds six original-invocation checks. In a core-only environment,
+all 15 request tests pass and the two SDK test modules skip cleanly. No framework
+dependency was added to core. Four inventory/tracking checks and relative
+Markdown links pass; no inventory feature is promoted by these component checks.
+
+This qualifies the private native transaction primitive and its provider
+setup. It does not qualify common workflow write recovery, public authorization
+or a native memory feature declaration. S4-02 and its related research rows
+remain open; the overall verified task count stays 31 of 37.
+
 ## Remaining work before enabling the capability
 
 - Define and validate the versioned workflow bindings, logical record/schema and
   retention semantics within the approved metadata extension boundary.
 - Connect the private provider factories and read receipts to those validated
   workflow bindings without making external services mandatory.
-- Implement native/common write ownership fencing, atomicity or reconciliation,
-  write quotas, retention and recovery. Recovery must not apply an unowned or
-  duplicate write. Reads are now covered by the finite observation profile.
+- Integrate the native transaction primitive with common write intents and
+  completed effect receipts, native receipt observation and missing-marker
+  reconciliation. Complete public write authorization and namespace/write
+  retention. The native fence/marker/quota boundary and common read observations
+  now have finite evidence; full workflow write recovery remains open.
 - Complete native-checkpoint/crash recovery, changed authority/policy,
   concurrent first-use/provider setup and shutdown-failure qualification on the
   required engines/stores/platforms before updating capability metadata.

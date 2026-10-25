@@ -220,13 +220,15 @@ treated as a deferred task or as additional feature completion.
   profiles are corrected. The final direct-child stop fixture passes eight
   Linux SQLite/PostgreSQL routing/scope cases without pidfd APIs and four
   Windows PostgreSQL cases. Hosted qualification of that repair remains open.
-  Active: private native memory readers, SQLite/optional PostgreSQL factories
-  and common owned read observations pass 118 focused checks each on Windows
-  and frozen Linux with zero skips at `0268ea1`. Reads retain the first committed
-  value/absence across restart and enforce a 64-observation invocation quota.
-  This does not enable a workflow capability. Next add native write ownership,
-  atomicity/reconciliation and retention, then validate versioned workflow
-  bindings and the remaining recovery/platform gates before admission.
+  Active: private native memory readers/providers, common read observations,
+  and fenced native put/delete transactions with atomic retry markers pass
+  169 focused checks each on Windows and frozen Linux with zero skips at
+  `f76fed9`. Reads retain their first value/absence; native write retries skip
+  committed SDK SQL and cannot restore an old value over a later writer.
+  Read observations and native markers each have a 64-per-invocation quota.
+  This does not enable a workflow capability. Next integrate common write
+  intents/completions and missing-marker reconciliation, then retention,
+  public authorization/versioned workflow bindings and remaining qualification.
   See the [memory scope](docs/s4-02-native-memory-acceptance.md).
   Then continue streams, public state updates, replay and
   time travel. Preserve common authority, ownership, receipts and private

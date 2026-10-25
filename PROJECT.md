@@ -49,12 +49,19 @@ memory readers and SQLite/optional PostgreSQL provider factories. Bound readers
 retain the first committed value, including absence, in owned common receipts
 and recheck original authority before reuse. The read profile caps observations
 at 64 per invocation and detects inconsistent observations/indexes/receipts.
-Source `0268ea1` passes 118 focused cases with zero skips on both Windows and
-frozen Linux, including actual native workflows/stores and abrupt-process
-recovery. Existing effect/ownership regressions also pass all 99 cases after
-including their optional PostgreSQL selection.
-Required native memory admission stays closed. Public workflow bindings,
-write fencing/recovery, retention and broader qualification remain open. See the
+The follow-up adds private fenced native put/delete transactions and atomic
+retry markers, reusing pinned SDK SQL and the common ownership fence. Repeating
+an old committed operation cannot overwrite a later writer's value. Source
+`f76fed9` passes 169 focused cases with zero skips on both Windows and frozen
+Linux, including actual stores, rollback, cancellation, quota races and abrupt
+process exit. Core-only request checks pass without SDK installation, and eight
+shared LangGraph SQLite/PostgreSQL isolation/denial checks pass. The earlier
+read/provider cohort remains recorded at `0268ea1`.
+Existing effect/ownership regressions previously passed all 99 cases with
+PostgreSQL enabled. Required native memory admission stays closed. Native
+markers are not common completion receipts; common write intents/completions,
+public authorization/bindings, retention and broader recovery qualification
+remain open. See the
 [native memory scope](docs/s4-02-native-memory-acceptance.md).
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
