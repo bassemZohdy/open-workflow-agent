@@ -75994,6 +75994,7 @@
         "description": "Automate official CTK plus all proposed tests, schema constraints, parity and cross-engine outcome checks.",
         "effort": "L",
         "status": "Pending",
+        "progress_record": "docs/s4-04-literal-parity-acceptance.md",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
       },
       {

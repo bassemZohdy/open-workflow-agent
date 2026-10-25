@@ -56,3 +56,9 @@ the corrected consolidated local suite. All proposed-test and schema rows
 remain unmapped and unexecuted; these local guard checks do not count as CTK,
 schema, parity, or cross-engine coverage. Exact-source hosted qualification is
 still pending.
+
+The [literal outcome comparison candidate](../../docs/s4-04-literal-parity-acceptance.md)
+adds source-matched actual ADK/LangGraph Python/Node captures for 13 shared
+success/fault fixtures. Its required CI comparison is narrower than the proposed
+multi-runtime criteria. It leaves every proposed/schema bridge row unverified;
+native capture and complete source qualification remain pending.

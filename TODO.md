@@ -319,6 +319,10 @@ treated as a deferred task or as additional feature completion.
   parity. Frozen predecessor sources remain
   reference-only.
 - [ ] **S4-04** (L) — Automate official CTK plus all proposed tests, schema constraints, parity and cross-engine outcome checks.
+  A finite comparison candidate captures the 13 shared literal success/fault
+  outcomes from actual ADK, LangGraph Python and Node, then requires matched
+  source/SDK/runtime/fixture/schema evidence in CI. Native capture and full-source
+  qualification remain pending; no proposed/schema criterion is promoted.
   `resources/compatibility/coverage-bridge.json` now inventories all 443
   proposed test IDs and 774 schema-constraint rows. Every row remains explicitly
   unmapped and unexecuted because partial overlap is not evidence of equivalent

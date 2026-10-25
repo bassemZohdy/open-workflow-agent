@@ -42,6 +42,10 @@ The later literal-fault candidate adds inline raised errors and four shared
 fault cases; all 13 success/fault cases pass each actual Python SDK and the Node
 package passes 48 tests. Full JavaScript services, identity and durability remain
 open, and the current format-validation difference remains explicit.
+An S4-04 candidate now captures and compares the 13 actual native outcomes from
+the three independent environments. It retains source/SDK/runtime/fixture/schema
+provenance and rejects incomplete/mismatched reports. Actual capture and hosted
+qualification remain pending; full proposed/schema criteria remain unverified.
 The [ready-task qualification record](docs/validation-history/ready-tasks-2026-10-25.md)
 tracks the frozen baseline, corrected test expectation and newly repaired
 dependency advisories. The full green `d72781f` checkpoint closes eight finite

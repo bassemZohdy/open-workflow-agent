@@ -47,6 +47,17 @@ jobs:
       - name: Audit production dependencies
         working-directory: engines/langgraph-js
         run: npm audit --omit=dev
+      - name: Capture actual JavaScript literal outcomes
+        working-directory: engines/langgraph-js
+        run: >-
+          node dist/test/export-literal-outcomes.js
+          --source-commit "${{ github.sha }}"
+          --output "$RUNNER_TEMP/literal-outcomes-langgraph-js.json"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: literal-outcomes-langgraph-js
+          path: ${{ runner.temp }}/literal-outcomes-langgraph-js.json
+          if-no-files-found: error
       - name: Build the isolated JavaScript test image
         run: docker build -f engines/langgraph-js/Dockerfile.tests -t owa-langgraph-js-tests .
       - name: Run JavaScript tests without network or root writes
@@ -693,6 +704,20 @@ jobs:
             ${{ runner.temp }}/ctk-${{ matrix.engine }}.log
             ${{ runner.temp }}/ctk-${{ matrix.engine }}-provenance.txt
           if-no-files-found: warn
+      - name: Capture actual native literal outcomes
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 5m \
+            uv run --locked --extra knowledge --extra ${{ matrix.extra }} \
+            python ../../ci/literal_parity.py capture --engine "${{ matrix.engine }}" \
+              --source-commit "${{ github.sha }}" \
+              --output "$RUNNER_TEMP/literal-outcomes-${{ matrix.engine }}.json"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: literal-outcomes-${{ matrix.engine }}
+          path: ${{ runner.temp }}/literal-outcomes-${{ matrix.engine }}.json
+          if-no-files-found: error
       - name: Engine-specific benchmark probes
         shell: bash
         run: |
@@ -709,6 +734,34 @@ jobs:
           name: engine-benchmark-${{ matrix.engine }}
           path: ${{ runner.temp }}/engine-benchmark-${{ matrix.engine }}.json
           if-no-files-found: warn
+
+  literal-outcome-parity:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
+    name: Exact-source shared literal outcome comparison
+    needs: [javascript-definition-validation, engines]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: literal-outcomes-*
+          path: ${{ runner.temp }}/literal-outcomes
+          merge-multiple: true
+      - name: Compare all actual native literal outcomes
+        run: >-
+          python ci/literal_parity.py aggregate
+          --source-commit "${{ github.sha }}"
+          --directory "$RUNNER_TEMP/literal-outcomes"
+          --output "$RUNNER_TEMP/literal-outcome-parity.json"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: literal-outcome-parity
+          path: ${{ runner.temp }}/literal-outcome-parity.json
+          if-no-files-found: error
 
   native-lifecycle:
     if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
