@@ -45,7 +45,8 @@ def test_process_stop_preserves_committed_native_channel_delta(
     tmp_path: Path, backend: str, native_command: bool, nested_reader: bool
 ) -> None:
     required_modules = ["langgraph.checkpoint.memory", "langgraph.func"]
-    required_modules.append(f"langgraph.checkpoint.{backend}.aio")
+    checkpoint_package = "postgres" if backend == "postgresql" else "sqlite"
+    required_modules.append(f"langgraph.checkpoint.{checkpoint_package}.aio")
     for module in required_modules:
         try:
             importlib.import_module(module)

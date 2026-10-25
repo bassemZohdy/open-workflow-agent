@@ -30,9 +30,20 @@ The PostgreSQL-only native CI environment intentionally lacks the optional
 SQLite saver. In-process Send cases now explicitly use the native memory saver,
 as other adapter tests do; physical recovery still uses the actual selected
 SQLite or PostgreSQL saver. Only physical SQLite cells skip when that dependency
-is absent. The exact PostgreSQL-only native task/Send/channel-process selection
-passes **30 tests with 17 optional-profile skips** on Windows with the supported
-Selector loop. Its genuine PostgreSQL physical recovery cells run.
+is absent. The initial PostgreSQL-only native task/Send/channel-process selection
+passes **30 tests with 17 skips** on Windows with the supported Selector loop.
+Its genuine PostgreSQL Send physical recovery runs. A later skip audit finds
+four channel-recovery skips used the nonexistent package name
+`langgraph.checkpoint.postgresql.aio`; those four are a test gap, not an optional
+profile exclusion. The selector now imports `langgraph.checkpoint.postgres.aio`.
+Actual execution of those four cells is required before qualification.
+
+After correcting that import, all four Windows producers initially fail the
+existing PostgreSQL event-loop admission check: the parent's Selector policy
+does not carry into a new process. The worker now explicitly selects that
+supported loop for Windows/PostgreSQL. The actual **four Command/default by
+root/nested PostgreSQL restart cells pass**, with no skips, in 59.88 seconds.
+Their Linux rerun and final hosted qualification remain pending.
 
 A deterministic barrier reproduced a separate common lifecycle race: an ending
 branch could win after a sibling recorded `waiting`, then attempt the forbidden
@@ -155,3 +166,27 @@ including both database physical recoveries, and the actual ADK fork/native
 selection passes 25. Reports are retained under
 `tmp/javascript-sandbox-20261025/bc044fe-*.xml`. Linux and full-source gates
 remain pending.
+
+## Frozen fork follow-up at bc87e0d
+
+Source `bc87e0d2c6a4d07775992584e3231c5d9702c97b` passes **129 ADK tests with
+zero skips** and **176 LangGraph tests with four skips** on Linux, covering
+ordinary/competitive forks, scoped end, durable timers, the deterministic
+wait/end race, physical traced-history recovery and native adapter checks.
+The four LangGraph skips are the channel/PostgreSQL test-import defect above;
+they are not counted as verified recovery cells.
+
+The ADK runner reuses the immutable `381b2c0` test dependency image after
+checking identical root/ADK metadata and dependency locks, with the complete
+`bc87e0d` source mounted read-only. LangGraph uses its freshly built `bc87e0d`
+test image. Neither installs packages at startup. All **1,167 frozen source
+inputs remain unchanged**. Both actual `bc87e0d` production images separately
+pass packaged JavaScript acceptance; the later cache-only `b37e49f` images do
+too. These local component results do not replace full exact-source hosted
+qualification or complete S4-02.
+
+The broader local CI guard selection reports **237 passes and two stale
+expected-count failures** after adding the two new PostgreSQL fork regressions
+per engine. Counts are corrected from two to four, and both affected guards
+pass their focused rerun. Fifteen release/image guards, four tracking guards,
+formatting, lint, strict typing and relative Markdown links also pass.

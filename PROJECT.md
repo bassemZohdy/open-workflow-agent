@@ -36,6 +36,12 @@ test setup and an owned wait/end race are corrected locally and await frozen
 qualification. Native memory,
 streams, state updates, replay and time travel remain open.
 
+The follow-up frozen Linux checks pass 129 ADK cases and 176 LangGraph cases.
+Skip review uncovered four incorrectly skipped PostgreSQL channel-recovery
+cells; their corrected Windows run passes all four. Linux and hosted checks of
+that test correction remain required. Docker metadata caching is measured and
+verified; source labels still identify the exact build.
+
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior
 remain missing. S4-04 has a new 13-case actual native outcome comparison with
@@ -87,12 +93,12 @@ JavaScript conformance.
 | S3-07 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s3-07-agent-pattern-acceptance.md#exact-source-qualification-d72781f) |
 | S3-08 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s3-08-selected-adapter-acceptance.md#exact-source-qualification-d72781f) |
 | S4-01 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s4-01-native-extension-acceptance.md#exact-source-qualification-d72781f) |
-| S4-02 | The bounded LangGraph channel/reducer slice has local evidence. Wider native state, streaming, replay/time-travel and backend qualification remain open. | [Native channel scope and gates](docs/s4-02-native-channels-acceptance.md) |
-| S4-03 | TypeScript schema admission is implemented and locally checked. Workflow compilation/execution and independent parity are still missing. | [JavaScript engine scaffold](engines/langgraph-js/README.md) |
-| S4-04 | The bridge inventories 443 proposed tests and 774 schema constraints as unmapped/unexecuted. Full CTK/schema/parity qualification remains open. | [Coverage bridge](resources/compatibility/README.md) |
-| S4-05 | Bounded task metrics and correlation have local evidence. Durable history, trace/causation propagation, richer provenance and replay diagnostics remain open. | [Observability acceptance](docs/s4-05-observability-acceptance.md) |
+| S4-02 | Bounded channels/reducers, Command and Send have focused native/store evidence. The wait/end follow-up awaits qualification; memory, streams, state updates, replay and time travel remain open. | [Native scope and gates](docs/s4-02-native-channels-acceptance.md) |
+| S4-03 | TypeScript admission and literal set/do/raise execution are implemented. Full public identity, durability, expressions, calls and independent engine parity remain open. | [JavaScript execution scope](docs/s4-03-javascript-execution-acceptance.md) |
+| S4-04 | Thirteen actual native literal outcomes match locally. All 443 proposed and 774 schema rows remain unmapped/unexecuted; full conformance remains open. | [Literal comparison](docs/s4-04-literal-parity-acceptance.md), [coverage bridge](resources/compatibility/README.md) |
+| S4-05 | Finite bounded history/tracing/metrics/provenance profile verified at `f66cd23`; incoming propagation, durable spans and vendor exporters remain excluded. | [Observability acceptance](docs/s4-05-observability-acceptance.md#exact-source-qualification-f66cd23) |
 | S4-06 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/benchmarks.md#exact-source-qualification-d72781f) |
-| S4-07 | Publication guards remain fail-closed; automatic CI/release are opt-in. Fresh exact-source gates, security, rollback and broader version/capability acceptance remain open. | [Release gate acceptance](docs/s4-07-release-gates-acceptance.md), [hosted result](docs/validation-history/pending-batch-results.md#hosted-outcome-for-source-0d812b2), [corrected local batch](docs/validation-history/pending-batch-results.md#corrected-working-tree-batch--local-validation-before-hosted-requalification) |
+| S4-07 | Finite source/version/release-manifest and rollback-policy gates verified at `f66cd23`; automatic CI/release remain opt-in. Actual publication and rollback were not performed. | [Release gate acceptance](docs/s4-07-release-gates-acceptance.md#exact-source-qualification-f66cd23) |
 | S4-08 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s4-08-compatibility-decision.md#exact-source-qualification-d72781f) |
 
 Historical source outcomes, full commands, hashes and correction details are

@@ -60,8 +60,22 @@ optional-store test profiles are explicit. Earlier failures remain in the
 Both principal Dockerfiles now declare source/version labels after filesystem
 preparation. Previously changing `VCS_REF` invalidated the OS upgrade layer:
 the `bc87e0d` build spent about 119 seconds repeating it. Security updates,
-version/source labels and publication gates remain required. Actual cache reuse
-and final image checks must pass before recording this optimization as verified.
+version/source labels and publication gates remain required. At source
+`b37e49fc668672cfbca9492479bf4bb2f431f041`, actual label-only rebuilds reused
+that layer on both engines and took **10.77 seconds (ADK) / 11.95 seconds
+(LangGraph)**. The initial builds took about 288 seconds. These measurements
+compare a label-only probe with its initial build; they do not promise the same
+speed for application/dependency changes. Both source-labeled images pass the
+packaged JavaScript checks and retain version `0.2.0` and the full source SHA.
+The probe images deliberately use revision `unknown` and are not release
+artifacts. Reports are under `tmp/javascript-sandbox-20261025/b37e49f/`.
+
+Reuse independent test dependency images only after checking their lock and
+package metadata match; record the actual source mount and dependency image
+separately. Keep source mounts read-only during recovery checks, and serialize
+environment synchronization. The final source still needs its own hosted and
+packaged-image gates. This avoids reinstalling identical tools for each edit
+without describing an older image as a newly built runtime.
 
 ## Cleanup validation
 

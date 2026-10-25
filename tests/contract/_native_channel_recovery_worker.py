@@ -190,6 +190,9 @@ async def run(directory: Path, mode: str) -> None:
 if __name__ == "__main__":
     location, selected_mode = Path(sys.argv[1]), sys.argv[2]
     try:
+        scenario = json.loads((location / "scenario.json").read_text(encoding="utf-8"))
+        if os.name == "nt" and scenario["backend"] == "postgresql":
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
         asyncio.run(run(location, selected_mode))
     except BaseException as error:
         write_json(
