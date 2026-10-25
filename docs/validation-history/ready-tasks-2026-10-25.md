@@ -57,6 +57,25 @@ sandbox `40184944582`, security `40184946225` and docs `40184947964`. They are
 pending as a complete set at this recording. The source is also pushed on the
 draft PR branch. No additional checkbox or research criterion is promoted.
 
+## f66cd23 Windows handoff failure and bounded fixture repair
+
+CI job `121143640293` records 185 passes, 404 explicit skips and one failure in
+`test_competing_initial_delivery_process_cannot_dispatch_while_owner_is_live[sqlite]`:
+reading the committed `owner-result.json` raises Windows `PermissionError`.
+This happens in the test's file handoff before its final result assertions;
+no business or ownership assertion is waived. The other `f66cd23` jobs are
+allowed to finish and the source remains partial at this recording.
+
+The repair retries only missing/busy test result files inside the original
+deadline. A busy committed file remains readable after producer exit; malformed
+committed JSON still fails immediately and persistent permission denial still
+times out. Nine deterministic reader/deadline/corruption cases, a real Windows
+exclusive-file-handle witness, all six SQLite/PostgreSQL process races and six
+workflow guards pass together: 22 passes, no skips. The actual Windows handoff
+witness is now explicitly selected in the Windows lifecycle job. Runtime
+ownership, action dispatch, receipts, deadlines and result assertions are
+unchanged; a fresh source qualification is still required.
+
 ## Frozen baseline
 
 Commit `6f9ef5d0d8ea24a75cddca1b2b57060ee546f4bb` captures the preceding development

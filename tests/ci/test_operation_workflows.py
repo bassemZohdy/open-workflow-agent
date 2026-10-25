@@ -25,6 +25,14 @@ def command(job):
     return "\n".join(step.get("run", "") for step in job["steps"])
 
 
+def test_initial_delivery_file_handoff_keeps_actual_windows_witness_selected():
+    job = workflow("ci.yml")["jobs"]["windows-native-lifecycle"]
+    text = command(job)
+    assert job["runs-on"] == "windows-latest"
+    assert "../../tests/core/test_initial_delivery_file_handoff.py" in text
+    assert "../../tests/contract/test_a2a_initial_delivery_process_race.py" in text
+
+
 def test_isolated_principal_postgresql_operation_profiles_gate_images():
     jobs = workflow("postgres-ci.yml")["jobs"]
     for engine in ("adk", "langgraph"):

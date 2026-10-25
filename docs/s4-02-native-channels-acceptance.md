@@ -115,3 +115,12 @@ and one `runtime_profile_changed` recovery rejection while adapter files were
 being edited. That run is not acceptance; a frozen-source rerun is required.
 This candidate does not complete S4-02: native memory, streams, public state
 updates, replay and time travel retain their separate capability/acceptance gaps.
+
+The frozen `bc044fed090b4287010dee796c47cba1e63607d7` Windows default-fork rerun
+passes 139 cases with 26 unconfigured PostgreSQL skips, including the previously
+rejected competitive-fork recovery cell. No runtime file changed during that
+rerun. Its actual LangGraph adapter/Command/Send selection passes 24 cases,
+including both database physical recoveries, and the actual ADK fork/native
+selection passes 25. Reports are retained under
+`tmp/javascript-sandbox-20261025/bc044fe-*.xml`. Linux and full-source gates
+remain pending.

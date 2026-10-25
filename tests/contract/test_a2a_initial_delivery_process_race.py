@@ -38,11 +38,22 @@ def _read(path: Path) -> Any:
 def _wait_for(path: Path, process: subprocess.Popen[bytes], timeout: float) -> Any:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        if path.exists():
+        try:
             return _read(path)
+        except FileNotFoundError:
+            pass
+        except PermissionError:
+            # A Windows rename/reader handoff can briefly deny a committed
+            # file. Keep the original finite deadline and all result assertions.
+            time.sleep(0.02)
+            continue
         if process.poll() is not None:
             failure = path.parent / ("-".join(path.stem.split("-")[:-1]) + "-failure.json")
-            details = _read(failure) if failure.exists() else {"exit_code": process.returncode}
+            try:
+                details = _read(failure) if failure.exists() else {"exit_code": process.returncode}
+            except PermissionError:
+                time.sleep(0.02)
+                continue
             pytest.fail(f"{process.args[-1]} process exited before {path.name}: {details}")
         time.sleep(0.02)
     pytest.fail(f"timed out waiting for {path.name}")
@@ -53,13 +64,26 @@ def _wait_for_any(
 ) -> tuple[Path, Any]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
+        busy = False
         for path in paths:
-            if path.exists():
+            try:
                 return path, _read(path)
+            except FileNotFoundError:
+                pass
+            except PermissionError:
+                busy = True
+        if busy:
+            time.sleep(0.02)
+            continue
         for path, process in zip(paths, processes, strict=True):
             if process.poll() is not None:
                 failure = path.parent / ("-".join(path.stem.split("-")[:-1]) + "-failure.json")
-                details = _read(failure) if failure.exists() else {"exit_code": process.returncode}
+                try:
+                    details = (
+                        _read(failure) if failure.exists() else {"exit_code": process.returncode}
+                    )
+                except PermissionError:
+                    break
                 pytest.fail(f"{process.args[-1]} process exited before {path.name}: {details}")
         time.sleep(0.02)
     pytest.fail("timed out waiting for a competing initial-delivery claimant result")
@@ -70,8 +94,13 @@ def _wait_for_shared_file(
 ) -> Any:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        if path.exists():
+        try:
             return _read(path)
+        except FileNotFoundError:
+            pass
+        except PermissionError:
+            time.sleep(0.02)
+            continue
         if all(process.poll() is not None for process in processes):
             pytest.fail(f"both claimant processes exited before {path.name}")
         time.sleep(0.02)

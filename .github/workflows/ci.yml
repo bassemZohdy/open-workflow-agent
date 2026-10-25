@@ -356,6 +356,7 @@ jobs:
         run: >-
           uv run --directory engines/langgraph --locked --extra sqlite
           --with apsw==3.54.0.0 --with pytest --with pytest-asyncio pytest -vv --durations=20
+          ../../tests/core/test_initial_delivery_file_handoff.py
           ../../tests/contract/test_external_operation_keys.py
           ../../tests/contract/test_external_recovery_process.py
           ../../tests/contract/test_external_recovery_native_corruption.py
