@@ -1191,11 +1191,22 @@ class LifecycleHistoryConfig(StrictModel):
         return self
 
 
+class TracingConfig(StrictModel):
+    """In-process spans and generated contexts; no incoming-header authority."""
+
+    enabled: bool = False
+    propagate_http: bool = False
+    max_spans: int = Field(default=1000, ge=1, le=100_000)
+    max_active_spans: int = Field(default=1024, ge=1, le=100_000)
+    max_retained_bytes: int = Field(default=4_194_304, ge=256, le=1_073_741_824)
+
+
 class ObservabilityConfig(StrictModel):
     log_level: str = "INFO"
     structured_logging: bool = False
     log_format: str = "json"  # "json" or "text"
     history: LifecycleHistoryConfig = Field(default_factory=LifecycleHistoryConfig)
+    tracing: TracingConfig = Field(default_factory=TracingConfig)
 
 
 class EventConfig(StrictModel):

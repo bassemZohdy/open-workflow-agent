@@ -17,6 +17,7 @@ from open_workflow_agent.errors import WorkflowExecutionError
 from open_workflow_agent.recovery_diagnostics import recovery_diagnostics
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.storage import StorageConnection
+from open_workflow_agent.tracing import invocation_trace_id
 
 SECRET = "private-input-output-database-credential"
 
@@ -46,6 +47,51 @@ def _compatible(services: RuntimeServices, monkeypatch: pytest.MonkeyPatch) -> N
         "diagnostic_safe_snapshot",
         lambda _handle: {"status": "compatible", "reason": "original_definition_retained"},
     )
+
+
+@pytest.mark.parametrize("provenance", [None, {"secret": SECRET}, {"definition_digest": "invalid"}])
+def test_diagnostic_trace_link_and_provenance_filter_are_bounded_and_read_only(
+    tmp_path, monkeypatch, provenance
+):
+    config = RuntimeConfig.model_validate({"observability": {"tracing": {"enabled": True}}})
+    services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
+    try:
+        handle = _handle(services)
+        handle.parent_invocation_id = "parent"
+        monkeypatch.setattr(
+            services.recovery_definitions,
+            "diagnostic_safe_snapshot",
+            lambda _handle: {"status": "compatible", "provenance": provenance},
+        )
+        before = _dump(services)
+        report = recovery_diagnostics(services, handle)
+        assert report["trace"] == {
+            "trace_id": invocation_trace_id(handle.invocation_id),
+            "parent_invocation_trace_id": invocation_trace_id("parent"),
+            "execution_authority": False,
+        }
+        assert "provenance" not in report
+        assert SECRET not in json.dumps(report) and _dump(services) == before
+    finally:
+        services.close()
+
+
+def test_diagnostic_projects_verified_provenance_without_additional_stored_fields(
+    tmp_path, monkeypatch
+):
+    services = RuntimeServices(RuntimeConfig(), model=FakeModel(), database_root=tmp_path)
+    try:
+        handle = _handle(services)
+        provenance = {"definition_digest": "a" * 64, "runtime_profile_digest": "b" * 64}
+        monkeypatch.setattr(
+            services.recovery_definitions,
+            "diagnostic_safe_snapshot",
+            lambda _handle: {"status": "compatible", "provenance": provenance},
+        )
+        report = recovery_diagnostics(services, handle)
+        assert report["provenance"] == provenance and "trace" not in report
+    finally:
+        services.close()
 
 
 def test_common_diagnostics_distinguish_pending_known_and_held_owner_without_write(

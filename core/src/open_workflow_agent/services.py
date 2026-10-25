@@ -76,6 +76,7 @@ from .storage import (
 )
 from .timers import TimerStore
 from .tools import AgentToolBinding, ToolRegistry
+from .tracing import ExecutionTracer
 from .workflow import WorkflowPlan
 from .workflow_catalog import WorkflowCatalog
 
@@ -240,6 +241,7 @@ class RuntimeServices:
             memory_path = config.memory.database
             invocation_path = config.persistence.database
         self.invocations = InvocationStore(invocation_path)
+        self.tracing = ExecutionTracer(config.observability.tracing)
         self.lifecycle_history = (
             LifecycleHistory(invocation_path, config.observability.history)
             if config.observability.history.enabled

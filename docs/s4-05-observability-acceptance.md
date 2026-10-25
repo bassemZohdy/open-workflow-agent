@@ -97,3 +97,62 @@ PostgreSQL skips and covers 97.11% of the new history module. Its initial focuse
 coverage result was 84.39%; meaningful error-path tests close that gap without
 lowering the existing root coverage gate. These later tests are separate from
 the frozen `3520349` selection and still need the next Linux/full-source batch.
+
+## Bounded tracing, correlation and provenance candidate — 2026-10-25
+
+`observability.tracing` now selects a framework-neutral in-process profile,
+`owa/execution-tracing/v1`. It instruments owned invocation segments and common
+task scopes after the existing authorization and ownership fences. Defaults are
+disabled, 1,000 retained spans, 1,024 active spans and 4 MiB serialized retained
+records. Disabled or saturated scopes clear their active context and restore the
+previous context on exit. Count/byte eviction and dropped-span counters make
+diagnostic loss observable without changing business execution. No SDK, broker,
+collector, paid API or startup installation is added.
+
+Immutable records contain generated trace/span IDs, common invocation and
+workflow fingerprint, canonical task reference, parent invocation trace link,
+UTC start time, monotonic duration and bounded outcome/status. Invocation IDs
+deterministically correlate separate recovery segments; span IDs are fresh and
+nested tasks retain their parent span. Child invocations use a distinct trace
+with a common parent-invocation link. No original input/output, prompt, URL,
+credential, native reference/state or exception message is accepted. Metrics
+keep their existing low-cardinality labels; trace IDs are never metric labels.
+
+The wire format uses generated version-00 contexts from the pinned
+[W3C Trace Context Level 1 recommendation](https://www.w3.org/TR/2021/REC-trace-context-1-20211123/).
+The optional lifecycle `traceparent` follows the
+[CloudEvents distributed tracing extension v1.0.2](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/extensions/distributed-tracing.md).
+History validates the exact nonzero lowercase version-00 representation before
+writing and retains original contexts during snapshot/SSE replay. This is a
+generated-context subset: incoming headers, tracestate, baggage, vendor
+propagation, OpenTelemetry semantic conventions/exporters and durable span
+storage are not implemented. HTTP propagation is a second independent default-off
+setting; the common HTTP client adds context only when no caller traceparent
+header is present. No trace field is an identity or permission source.
+
+The existing object-authorized recovery diagnostic exposes the common stable
+trace link when enabled. Compatible definition inspection also projects only
+the verified original definition/runtime profile digests, after existing stored
+evidence, admission, current trust and authority checks. Failed evidence never
+produces these provenance digests. Diagnostic inspection remains read-only,
+bounded, and explicit that native state/readiness is not inspected. No history
+or trace record authorizes resume or constitutes an atomic business audit.
+
+Working-tree tests exercise nesting, separate segments/child links, concurrency,
+fault/cancel cleanup, normal-return fault/cancel outcomes, disabled-policy
+isolation, malformed contexts, count/byte/active budgets, oversized reference
+omission, HTTP opt-in/caller headers, history retention/replay and authorized API
+restart. Both actual Python SDKs pass SQLite/PostgreSQL history/recovery cases
+with one HTTP dispatch and one stable trace ID. Physical history producer-kill
+checks retain the original context. Full-source, Linux and current candidate
+qualification remain required; no task or research criterion is promoted here.
+
+The focused Windows candidate selection passes 137 cases with 59 explicitly
+unconfigured/opposite-profile skips and statement coverage of the tracing module
+at 100% (132 statements). The later complete streaming API file passes five
+cases, including incoming-header rejection as a context source. A separate
+CI/metrics/configuration/observability/stream selection passes 294 cases.
+Actual ADK history/native recovery plus common history passes 51 cases across
+SQLite/PostgreSQL with two opposite-SDK skips; actual LangGraph passes both
+native database cases with two opposite-SDK skips. These are working-tree
+results, not a substitute for exact-source Linux/hosted qualification.

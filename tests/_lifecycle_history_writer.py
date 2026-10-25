@@ -3,9 +3,11 @@
 import json
 import sys
 
-from open_workflow_agent.config import LifecycleHistoryConfig
+from open_workflow_agent.config import LifecycleHistoryConfig, TracingConfig
 from open_workflow_agent.lifecycle_history import LifecycleHistory
 from open_workflow_agent.observability import WorkflowEvent
+from open_workflow_agent.persistence import ExecutionHandle
+from open_workflow_agent.tracing import ExecutionTracer
 
 
 def main() -> None:
@@ -23,7 +25,10 @@ def main() -> None:
         status="completed",
         error={"code": "controlled", "message": "must-not-persist"},
     )
-    history.append(event.to_cloud_event())
+    tracer = ExecutionTracer(TracingConfig(enabled=True))
+    handle = ExecutionHandle("physical-history", "portable", "private", None, "s", "w", "1", "fp")
+    with tracer.invocation_scope(handle):
+        history.append(event.to_cloud_event())
     print("committed", flush=True)
     sys.stdin.readline()
     history.close()

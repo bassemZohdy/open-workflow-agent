@@ -472,6 +472,40 @@ business audit or execution/recovery authority. Metrics remain process-local.
 The candidate and remaining qualification are recorded in
 [S4-05](s4-05-observability-acceptance.md#durable-diagnostic-history-candidate--2026-10-25).
 
+Optional common execution tracing is independent of history retention:
+
+```yaml
+observability:
+  tracing:
+    enabled: true
+    propagate_http: false
+    max_spans: 1000
+    max_active_spans: 1024
+    max_retained_bytes: 4194304
+```
+
+The embedding application can read `services.tracing.snapshot()` for immutable
+invocation/task spans and inspect `dropped_spans`/`evicted_spans`. Retention bounds
+cover count and serialized UTF-8 record bytes, with a separate active-span cap;
+they are not process-memory limits. Saturation drops diagnostic spans without
+changing workflow execution. Spans contain UTC start time, monotonic duration,
+canonical outcome/status, common invocation/fingerprint/task references and
+parent correlation. They exclude bodies, prompts, credentials, exception text,
+URLs and native state. An invocation span covers one owned execution segment;
+`completed` means the segment returned normally, including a durable wait.
+Its separate invocation status distinguishes waiting from terminal completion.
+
+The generated version-00 `traceparent` is an optional lifecycle CloudEvents
+extension. Its trace ID is stable for the common invocation identity across
+service restarts; each segment/task gets a fresh span ID. Child invocations have
+their own trace ID and a parent invocation trace link. History retains the
+original event context; reading/replaying never generates a replacement context.
+Tracing does not consume incoming trace headers, `tracestate` or baggage, and
+does not provide an OpenTelemetry exporter or durable span storage. With
+`propagate_http: true`, the common HTTP client adds the active generated context
+when no caller `traceparent` header exists. This setting is independently false
+by default. Neither trace headers nor diagnostic records grant authority.
+
 ## Recommended deployment pattern
 
 Keep non-secret behavior in mounted YAML and inject sensitive/environment-specific values separately:

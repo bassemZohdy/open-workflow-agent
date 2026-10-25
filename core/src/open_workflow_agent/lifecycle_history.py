@@ -113,8 +113,15 @@ class LifecycleHistory:
                 "dataschema",
                 "data",
             }
-            if not isinstance(value, dict) or set(value) not in (required, required | {"subject"}):
+            if not isinstance(value, dict) or not required <= set(value):
                 raise ValueError
+            if set(value) - required - {"subject", "traceparent"}:
+                raise ValueError
+            if "traceparent" in value:
+                from .tracing import valid_traceparent
+
+                if not valid_traceparent(value["traceparent"]):
+                    raise ValueError
             if (
                 value["specversion"] != CLOUD_EVENTS_SPECVERSION
                 or value["dataschema"] != LIFECYCLE_CLOUD_EVENT_SCHEMA

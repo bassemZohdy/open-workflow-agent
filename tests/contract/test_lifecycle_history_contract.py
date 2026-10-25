@@ -13,6 +13,7 @@ from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.services import RuntimeServices
+from open_workflow_agent.tracing import current_traceparent, invocation_trace_id, valid_traceparent
 from open_workflow_agent.workflow import compile_workflow
 
 pytestmark = pytest.mark.usefixtures("explicit_workflow_delivery")
@@ -38,13 +39,16 @@ async def test_native_history_restart_preserves_original_ids_without_redispatch(
         {
             "model": {"provider": "fake"},
             "persistence": {"datasource": datasource},
-            "observability": {"history": {"enabled": True}},
+            "observability": {
+                "history": {"enabled": True},
+                "tracing": {"enabled": True, "propagate_http": True},
+            },
         }
     )
     calls = []
 
     async def peer(request):
-        calls.append(request.headers["Idempotency-Key"])
+        calls.append((request.headers["Idempotency-Key"], request.headers["traceparent"]))
         return httpx.Response(200, json={"ok": True})
 
     def services():
@@ -95,6 +99,13 @@ async def test_native_history_restart_preserves_original_ids_without_redispatch(
             if event.data.get("invocation_id") == handle.invocation_id
         }
         assert retained and len(calls) == 1
+        assert valid_traceparent(calls[0][1])
+        assert calls[0][1].split("-")[1] == invocation_trace_id(handle.invocation_id)
+        spans = first.tracing.snapshot()
+        assert {span.kind for span in spans} == {"invocation", "task"}
+        assert all(span.trace_id == invocation_trace_id(handle.invocation_id) for span in spans)
+        assert any(span.task_reference == "/do/0/once" for span in spans)
+        assert current_traceparent() is None
         assert "must-not-persist" not in repr(retained)
     finally:
         await engine.shutdown()
@@ -121,6 +132,16 @@ async def test_native_history_restart_preserves_original_ids_without_redispatch(
         assert all(event in final for event in retained.values())
         assert len(calls) == 1 and restored.model.calls == []
         assert "must-not-persist" not in repr(final)
+        traced = [event["traceparent"] for event in final if "traceparent" in event]
+        assert traced and all(valid_traceparent(value) for value in traced)
+        assert {value.split("-")[1] for value in traced} == {
+            invocation_trace_id(handle.invocation_id)
+        }
+        assert {span.trace_id for span in restored.tracing.snapshot()} == {
+            invocation_trace_id(handle.invocation_id)
+        }
+        assert "must-not-persist" not in repr(restored.tracing.snapshot())
+        assert current_traceparent() is None
     finally:
         await next_engine.shutdown()
         restored.close()

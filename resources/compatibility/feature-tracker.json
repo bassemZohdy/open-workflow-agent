@@ -76003,7 +76003,7 @@
         "description": "Complete execution history, tracing, lifecycle metrics, correlation, provenance and replay diagnostics.",
         "effort": "M",
         "status": "Pending",
-        "progress_record": "docs/s4-05-observability-acceptance.md#durable-diagnostic-history-candidate--2026-10-25",
+        "progress_record": "docs/s4-05-observability-acceptance.md#bounded-tracing-correlation-and-provenance-candidate--2026-10-25",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
       },
       {

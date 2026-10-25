@@ -1175,11 +1175,17 @@ class RecoveryDefinitionArchive:
             "workflow_fingerprint": handle.workflow_fingerprint,
         }
         try:
-            self.resolve(handle)
+            _, binding = self._read(handle)
+            result["provenance"] = {
+                "definition_digest": binding["definition_digest"],
+                "runtime_profile_digest": binding["runtime_profile_digest"],
+            }
             result.update(status="compatible", reason=None)
         except InvocationStateError as error:
             result.update(
                 status="unavailable",
                 reason=cast(str, error.details.get("reason", "archive_invalid")),
             )
+        except Exception:
+            result.update(status="unavailable", reason="archive_invalid")
         return result

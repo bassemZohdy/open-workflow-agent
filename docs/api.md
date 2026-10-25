@@ -256,6 +256,17 @@ a live observer, or unread records exceeding its queue bound, ends that stream
 with `backpressure`. The existing `events.read` policy guards both endpoints.
 History does not certify native resume readiness or authorize workflow actions.
 
+With `observability.tracing.enabled`, lifecycle CloudEvents emitted inside a
+common invocation/task scope include the optional top-level `traceparent`
+extension. Retained events and SSE replay preserve its original value.
+`features.tracing` reports the selected generated-version-00 profile, optional
+HTTP propagation and the absence of incoming context, durable spans or an
+exporter. Incoming API trace headers do not select identity or authority. The
+authorized invocation recovery diagnostic adds a stable invocation trace link
+when enabled and verified definition/runtime profile digests when available.
+These projections disclose no original input or native payload and never prove
+native resume readiness.
+
 The transport-neutral rules for event identity, schema evolution, idempotency,
 replay, security, and any future AsyncAPI binding are documented in the [event
 integration readiness plan](event-integration-readiness.md). The current API

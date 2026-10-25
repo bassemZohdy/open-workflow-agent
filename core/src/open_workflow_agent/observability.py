@@ -10,6 +10,8 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Protocol
 from uuid import uuid4
 
+from .tracing import current_traceparent
+
 if TYPE_CHECKING:
     from .lifecycle_history import LifecycleHistory
 
@@ -96,6 +98,7 @@ class WorkflowEvent:
             datacontenttype="application/json",
             dataschema=LIFECYCLE_CLOUD_EVENT_SCHEMA,
             data=data,
+            traceparent=current_traceparent(),
         )
 
 
@@ -112,6 +115,7 @@ class CloudEvent:
     datacontenttype: str
     dataschema: str
     data: dict[str, Any]
+    traceparent: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         value: dict[str, Any] = {
@@ -126,6 +130,8 @@ class CloudEvent:
         }
         if self.subject is not None:
             value["subject"] = self.subject
+        if self.traceparent is not None:
+            value["traceparent"] = self.traceparent
         return value
 
     def raw(self) -> str:

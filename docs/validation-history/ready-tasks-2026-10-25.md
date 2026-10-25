@@ -4,6 +4,29 @@ The user requested completion of the open backlog and explicitly kept S4-09,
 S4-10 and S4-11 conditional. Those tracks remain inactive. The 14 ready task
 entries retain their original scope and gates; this record does not close them.
 
+## Publication candidate aab518e — focused results and active hosted run
+
+Frozen source `aab518ef0922c251533f78d956d79d090daf07a7` rebuilds both production
+images with matching full revision labels. Both packaged JavaScript sandbox
+gates pass. The Linux SDK/database/history/background selection passes 86 ADK
+cases (24 explicit opposite/unconfigured-profile skips) and 178 LangGraph cases
+(28 explicit skips). Both selected SDKs run their physical background workers
+without overriding the published qualification flag. All 1,154 frozen source
+inputs remain byte-identical. Raw reports and manifests are retained under
+`tmp/javascript-sandbox-20261025/aab518e/`.
+
+Hosted runs CI `40182145295`, PostgreSQL `40182145195`, Framework `40182145293`,
+external sandbox `40182145269`, security `40182145144` and docs `40182145298`
+all use that exact source. Framework, external sandbox, security and docs have
+passed; CI/PostgreSQL remain active at this recording. The CI Windows expression
+job fails one stale expectation: 693 pass, 52 skip, one fails because the test
+still expects an explicitly enabled published background profile to be rejected.
+The correction explicitly sets the release gate false for this negative test;
+actual publication and physical recovery tests continue to use the real default.
+Its focused sandbox validation/runtime selection passes 55 with 12 unconfigured
+PostgreSQL skips. This partial run cannot close S3-03 or a later candidate task.
+Other active jobs are allowed to finish so their results remain reviewable.
+
 ## Frozen baseline
 
 Commit `6f9ef5d0d8ea24a75cddca1b2b57060ee546f4bb` captures the preceding development

@@ -27,6 +27,10 @@ An additional S4-05 candidate adds opt-in bounded diagnostic history on the
 common database, with local physical-stop, real API and principal-engine/backend
 restart checks. Full-source qualification and broader tracing/provenance remain
 open; see the [history acceptance record](docs/s4-05-observability-acceptance.md#durable-diagnostic-history-candidate--2026-10-25).
+The later tracing candidate adds bounded invocation/task spans, generated
+lifecycle/optional HTTP contexts and verified digest provenance. Native
+SQLite/PostgreSQL and API restart/privacy checks pass locally; full-source and
+Linux qualification remain required.
 The isolated JavaScript package now has a bounded literal-only native execution
 component. Its nine shared cases pass on Node and the actual Python SDKs; public
 identity, durable engine services and broader execution remain unimplemented.

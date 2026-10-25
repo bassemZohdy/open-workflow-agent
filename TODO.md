@@ -325,6 +325,10 @@ treated as a deferred task or as additional feature completion.
   coverage. Full CTK automation and parity qualification remain open. See
   [the coverage bridge](resources/compatibility/README.md).
 - [ ] **S4-05** (M) — Complete execution history, tracing, lifecycle metrics, correlation, provenance and replay diagnostics.
+  A later candidate adds bounded opt-in common invocation/task tracing, generated
+  version-00 lifecycle contexts, optional HTTP propagation and verified digest
+  provenance in authorized recovery diagnostics. Local actual-engine/store
+  recovery and API/privacy checks pass; current-source qualification is pending.
   Opt-in bounded persistent lifecycle history is now authored with local
   SQLite/PostgreSQL physical-stop, concurrent-writer and real API replay/privacy
   checks. Four actual principal-engine/backend restart cases retain original

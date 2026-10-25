@@ -3,7 +3,11 @@ from __future__ import annotations
 import pytest
 from open_workflow_agent.config import SandboxConfig
 from open_workflow_agent.errors import UnsupportedWorkflowFeature, WorkflowSemanticError
-from open_workflow_agent.sandbox import InternalSandboxBackend, SandboxManager
+from open_workflow_agent.sandbox import (
+    InternalSandboxBackend,
+    SandboxManager,
+    background_qualification,
+)
 from open_workflow_agent.sandbox.validation import (
     _rewrite_executable_runs,
     _validate_environment,
@@ -49,7 +53,10 @@ def test_sandbox_rewrite_does_not_hide_unsupported_process_modes(option):
         )
 
 
-def test_configured_background_profile_still_rejects_before_qualification():
+def test_configured_background_profile_still_rejects_before_qualification(monkeypatch):
+    # Exercise the closed release gate explicitly. The published default is now
+    # qualified; actual process-stop witnesses do not override that default.
+    monkeypatch.setattr(background_qualification, "BACKGROUND_EXECUTION_PROFILE_QUALIFIED", False)
     config = SandboxConfig(
         enabled=True,
         backend="internal",

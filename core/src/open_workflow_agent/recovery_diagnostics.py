@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import TYPE_CHECKING, Any
 
 from .effects import EffectIdentity
 from .lifecycle import TERMINAL_INVOCATION_STATES
+from .tracing import invocation_trace_id
 
 if TYPE_CHECKING:
     from .persistence import ExecutionHandle
@@ -58,6 +60,16 @@ def recovery_diagnostics(services: RuntimeServices, handle: ExecutionHandle) -> 
         "ownership": "not_inspected",
     }
     checks: list[dict[str, str]] = report["checks"]
+    if services.config.observability.tracing.enabled:
+        report["trace"] = {
+            "trace_id": invocation_trace_id(handle.invocation_id),
+            "parent_invocation_trace_id": (
+                invocation_trace_id(handle.parent_invocation_id)
+                if handle.parent_invocation_id is not None
+                else None
+            ),
+            "execution_authority": False,
+        }
     if handle.status in TERMINAL_INVOCATION_STATES:
         report["continuation"] = "terminal_result"
         checks.append(
@@ -86,6 +98,16 @@ def recovery_diagnostics(services: RuntimeServices, handle: ExecutionHandle) -> 
             )
             report["continuation"] = "unavailable"
             return report
+        provenance = snapshot.get("provenance")
+        if (
+            isinstance(provenance, dict)
+            and set(provenance) == {"definition_digest", "runtime_profile_digest"}
+            and all(
+                isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value)
+                for value in provenance.values()
+            )
+        ):
+            report["provenance"] = dict(provenance)
     except Exception:
         checks.append(
             {

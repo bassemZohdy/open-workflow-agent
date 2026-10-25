@@ -161,7 +161,8 @@ class WorkflowEngine:
         authority = self.services.execution_authorizations.verify_invocation(handle)
         with authority_scope(authority):
             async with self._own_execution_scoped(handle):
-                yield
+                with self.services.tracing.invocation_scope(handle):
+                    yield
 
     @asynccontextmanager
     async def _own_execution_scoped(self, handle: ExecutionHandle) -> AsyncIterator[None]:

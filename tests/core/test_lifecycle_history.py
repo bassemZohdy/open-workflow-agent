@@ -60,6 +60,36 @@ def event(identifier, **values):
     ).to_cloud_event()
 
 
+def test_history_retains_original_traceparent_under_a_different_reader_context(selected_history):
+    from open_workflow_agent.config import TracingConfig
+    from open_workflow_agent.persistence import ExecutionHandle
+    from open_workflow_agent.tracing import ExecutionTracer, current_traceparent
+
+    _, _, create = selected_history
+    first = create()
+    tracer = ExecutionTracer(TracingConfig(enabled=True))
+    handle = ExecutionHandle("invocation", "portable", "private", None, "private", "w", "1", "fp")
+    with tracer.invocation_scope(handle):
+        original = event("traced-original")
+    first.append(original)
+    first.close()
+    with tracer.invocation_scope(handle):
+        assert current_traceparent() != original.traceparent
+        restored = create()
+        assert restored.snapshot(10)[0].as_dict() == original.as_dict()
+        assert restored.replay("traced-original")[0] == []
+
+
+@pytest.mark.parametrize("traceparent", ["invalid", "00-" + "0" * 32 + "-" + "1" * 16 + "-01"])
+def test_history_rejects_invalid_traceparent_before_write(selected_history, traceparent):
+    _, _, create = selected_history
+    history = create()
+    before = rows(history)
+    with pytest.raises(LifecycleHistoryError, match="record is invalid"):
+        history.append(replace(event("invalid-context"), traceparent=traceparent))
+    assert rows(history) == before
+
+
 def rows(history):
     return (
         history.connection.execute("SELECT * FROM lifecycle_history ORDER BY sequence").fetchall(),
@@ -188,6 +218,12 @@ async def test_stream_reads_committed_event_after_physical_producer_kill(selecte
         await asyncio.wait_for(asyncio.to_thread(process.wait), timeout=5)
         frame = await asyncio.wait_for(anext(stream), timeout=5)
         assert frame.startswith(b"id: physical\n") and b"must-not-persist" not in frame
+        from open_workflow_agent.tracing import invocation_trace_id, valid_traceparent
+
+        retained_context = observer.snapshot(10)[0].traceparent
+        assert valid_traceparent(retained_context)
+        assert retained_context.split("-")[1] == invocation_trace_id("physical-history")
+        assert retained_context.encode() in frame
         assert b"event_limit" in await anext(stream)
         replay, subscription = sink.subscribe(last_event_id="physical")
         assert replay == []

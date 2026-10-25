@@ -1811,9 +1811,15 @@ class WorkflowExecutor:
         )
         observer = state.metadata.get("_effect_receipt_observer")
         with action_scope(ExecutionActionContext(handle, identity, observer)):
-            await self._run_task_item_scoped(
-                name, definition, state, reference, execution_reference=execution_reference
-            )
+            if self.services is not None:
+                with self.services.tracing.task_scope(handle, reference):
+                    await self._run_task_item_scoped(
+                        name, definition, state, reference, execution_reference=execution_reference
+                    )
+            else:
+                await self._run_task_item_scoped(
+                    name, definition, state, reference, execution_reference=execution_reference
+                )
 
     async def _run_task_item_scoped(
         self,

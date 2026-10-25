@@ -30,6 +30,7 @@ from .credential_guard import (
 from .credential_guard import active_projection_guard as _active_projection_guard
 from .errors import OwaError, ToolError
 from .security import ProfileAuthentication, SecurityConfig
+from .tracing import current_traceparent
 
 if TYPE_CHECKING:
     from .a2a_client import A2ACardSelection
@@ -215,6 +216,9 @@ class HttpClient:
         if output not in OUTPUT_MODES:
             raise ToolError(f"unsupported HTTP output mode: {output}")
         headers = dict(kwargs.pop("headers", {}) or {})
+        traceparent = current_traceparent(for_http=True)
+        if traceparent is not None and not any(key.lower() == "traceparent" for key in headers):
+            headers["traceparent"] = traceparent
         authentication = _authentication if _authentication is not None else self.authentication
         redirects_enabled = self.follow_redirects if follow_redirects is None else follow_redirects
         if authentication is not None and redirects_enabled:

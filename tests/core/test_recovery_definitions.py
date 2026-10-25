@@ -424,7 +424,23 @@ def test_revoked_deployment_trust_is_read_only_and_sanitized(archive_tree):
     assert caught.value.details["reason"] == "deployment_trust_changed"
     snapshot = archive.diagnostic_safe_snapshot(parent)
     assert snapshot["reason"] == "deployment_trust_changed"
+    assert "provenance" not in snapshot
     assert "private resolver" not in json.dumps(snapshot)
+    assert _rows(archive_tree) == before
+
+
+def test_safe_provenance_projects_only_verified_digests_without_mutation(archive_tree):
+    _, archive, parent, _, _ = archive_tree
+    _admit(archive_tree, {"private": "must-not-expose-original-input"})
+    before = _rows(archive_tree)
+    snapshot = archive.diagnostic_safe_snapshot(parent)
+    assert snapshot["status"] == "compatible"
+    _, binding = archive._read(parent)
+    assert snapshot["provenance"] == {
+        "definition_digest": binding["definition_digest"],
+        "runtime_profile_digest": binding["runtime_profile_digest"],
+    }
+    assert "must-not-expose" not in json.dumps(snapshot)
     assert _rows(archive_tree) == before
 
 
