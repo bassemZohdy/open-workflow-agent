@@ -17,7 +17,7 @@ error code, and exception type; it never logs exception text, input, or native
 identifiers. An earlier helper-only safety test passed locally; it has been
 strengthened to inject a sentinel failure through the actual `_resume_owned`
 call site and assert that no message, input, or identifier is logged. The
-call-site regression is authored and unrun for the final batch. This improves
+call-site regression now passes locally, as recorded below. This improves
 evidence on recurrence but does not identify or fix the original failure.
 The remaining CI, PostgreSQL and Agent Framework runs were cancelled while
 batching changes; Docs, Security and External Sandbox passed. Exact-source full
@@ -40,6 +40,185 @@ profile remains disabled by a default-false internal qualification gate until
 its acceptance is complete.
 AsyncAPI network activation and broader function/sandbox responsibilities
 remain pending.
+
+### Local reference correction — 2026-10-25
+
+The selected OpenAPI local-reference resolver previously accepted malformed
+tilde escapes and Python-style array indexes (`-1`, `+0`, leading zeros,
+whitespace and Unicode digits). A malformed reference could therefore select
+an existing parameter and reach the business receiver. Regression-first checks
+reproduced 16 core failures across OAS 3.0.3/3.2.0 and two actual native
+LangGraph/SQLite workflow failures before the fix.
+
+Resolution now enforces the escape and array-index rules in
+[RFC 6901 sections 3–4](https://www.rfc-editor.org/rfc/rfc6901.html#section-3)
+and rejects with the existing sanitized `invalid_reference_target` reason.
+Valid escaped names, single-pass `~01` decoding, array index zero and numeric
+object keys retain their bindings. The shared native rejection witnesses
+require only a metadata GET, no business receipt and no provider request.
+The official workflow schema and public adapter contracts are unchanged.
+
+The first local native baseline passed 55 LangGraph/SQLite cases; ADK passed
+54 and failed one test when cold SDK source attestation exhausted its outer
+15-second synchronization timeout before workflow execution. Its isolated
+rerun passed. That authority fixture now prepares the real recovery profile
+under a separate 60-second setup bound before creating the invocation,
+preserving the original 15-second operation bound and all source/lease proofs.
+No production timeout or durability check was relaxed.
+
+Package-content inspection also caught a cleanup regression: the root `/src/`
+ignore caused nested Hatch builds to omit their actual package code. It is
+removed. The recovery build verifier now requires the package initializer as
+well as valid provenance, and a metadata-only wheel has a dedicated rejection
+regression. Corrected builds retain the real adapter source and packaged schema.
+
+Final local selections passed:
+
+| Selection | Result |
+| --- | --- |
+| Common HTTP/OpenAPI/gRPC/AsyncAPI | 436 passed, 51 native/backend configuration skips |
+| Actual ADK/SQLite OpenAPI + gRPC calls and process stops | 57 passed, 57 PostgreSQL cases deselected, no skips |
+| Actual LangGraph/SQLite same shared selection | 57 passed, 57 PostgreSQL cases deselected, no skips |
+| Configured OpenAPI tool pending/known process stops + JSON-RPC/HTTP+JSON archived skill resume | 4 passed per principal engine, no skips |
+| ADK safe resume diagnostic call-site regression | 1 passed |
+| Build provenance, validation/release workflows and development automation guards | 29 passed |
+
+Strict mypy passed for 124 core/CI source files; Ruff, changed-file formatting
+and Markdown links passed. Root, standalone core, all three adapters and both
+controllers built wheel/source artifacts. Every package's source code/resources
+were compared byte-for-byte against its wheel, including both copies of the
+official schema. Provenance verification passed for the five runtime packages;
+the two controller packages do not use that runtime recovery-build hook. The
+earlier empty core wheel is retained locally and the new verifier rejects it.
+Optional Framework package inspection does not qualify its native runtime or
+production support.
+
+Logs, JUnit reports and input hashes are retained locally under
+`tmp/s3-03-local-20261025/`. The 594 tracked code/test/dependency inputs were
+captured before the native batch; its runtime/contract inputs stayed unchanged.
+The subsequent CI verifier/test changes are recorded separately in the final
+manifest and covered by the 29-test selection. These are working-tree local
+results, not an exact-commit hosted gate or full S3-03 qualification. Actual
+PostgreSQL, Linux/container/deployment and hosted gates remain open; Docker's
+local daemon was unavailable and no PostgreSQL test datasource was configured.
+
+### Docker and PostgreSQL follow-up — 2026-10-25
+
+The local acceptance environment now uses Docker 29.7.2 in the Linux runner,
+PostgreSQL 16.15, separately built ADK/LangGraph production images and the
+restricted Docker controller. PostgreSQL is bound to host loopback port 25432;
+each principal engine and integration selection has its own test database.
+The source snapshot and results are retained under
+`tmp/docker-acceptance-20261025/`. These are working-tree Linux/amd64 results,
+not a release or an exact-commit hosted checkpoint.
+
+| Selection | Verified result |
+| --- | --- |
+| Linux ADK common adapters, both database backends, native/process recovery, embedded jobs and captured executable sources | 663 passed; 4 Windows-only skips |
+| Linux LangGraph identical shared selection | 663 passed; the same 4 Windows-only skips |
+| OpenAPI/gRPC native call/process grid within each selection | All 114 mandatory cases passed per engine: 57 SQLite and 57 actual PostgreSQL, with no skips |
+| Inline/reusable awaited return modes, nonzero exits and receipt recovery | 77 passed per principal engine |
+| PostgreSQL configured OpenAPI tool pending/known OS stops and both A2A archived-skill resume transports | 4 passed per principal engine |
+| Windows native embedded background OS-stop/recovery | 13 passed per principal engine, no skips |
+| Windows common PostgreSQL admission, fences, job ledger and protected approvals | 195 passed; 2 deliberately inapplicable SQLite variants skipped |
+| Windows IPC/DACL observations skipped by the Linux suites | All 4 passed on Windows |
+| Packaged embedded startup/restart, catalog and internal sandbox scripts | All three scripts passed against each production engine image |
+| Restricted external Docker sandbox | Passed for both production engines, including exact controller dependency inventory, non-root/arbitrary-UID operation, absent runtime Docker socket, network/root/workspace/secret probes, timeout/output/cancel controls and cleanup |
+
+The 77-test selection separates physical internal script/shell execution from
+common fake-backend receipt checks. Real external-container behavior is proved
+by its separate acceptance script. Neither establishes arbitrary container
+lifetime, Kubernetes/OpenShift or general background-execution qualification.
+The background production qualification constant remains false.
+
+The controller build previously resolved dependencies outside its own lock
+(including Starlette 1.10.0 instead of locked 1.6.0). It now exports its own
+unchanged lock with pinned uv, installs hashed requirements without dependency
+re-resolution, and removes build tooling. The real external-sandbox gate compares
+the installed distribution inventory to all 14 locked packages and rejects extra
+pip/uv/setuptools. Both engine runs passed that check and actual execution.
+
+The first Windows PostgreSQL run retained one setup connection-close error
+(194 passed, 2 skipped); PostgreSQL had no restart/OOM event and the isolated
+case passed. Its full rerun found two fixed-identity test collisions in the
+already-populated database. The actor decision's operation key now includes
+its original subject, and the legacy-denial fixture has a unique approval ID.
+Both cases passed twice against the same database, followed by the clean
+195-pass selection above. Production conflict and idempotency rules are unchanged.
+All earlier failed logs remain retained. The local catalog shell checkout was
+also normalized to the existing LF rule before Bash execution.
+
+Fresh whole-source/hosted, security and remaining broader inventory qualification
+remain open. No task checkbox or feature status is promoted by these local results.
+
+### Encoded reference and host admission follow-up — 2026-10-25
+
+The OpenAPI and pure AsyncAPI local-reference resolvers previously looked up URI
+fragments without decoding percent escapes. A valid escaped reference could
+therefore select a literal raw-percent decoy instead of the intended definition.
+Regression-first checks reproduced 29 failures. A shared private helper now
+decodes the URI layer once, with strict UTF-8 and percent validation, before
+pointer tokenization and the existing single-pass tilde decoding. This follows
+[RFC 6901 section 6](https://www.rfc-editor.org/rfc/rfc6901.html#section-6).
+External/root-reference support and AsyncAPI network activation remain unchanged.
+Correlation expressions retain their separate raw-pointer semantics.
+
+The fixtures cover spaces, literal percent signs, Unicode, double encoding,
+encoded pointer delimiters/array indexes and malformed percent/UTF-8/tilde input.
+Native workflow witnesses require the intended business route, exactly one
+business receipt, actual private native history and zero model requests.
+
+The first Windows ADK witness hit cold artifact attestation inside its operation
+timeout. That fixture now prepares the real recovery profile separately under a
+60-second setup bound, before creating the invocation; the original 15-second
+operation bound is unchanged. All four Windows ADK SQLite/PostgreSQL cases pass.
+Windows LangGraph passed both SQLite cases but its default Proactor loop failed
+both PostgreSQL cases. A direct pinned Psycopg 3.3.5 probe confirmed the
+[documented Windows async-loop restriction](https://www.psycopg.org/psycopg3/docs/advanced/async.html#asynchronous-operations).
+The adapter now rejects that combination before starting common background
+services, using the sanitized common configuration error with
+`reason=unsupported_event_loop`. It does not change the host loop policy.
+An actual Windows Proactor startup rejection and all four native
+SQLite/PostgreSQL cases under a deployment-selected Selector loop pass.
+Earlier failed logs remain retained.
+
+The common client/protocol/build selection passes 309 tests. Adapter admission,
+development-automation and recovery-build guards pass 16 tests. Strict mypy passes
+all 136 source modules; Ruff and formatting pass. Fresh root, standalone core and
+LangGraph wheel/source builds pass provenance and 250 byte-for-byte
+source/resource comparisons, including the new helper. Stale metadata-only
+local adapter installs left by the earlier `/src/` ignore were rebuilt in their
+separate environments; direct installed ADK/LangGraph imports now pass without
+pytest source paths.
+
+Both production Dockerfiles now warm the embedding model after installing locked
+dependencies and before copying application source, so source edits reuse that
+expensive layer. A real source-copy perturbation rebuilt the application layer
+while retaining the model cache. Dependency locks, final cleanup and non-root
+runtime behavior are retained.
+
+The first frozen Linux image candidate passes 74 OpenAPI call/process checks on
+ADK and the same 74 plus seven adapter checks on LangGraph, without skips. Each
+principal engine runs all 50 shared native call cases and 24 real process-stop
+cases across SQLite and PostgreSQL. A final correction for strict typing uses
+an explicit optional saver lookup. Its rebuilt LangGraph image passes all 50
+native call cases and seven adapter checks again (57 passed, no skips).
+The first candidate's process results remain tied to its own source manifest;
+they are not represented as a second process run on the final typing correction.
+
+Both final production images pass embedded startup/restart, packaged catalogs,
+internal sandbox and restricted external Docker sandbox acceptance. The final
+LangGraph image repeats all four scripts after its rebuild. Installed copies of
+the three changed common modules and the LangGraph adapter are compared by hash
+to the delivered source. First/final image IDs, candidate source manifests,
+build logs, exit records and JUnit results are retained under the evidence root's
+`docker/` directory, alongside the Windows and package reports. Evidence-only
+documentation updates follow those snapshots; this is working-tree local
+qualification, not an exact-commit or whole-source hosted/security gate.
+
+Current evidence is under `tmp/reference-qualification-20261025/`; the Docker
+qualification and its source manifests are recorded there separately. No task or
+feature completion is inferred from these local selections.
 
 ### Prior code-source follow-up — `31ec0eb`
 

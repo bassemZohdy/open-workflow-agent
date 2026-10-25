@@ -99,6 +99,34 @@ def operation(document):
 
 
 @pytest.mark.parametrize("version", VERSIONS)
+@pytest.mark.parametrize(
+    "name,token",
+    [("event name", "event%20name"), ("eventé", "event%C3%A9"), ("event%20name", "event%2520name")],
+)
+def test_message_reference_uri_fragment_selects_decoded_target_once(version, name, token):
+    document = source(version)
+    message = document["components"]["messages"]["event"]
+    decoy = copy.deepcopy(message)
+    decoy["payload"]["properties"]["id"] = {"type": "integer"}
+    document["x-messages"] = {name: message, token: decoy}
+    document["components"]["messages"]["event"] = {"$ref": "#/x-messages/" + token}
+    selection = selected(document)
+    result = prepare_message(selection, {"payload": {"id": "original"}, "headers": {"trace": "t"}})
+    assert json.loads(result.payload_json) == {"id": "original"}
+    assert AsyncApiOperationSelection.from_value(selection.as_value()) == selection
+
+
+@pytest.mark.parametrize("token", ["event%", "event%2", "event%GG", "event%FF", "event%C3"])
+def test_invalid_reference_uri_encoding_rejects_before_message_preparation(token):
+    document = source()
+    document["x-messages"] = {token: document["components"]["messages"]["event"]}
+    document["components"]["messages"]["event"] = {"$ref": "#/x-messages/" + token}
+    with pytest.raises(ToolError) as rejected:
+        selected(document)
+    assert rejected.value.details == {"reason": "invalid_pointer"}
+
+
+@pytest.mark.parametrize("version", VERSIONS)
 @pytest.mark.parametrize("encoding", ["json", "yaml"])
 def test_original_version_local_message_and_first_server_survive_strict_roundtrip(
     version, encoding

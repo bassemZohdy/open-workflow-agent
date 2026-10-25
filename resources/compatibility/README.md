@@ -45,3 +45,9 @@ verification guidance alongside its pointer, keyword, value, and source
 reference. This keeps the enclosing-operation/property fixture requirement
 from silently disappearing during inventory updates; it does not validate the
 constraint against the runtime schema or count it as executed.
+
+The bridge integrity, selector-marker, and retained-guidance checks passed in
+the corrected consolidated local suite. All proposed-test and schema rows
+remain unmapped and unexecuted; these local guard checks do not count as CTK,
+schema, parity, or cross-engine coverage. Exact-source hosted qualification is
+still pending.

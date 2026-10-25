@@ -143,6 +143,28 @@ curl --fail --silent --unix-socket "$socket_dir/controller.sock" \
   http://localhost/health/ready >/dev/null
 
 docker exec "$controller_name" sh -c 'test "$(id -u)" != 0 && test -S /var/run/docker.sock'
+python - "$controller_name" <<'PY'
+import json
+import subprocess
+import sys
+import tomllib
+from pathlib import Path
+
+def normalize(name):
+    return name.lower().replace("_", "-").replace(".", "-")
+
+locked = tomllib.loads(Path("sandbox-controller/uv.lock").read_text())
+expected = {normalize(package["name"]): package["version"] for package in locked["package"]}
+installed = json.loads(subprocess.check_output([
+    "docker", "exec", sys.argv[1], "python", "-c",
+    "import importlib.metadata as m, json; "
+    "print(json.dumps({d.metadata['Name']: d.version for d in m.distributions()}))",
+], text=True))
+actual = {normalize(name): version for name, version in installed.items()}
+assert actual == expected, f"controller image dependencies differ from its lock: {actual!r}"
+assert not {"pip", "uv", "setuptools"} & actual.keys()
+print("Controller image dependencies match its lock.")
+PY
 controller_capabilities="$(curl --fail --silent --unix-socket "$socket_dir/controller.sock" \
   http://localhost/v1/capabilities)"
 python - "$controller_capabilities" <<'PY'

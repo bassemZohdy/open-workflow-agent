@@ -79,6 +79,35 @@ The sandbox implementation is a framework-neutral core package (`core/src/open_w
 
 ## Local setup
 
+### Fast development and optional automation
+
+Automatic CI jobs are paused by default. Pushes, pull requests and the weekly
+security schedule retain their triggers but skip jobs unless the GitHub Actions
+repository variable `OWA_AUTOMATIC_CI` is exactly `true`. The six validation
+workflows can still be started manually from Actions using **Run workflow**.
+Skipped jobs are not acceptance evidence.
+
+Automatic publication is separately paused unless `OWA_AUTOMATIC_RELEASES` and
+`OWA_AUTOMATIC_CI` are both exactly `true`. Its successful-main-push and exact-source companion
+gates still apply; manually dispatched validation cannot trigger publication.
+Restore normal automation by setting both variables to `true` in repository
+Settings > Secrets and variables > Actions > Variables. Run fresh validation
+on the intended main source before release. These changes take effect on GitHub
+after the workflow files are pushed; they do not cancel existing runs or change
+branch-protection settings. Required skipped checks may still block merging.
+
+For a quick local feedback loop:
+
+```bash
+uv run --locked ruff check .
+uv run --locked pytest tests/core/<changed-test-file>.py -q
+uv run --locked python tests/ci/validate_docs.py
+```
+
+Run the relevant full contract/native/backend acceptance before claiming a
+feature complete. See the [cleanup review](development-cleanup-2026-10-25.md)
+for the remaining project gaps.
+
 ```bash
 uv sync --locked --extra knowledge
 ```
@@ -182,6 +211,20 @@ uv run --directory engines/langgraph --locked --extra sqlite --extra knowledge -
 ```
 
 Do not combine engine dependency locks into one environment just for convenience.
+
+LangGraph PostgreSQL hosts on Windows must select a compatible selector event
+loop before runtime initialization. The default Proactor loop is unsupported by
+[Psycopg's async driver](https://www.psycopg.org/psycopg3/docs/advanced/async.html#asynchronous-operations).
+The adapter rejects that combination before starting background services, with
+the common `configuration_error` and `reason=unsupported_event_loop`. SQLite and
+the Linux Docker images do not need this Windows setting. The runtime does not
+change the host's event-loop policy.
+
+If a local adapter install was built while the erroneous `/src/` ignore was
+present, rebuild that local package with `uv sync --reinstall-package` and the
+same extras used above. Removing the ignore does not repair an already-installed
+metadata-only wheel. Verify the adapter import from its own environment, without
+relying on pytest's source paths.
 
 ## Contract tests define portability
 

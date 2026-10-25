@@ -12,13 +12,18 @@ tracker consistent. Deferral does not imply completion or relax dependency,
 security, portability or capability acceptance gates. Running validations and
 actionable failures remain active work.
 
-The [full tracker](resources/compatibility/feature-tracker.json) preserves **658 features, 443 proposed tests and 774 schema constraints**, with Python/JS status and links to tasks below. All new delivery claims await verification. The [migration record](docs/agent-runtime-consolidation.md) distinguishes imported reference material from active code.
+The [full tracker](resources/compatibility/feature-tracker.json) preserves **658 features, 443 proposed tests and 774 schema constraints**, with Python/JS status and links to tasks below. The corrected consolidated local batch passed 5,004 tests, skipped 3,206 and reported 90.54% core coverage; formatting, Ruff, strict mypy, Markdown links, six lock checks, root/core wheel and source builds, Node tests and production audit passed. This is local evidence only: exact-source hosted CI, PostgreSQL and other skipped native/backend gates remain open, and no task is complete from this batch. See the [corrected batch record](docs/validation-history/pending-batch-results.md#corrected-working-tree-batch--local-validation-before-hosted-requalification). The [migration record](docs/agent-runtime-consolidation.md) distinguishes imported reference material from active code.
 
 Rules: reuse native LangGraph graphs/tasks/checkpoints; start in one container with embedded storage; make external services optional configuration; put task/workflow behavior in workflow YAML/JSON and environment preparation in bootstrap configuration. Versioned native features use custom metadata extensions and explicit capability checks.
 
 Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, not time estimates.
 
 ## Historical verified prerequisites — 2026-10-14
+
+Development automation update (2026-10-25): validation is manual by default and
+publication separately opt-in. This does not waive acceptance gates or complete
+S4-07. See the [cleanup review](docs/development-cleanup-2026-10-25.md) for the
+remaining gaps; S3-03 remains the next ordered open task.
 
 This dated snapshot records the accepted prerequisites for the active S3-02
 work; [PROJECT.md](PROJECT.md) is the current source for backlog counts and
@@ -173,6 +178,28 @@ treated as a deferred task or as additional feature completion.
   [finite acceptance record](docs/s3-02-a2a-acceptance.md)
   and [exact-source validation](docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
+  Encoded-reference follow-up (2026-10-25): OpenAPI/pure AsyncAPI decode local
+  URI fragments once and reject malformed encoding. Common checks pass 309;
+  both native engines pass all four new Windows SQLite/PostgreSQL cases with
+  supported loop configuration. Windows LangGraph/PostgreSQL now rejects the
+  default unsupported loop before service startup. Docker source rebuilds reuse
+  embedding assets; fresh package payloads and local adapter installs are checked.
+  See the [follow-up evidence and remaining gates](docs/s3-03-operation-adapters-acceptance.md#encoded-reference-and-host-admission-follow-up--2026-10-25).
+  Docker follow-up (2026-10-25): 663 Linux checks pass per engine, including all
+  114 SQLite/PostgreSQL OpenAPI/gRPC native cases per engine with no mandatory
+  skips. Return-mode/receipt checks pass 77 per engine; PostgreSQL tool/resume
+  integrations pass four per engine. Both packaged runtimes and the restricted
+  Docker sandbox pass their scripts. The controller now uses hashed locked
+  dependencies, verified inside its actual image. Common PostgreSQL tests pass
+  195 with two inapplicable SQLite skips; four Windows-only controls also pass.
+  Whole-source/hosted and broader inventory qualification remain open. See the
+  [Docker evidence](docs/s3-03-operation-adapters-acceptance.md#docker-and-postgresql-follow-up--2026-10-25).
+  Local follow-up (2026-10-25) fixes malformed OpenAPI reference admission and
+  the cleanup's nested-package exclusion; 436 common tests, 57 shared SQLite
+  checks per principal engine, eight tool/resume integration checks, the ADK
+  diagnostic and 29 build/workflow checks pass. Seven package payloads are
+  verified. PostgreSQL, platform/container and hosted qualification remain open;
+  see the [local acceptance record](docs/s3-03-operation-adapters-acceptance.md#local-reference-correction--2026-10-25).
   Finite and partial results for sources `923302f`, `31ec0eb`, `237f09f`,
   `0f16415`, `f89a154` and `c3ca7f1`, including their fixes and hosted outcomes,
   remain in the [acceptance plan](docs/s3-03-operation-adapters-acceptance.md)
@@ -185,25 +212,25 @@ treated as a deferred task or as additional feature completion.
   later ADK JSON-RPC skill-resume failure exposed startup replay of a waiting
   invocation's initial-delivery row. The dispatcher now settles it under the
   execution lease; five focused reruns passed. A safe `_resume_owned` call-site
-  diagnostic regression and 12 inline/reusable-function cases for nonzero exits
-  under `code`, `all` and `none` projections are authored and await final-batch
-  validation. An eight-case actual-process witness covers configured OpenAPI
-  agent-tool dispatch with both a pending receiver commit and a completed outer
-  agent-call receipt after durable native suspension; it is also authored and
-  unrun. An imported-catalog regression now checks that the transformed
+  diagnostic regression passes locally, as do the 12 inline/reusable-function
+  cases for nonzero exits under `code`, `all` and `none` projections in the
+  Docker return-mode selections. The eight-case actual-process witness for
+  configured OpenAPI agent tools covers a pending receiver commit and a completed
+  outer agent-call receipt after durable native suspension; it passes the recorded
+  SQLite/PostgreSQL selections. An imported-catalog regression checks that the transformed
   resolver binding forwards the original durable OpenAPI selection and pinned
   catalog reference. Imported resolver calls also retain the invocation's
   granted OpenAPI profile and endpoint bindings while catalog credentials stay
   scoped to catalog fetches; native ADK/LangGraph × SQLite/PostgreSQL regressions
-  are authored. The focused SQLite selections pass locally; exact-source hosted
-  and PostgreSQL qualification is pending. A credentialed redirect regression
-  now verifies that a named bearer credential reaches only the selected source
-  and never the redirect Location; it awaits final-batch validation. S3-03
+  pass the Docker batch. Exact-source hosted and broader qualification remain
+  pending. A credentialed redirect regression verifies that a named bearer
+  credential reaches only the selected source
+  and never the redirect Location; the common Docker selections pass. S3-03
   remains open. Generic HTTP methods now reject malformed ASCII token values
   (including whitespace, CRLF and non-ASCII) before endpoint resolution or
-  transport; type and token-boundary regressions await the consolidated batch.
+  transport; type and token-boundary regressions pass the common Docker selections.
   An OpenAPI client-credentials scope-mismatch regression now requires denial
-  before secret resolution and network access; it awaits the same batch.
+  before secret resolution and network access; it passes the same selections.
   Background execution stays default-off, and cross-adapter, backend, platform,
   lifetime, packaging and broader hosted acceptance remain open.
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
@@ -230,6 +257,11 @@ treated as a deferred task or as additional feature completion.
   open. See the
   [acceptance plan](docs/s3-04-executable-source-acceptance.md).
 - [ ] **S3-05** (M) — Reuse durable protected approvals; add reassignment, escalation, waiting, denial/expiry and resume tests.
+  Docker-backed PostgreSQL follow-up (2026-10-25) fixed two actor-test fixture
+  collisions on populated databases using subject-bound operation keys and
+  unique legacy IDs. Both repeat checks and the 195-case common PostgreSQL
+  selection pass; production conflict/idempotency rules and task status stay
+  unchanged. See the [Docker record](docs/s3-03-operation-adapters-acceptance.md#docker-and-postgresql-follow-up--2026-10-25).
   Protected actor identity, atomic decisions, expiry and native recovery are
   authored. The PostgreSQL timestamp migration and f9 database cases passed;
   its Windows timer lane exposed a request-row recovery race before the durable
@@ -252,7 +284,12 @@ treated as a deferred task or as additional feature completion.
   tampering regression awaits the same batch. The durable `max_pending` limit
   now rejects a new item when capacity is exactly full; a SQLite/PostgreSQL-
   parameterized regression verifies rejection and unchanged persisted state.
-  This case awaits consolidated validation. See the
+  At exact hosted source `5900c02`, PostgreSQL CI reported 1 failure, 1,987
+  passed and 3 skipped: `test_protected_approval_queue_enforces_exact_pending_capacity[postgresql]`.
+  The test fixture assumed an empty queue and request table; it now measures
+  their pre-existing baselines and asserts capacity and persistence relative to
+  those counts. The corrected fixture is authored and awaits consolidated
+  revalidation. See the
   [acceptance plan](docs/s3-05-protected-approval-acceptance.md) and
   [recovery history](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f).
 - [ ] **S3-06** (L) — Complete identity propagation, credential references, policy/audit/isolation and authorization within existing contracts. Delegated token exchange and consent remain conditional S4-11 work.
@@ -261,17 +298,22 @@ treated as a deferred task or as additional feature completion.
   descriptor regressions cover identity, role, scope, audience and profile.
   External-catalog credentials are restricted to the normalized HTTPS origin
   (scheme, host and effective port), with focused resolver coverage for cross-
-  port/scheme denial and default-port equivalence. Full qualification remains
-  open. Credential projection now extracts Bearer values regardless of
-  authorization-scheme casing; its lowercase-scheme echo regression is authored
-  and awaits final-batch validation. Lifecycle snapshot and SSE reads now pass
-  through the configured `events.read` authorization gate before snapshot or
-  stream access; denial and explicitly granted cases await final-batch validation.
+  port/scheme denial and default-port equivalence. Core identity/security
+  regressions passed in the corrected consolidated local batch and documented
+  focused selections. Full qualification remains open. Credential projection
+  now extracts Bearer values regardless of authorization-scheme casing;
+  lifecycle snapshot and SSE reads now pass through the configured
+  `events.read` authorization gate before snapshot or stream access. A new
+  native regression also asserts the actual model-credential canary is absent
+  from captured logs alongside existing output, archive, receipt and lifecycle
+  checks; this caplog assertion was authored after the consolidated run and
+  remains unrun. Exact-source hosted and skipped backend qualification also
+  remain pending.
   Foreign and missing schedule IDs now use the same fixed `ScheduleNotFound`
   response for reads and cancellation. A regression compares complete
   responses and verifies schedule records, owner/event scope, SQL rows,
-  definitions, slots and model-call counts remain unchanged; it awaits the
-  consolidated batch.
+  definitions, slots and model-call counts remain unchanged; its local
+  regression is included in the consolidated batch where runnable.
 - [ ] **S3-07** (M) — Finish all eight legacy agent patterns as bounded OWS workflows or explicit native extensions.
   Eight finite recipe families and named role bindings are authored; hosted
   acceptance remains open. A focused real-native role-policy test passes on
@@ -308,11 +350,10 @@ treated as a deferred task or as additional feature completion.
   core tests pass. S4-02's exact LangGraph channel extension is the first
   capability using this gate. A new regression withdraws the exact extension
   after an initial successful capability check and verifies a subsequent check
-  rejects it; authored, awaiting final-batch validation. Broader tracker
-  coverage and hosted qualification remain open. Native regressions now assert
-  that LangGraph's declared channel capability is accepted while ADK rejects
-  it before provider calls, invocation-state changes or native database
-  creation; both await final-batch validation.
+  rejects it; this regression passed in the consolidated local suite. Broader
+  tracker coverage remains open. Adapter capability and native
+  acceptance/rejection regressions are authored; engine-specific and exact-head
+  hosted qualification remain pending.
 - [ ] **S4-02** (L) — Add declared native channels/reducers, Command/Send, memory, streams, state updates, replay and time travel.
   The first scoped channel/reducer slice is authored for the exact
   `langgraph.channels@1.0.0` extension using private reducer-backed LangGraph
@@ -320,10 +361,12 @@ treated as a deferred task or as additional feature completion.
   A LangGraph × SQLite/PostgreSQL process-stop regression now checks the
   committed reducer delta survives restart without duplication; the SQLite
   selection passes locally and the PostgreSQL selection awaits hosted CI.
-  A `last_value` integration regression now exercises exact extension
-  admission, a writer task, and a later reader binding; it is authored and
-  awaits final-batch validation. A native run/pause/resume regression also
-  checks channel values across a wait boundary. Broader S4-02 features remain open. See
+  A `last_value` integration regression exercises exact extension admission,
+  a writer task, and a later reader binding; its focused local selection passes.
+  A native run/pause/resume regression checks channel values across a wait
+  boundary and remains pending its engine-specific selection. The SQLite
+  process-stop case passes locally; PostgreSQL and exact-head hosted
+  qualification remain pending. Broader S4-02 features remain open. See
   [the S4-02 acceptance record](docs/s4-02-native-channels-acceptance.md).
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
   An optional pinned LangGraph/TypeScript scaffold and native smoke test now
@@ -331,13 +374,15 @@ treated as a deferred task or as additional feature completion.
   SHA-256-pinned official OWS 1.0.3 schema and sanitizes malformed-YAML errors;
   local Node tests and the production dependency audit pass. The loader now
   rejects source above 1 MiB measured as UTF-8 before parsing, with boundary
-  and multibyte cases authored for the final batch. A second loader slice now
+  and multibyte cases included in the consolidated local batch. A second loader slice now
   mirrors Python admission rejection for duplicate YAML/JSON keys, cyclic
-  aliases, implicit timestamps and non-finite values; those cases also await
-  the batch. Python and TypeScript now consume shared admission fixtures,
+  aliases, implicit timestamps and non-finite values; those cases were included
+  in the consolidated local batch. Python and TypeScript now consume shared admission fixtures,
   including rejection of numeric/boolean YAML mapping keys and acceptance of
-  equivalent string-keyed JSON, with error-category parity cases. These are
-  authored but unvalidated. CI runs the isolated check. The package does not
+  equivalent string-keyed JSON, with error-category parity cases. The Node 24
+  package suite (10 tests) and production dependency audit passed locally for
+  the consolidated batch; exact-head hosted qualification remains pending. The
+  package does not
   compile or execute OWS definitions and has no execution-adapter parity;
   implement those and independently qualify the engine before claiming full
   parity. Frozen predecessor sources remain
@@ -349,12 +394,12 @@ treated as a deferred task or as additional feature completion.
   coverage. An integrity test checks exhaustive IDs and requires live selectors
   and retained evidence before any row can be promoted. The bridge now includes
   reasoned blocker counts (443 tests, 774 constraints) guarded against row
-  status drift. A new integrity assertion also retains the source verification
-  guidance on all 774 schema rows; it awaits the final batch and does not count
-  as schema coverage. Selector promotion now rejects `skip`, `skipif`, and
+  status drift. Integrity assertions also retain source verification guidance
+  on all 774 schema rows; the AST selectors passed in the consolidated local
+  suite. These checks do not count as schema coverage. Selector promotion rejects `skip`, `skipif`, and
   `xfail` markers, including module-level skip markers; its AST regression also
-  awaits the final batch and does not establish criterion coverage.
-  Full CTK automation and parity qualification remain open. See
+  passed in the consolidated local suite and does not establish criterion
+  coverage. Full CTK automation and parity qualification remain open. See
   [the coverage bridge](resources/compatibility/README.md).
 - [ ] **S4-05** (M) — Complete execution history, tracing, lifecycle metrics, correlation, provenance and replay diagnostics.
   The current batch adds a bounded task-duration histogram labeled only by
@@ -362,13 +407,14 @@ treated as a deferred task or as additional feature completion.
   API/configuration docs validated. Durable cross-process history, trace-context and
   causation propagation, richer provenance, and replay diagnostics remain open.
   An idle-child operator cancellation now also carries the persisted parent
-  invocation and task reference into its lifecycle event; its correlation test
-  is authored for final-batch validation. Terminal workflow metrics derive the
+  invocation and task reference into its lifecycle event; its focused
+  correlation selection passes locally. Terminal workflow metrics derive the
   outcome from the fixed event type rather than an untrusted status field, with
-  a high-cardinality-label regression awaiting the same batch. Arbitrary or
+  a high-cardinality-label regression passing in the consolidated local suite. Arbitrary or
   non-string task event statuses now map to the fixed `unknown` label, with a
-  regression proving no user-controlled metric series is created; it awaits
-  the same batch.
+  regression proving no user-controlled metric series is created; the
+  consolidated local suite passes. Exact-head hosted qualification remains
+  pending.
   See the [observability acceptance slice](docs/s4-05-observability-acceptance.md).
 - [ ] **S4-06** (M) — Run matched latency/CPU/memory/concurrency/persistence/recovery benchmarks; publish measured results.
   A separate matched-profile harness now records ADK/LangGraph × SQLite/
@@ -378,9 +424,8 @@ treated as a deferred task or as additional feature completion.
   and timed engine and service reinitialization plus resume with stable
   operation-id and single-dispatch assertions. Concurrent settings are capped
   at 16 and the aggregate rejects missing or inconsistent latency summaries.
-  PostgreSQL CI is wired to
-  aggregate the four exact-source profile JSON files into one artifact. Harness
-  tests pass locally. The first hosted four-cell report passed at exact source
+  PostgreSQL CI is wired to aggregate the four exact-source profile JSON files
+  into one artifact. Harness tests and aggregate guards pass locally. The first hosted four-cell report passed at exact source
   `4b22e801f4f7f01d475caa03a754dd3ac45bf64a`; retained measurements are in the
   [benchmark record](docs/benchmarks.md#retained-exact-source-measurements) and
   [GitHub run artifact](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39459079488).
@@ -413,22 +458,27 @@ treated as a deferred task or as additional feature completion.
   CI now includes a Node 24 job for the isolated
   JavaScript schema loader. A regression now guards source/version/exact-commit
   OCI labels and retained SBOM/provenance generation on both release image
-  paths; it awaits final-batch validation. The older root-quality run also
+  paths; the guard passed in the consolidated local suite. The older root-quality run also
   exposed a hosted child-start timeout in a sandbox control-fence test; its
   startup/deadline margin is widened and the focused two-case regression passes.
   At source `52abe1f`, Docs passed (run `39525850419`) while Security failed
   (run `39525850472`) because pip-audit found fixable certifi and Pillow
   advisories across Python environments. The current authored remediation
   updates certifi and constrains FastEmbed environments to Pillow
-  `>=13.0.0,<14`; an import-only compatibility smoke test and exact-source
-  security requalification remain pending. External Sandbox (`39525850438`)
+  `>=13.0.0,<14`. The audit command now uses pip-audit's supported
+  `--disable-pip` path with the fully pinned export; a focused local audit
+  completed and retained both FastEmbed and Pillow in its report; the locked
+  Pillow import smoke also passes locally. Exact-source hosted Security
+  requalification remains pending. External Sandbox (`39525850438`)
   also passed. CI (`39525850490`), Agent Framework (`39525850489`) and
   PostgreSQL (`39525850501`) were still in progress at the latest check; these
   exact-source statuses are a snapshot. Do not treat the old source result or
-  current unvalidated remediation as a green gate.
+  the focused local audit as a hosted green gate.
   CI now removes only the duplicate `test_native_sqlite_inspection` invocation
   from the `windows-mcp` lane; that check remains in `windows-expressions` and
-  `native`. This workflow cleanup awaits consolidated validation.
+  `native`. Workflow cleanup and its regression checks passed in the
+  consolidated local suite. Exact-head hosted requalification, including the
+  Security workflow's pip-audit resolver adjustment, remains pending.
   Remaining S4-07 release/rollback and broader capability/version acceptance
   stay open. See the [release gate record](docs/s4-07-release-gates-acceptance.md).
 - [ ] **S4-08** (M) — Decide and document old openworkflow_adk import/CLI/package compatibility; port useful developer tooling.

@@ -25,6 +25,7 @@ env:
 
 jobs:
   javascript-definition-validation:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: JavaScript OWS 1.0.3 definition validation
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -48,6 +49,7 @@ jobs:
         run: npm audit --omit=dev
 
   windows-expressions:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: Windows jq expression and admission tests
     runs-on: windows-latest
     # Independent jobs keep both selections required without making one
@@ -88,6 +90,7 @@ jobs:
           tests/contract/test_schema_resources.py
           tests/contract/test_definition_admission.py
   windows-native:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: Windows native task checkpoints and routing
     runs-on: windows-latest
     timeout-minutes: 20
@@ -119,6 +122,7 @@ jobs:
           ../../tests/contract/test_selected_adapter_process_recovery.py
 
   windows-operation-adapters:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: Windows operation adapters and supervised process recovery
     runs-on: windows-latest
     timeout-minutes: 40
@@ -168,6 +172,7 @@ jobs:
           ../../tests/contract/test_background_job_recovery.py
 
   windows-grpc-sqlite-matrix:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: Windows gRPC SQLite contract (${{ matrix.engine }})
     runs-on: windows-latest
     timeout-minutes: 25
@@ -200,6 +205,7 @@ jobs:
           -k sqlite
 
   windows-background-sqlite-matrix:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: Windows background SQLite recovery (${{ matrix.engine }})
     runs-on: windows-latest
     timeout-minutes: 30
@@ -230,6 +236,7 @@ jobs:
           ../../tests/contract/test_background_job_recovery.py
 
   windows-native-recovery:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: Windows native ownership and effect recovery
     runs-on: windows-latest
     timeout-minutes: 35
@@ -262,6 +269,7 @@ jobs:
           ../../tests/contract/test_child_invocation_dependencies.py
 
   windows-native-timing:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: Windows native timers events and scheduling
     runs-on: windows-latest
     timeout-minutes: 60
@@ -306,6 +314,7 @@ jobs:
           ../../tests/contract/test_protected_approval_process_recovery.py ../../tests/contract/test_execution_authority_isolation.py ../../tests/contract/test_execution_authority_process_recovery.py ../../tests/core/test_execution_authority.py ../../tests/core/test_execution_authorization.py ../../tests/core/test_execution_context_isolation.py ../../tests/core/test_memory_namespaces.py ../../tests/core/test_credential_projection.py ../../tests/core/test_api_execution_authority.py ../../tests/core/test_authenticated_catalog_metadata.py ../../tests/core/test_agent_role_boundaries.py ../../tests/core/test_agent_roles.py ../../tests/contract/test_agent_patterns.py ../../tests/contract/test_agent_pattern_process_recovery.py
 
   windows-native-lifecycle:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: Windows native lifecycle and receiver recovery
     runs-on: windows-latest
     timeout-minutes: 30
@@ -346,6 +355,7 @@ jobs:
           ../../tests/core/test_native_sqlite_inspection.py
 
   windows-mcp:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: Windows common MCP transport and authentication controls
     runs-on: windows-latest
     timeout-minutes: 15
@@ -387,6 +397,7 @@ jobs:
           tests/contract/test_mcp_stdio_integration.py
 
   manifests:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: Validate deployment manifests
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -424,6 +435,7 @@ jobs:
             | kubeconform -strict -summary -kubernetes-version 1.31.0
 
   root:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     # f020d6e reached only 22% in eight minutes; preserve full coverage and
     # provide a finite aggregate budget, separate from per-fixture deadlines.
     name: Root quality gates
@@ -534,6 +546,7 @@ jobs:
           python ci/recovery_build.py --project core --dist core/dist
 
   mutation:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: Mutation testing
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -556,6 +569,7 @@ jobs:
         run: uv run --locked --group mutation mutmut results
 
   engines:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     # Full shared recovery selections exceeded eight minutes at 46-51%.
     name: ${{ matrix.engine }} native and contract tests
     runs-on: ubuntu-latest
@@ -664,6 +678,7 @@ jobs:
           if-no-files-found: warn
 
   native-lifecycle:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: ${{ matrix.engine }} native lifecycle and version recovery
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -729,6 +744,7 @@ jobs:
           ../../tests/contract/test_a2a_resume_native_corruption.py -vv
 
   containers:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     # Principal lifecycle/process fixtures run in the independent job above.
     name: Docker ${{ matrix.engine }} acceptance
     runs-on: ubuntu-latest

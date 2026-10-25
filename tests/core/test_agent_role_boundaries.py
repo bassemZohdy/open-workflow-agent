@@ -431,7 +431,7 @@ async def test_role_output_bound_rejects_oversized_response_before_retained_outp
 
 @pytest.mark.asyncio
 async def test_actual_model_credential_ref_echo_is_guarded_before_archive_receipts_and_output(
-    role_runtime, monkeypatch
+    role_runtime, monkeypatch, caplog
 ):
     canary = "actual-provider-spi-secret-694"
     monkeypatch.setenv("OWA_ROLE_MODEL_CANARY", canary)
@@ -469,6 +469,7 @@ async def test_actual_model_credential_ref_echo_is_guarded_before_archive_receip
     assert canary not in repr(rows) + repr(archived) + repr(raw) + repr(
         runtime.services.lifecycle_events.events
     )
+    assert canary not in caplog.text
     assert current_authority() is None
 
 

@@ -5,8 +5,10 @@ from __future__ import annotations
 import asyncio
 import copy
 import json
+import sys
 import time
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from uuid import uuid4
 
 import httpx
@@ -31,9 +33,12 @@ from _agent_pattern_fixtures import (
     runtime,
     scripts,
 )
+from open_workflow_agent.api import create_app
 from open_workflow_agent.approvals import APPROVAL_DECISION_EVENT, APPROVAL_REQUEST_EVENT
+from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.errors import OwaError
 from open_workflow_agent.execution_authority import authority_scope
+from open_workflow_agent.services import RuntimeServices
 
 pytestmark = pytest.mark.usefixtures("explicit_workflow_delivery")
 QUESTION = {"question": "hello"}
@@ -242,6 +247,85 @@ async def test_native_role_archive_keeps_credential_reference_without_secret_val
         }
         assert secret_value not in json.dumps(archived, sort_keys=True)
         assert secret_value not in json.dumps(result.as_dict(), sort_keys=True)
+    finally:
+        await engine.shutdown()
+        services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("engine_name,engine_type", ENGINES)
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+async def test_native_role_credential_echo_is_absent_from_logs_and_public_projections(
+    tmp_path, monkeypatch, caplog, engine_name, engine_type, backend
+):
+    env_name = "OWA_PATTERN_NATIVE_ROLE_CANARY"
+    canary = "s3-06-native-provider-secret-must-not-leak"
+    monkeypatch.setenv(env_name, canary)
+    provider_calls = []
+
+    async def completion(**options):
+        assert options["api_key"] == canary
+        assert options["model"] == "provider/guarded-native"
+        provider_calls.append(options["api_key"])
+        content = json.dumps({"echo": options["api_key"], "safe": None})
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(role="assistant", content=content))]
+        )
+
+    # Exercise actual common credential resolution and response projection while
+    # replacing only the paid provider boundary with a deterministic local fake.
+    monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=completion))
+    roles = {"assistant": role_configuration("assistant")}
+    roles["assistant"]["model"] = {
+        "provider": "litellm",
+        "name": "provider/guarded-native",
+        "credentials": {"api_key": {"from_env": env_name}},
+    }
+    services = RuntimeServices(
+        configuration(backend, roles),
+        model=FakeModel(),
+        database_root=None if backend == "postgresql" else tmp_path,
+        recovery_profile_provider=lambda engine: {
+            "id": "native-role-canary-fixture",
+            "version": "1",
+        },
+    )
+    engine = engine_type()
+    actual_native(engine, engine_name)
+    await engine.initialize(services)
+    plan = compiled(services, "assistant")
+    handle = create(services, engine_name, plan)
+    try:
+        result = await invoke(engine, services, plan, handle, QUESTION)
+        assert result.status == "completed", result.error
+        assert result.output == {"echo": "[REDACTED]", "safe": None}
+        assert provider_calls == [canary]
+
+        _, archived = services.recovery_definitions._read(handle, allow_unqualified=True)
+        connection = services.effect_journal.connection
+        retained_rows = connection.execute(
+            "SELECT payload FROM workflow_effects WHERE identity IN "
+            "(SELECT identity FROM workflow_effect_invocations WHERE invocation_id=?)",
+            (handle.invocation_id,),
+        ).fetchall()
+        invocation_row = connection.execute(
+            "SELECT payload FROM invocations WHERE invocation_id=?",
+            (handle.invocation_id,),
+        ).fetchone()
+        lifecycle = [event.as_dict() for event in services.lifecycle_events.snapshot(100)]
+        assert canary not in json.dumps(archived, sort_keys=True)
+        assert canary not in repr(retained_rows) + repr(invocation_row)
+        assert canary not in json.dumps(result.as_dict(), sort_keys=True)
+        assert canary not in json.dumps(lifecycle, sort_keys=True)
+        assert canary not in caplog.text
+
+        app = create_app(config=services.config, services=services)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.get("/v1/events/lifecycle?limit=100")
+        assert response.status_code == 200
+        assert canary not in response.text
     finally:
         await engine.shutdown()
         services.close()

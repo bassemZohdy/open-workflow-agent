@@ -12,16 +12,17 @@ source remain available for consumers that need its API.
 Any useful developer tooling selected for the canonical runtime must be
 implemented and documented as canonical tooling, with its own supported
 commands and contracts. It must not import or execute frozen predecessor
-modules. That tooling work remains open under S4-08; this decision alone does
-not complete the task.
+modules. The selected canonical tool is `owa validate PATH`, described below;
+the compatibility task remains open for the separately documented distribution
+identity and migration decision.
 
-The canonical root package now authors an `owa validate PATH` command. It loads
+The canonical root package now provides an `owa validate PATH` command. It loads
 and compiles a workflow against the default OWA portable profile and reports a
 safe common error without exposing the internal execution plan. It does not
 resolve deployment credentials or trusted external catalogs and does not apply
 engine-specific capability or runtime configuration. A workflow that depends
-on those settings still needs validation in its target deployment. The command
-and its focused tests are authored but have not yet been run; this does not
+on those settings still needs validation in its target deployment. Its focused
+tests passed locally in the corrected consolidated batch; this does not
 complete S4-08. The [developer guide](development.md#validate-a-workflow-locally)
 documents source-checkout installation and use, its default-profile limits, and
 the fact that validation performs no model invocation or credential resolution.

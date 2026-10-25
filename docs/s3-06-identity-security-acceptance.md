@@ -3,15 +3,16 @@
 Status: authored; behavioral, native, platform, database and publication
 qualification pending. New descriptor regressions reject unpaired Unicode in
 principal identity/role/scope/audience and named security-profile references as
-bounded-reference `ValueError`s; they await the final batch.
+bounded-reference `ValueError`s; the applicable core regressions passed in the
+corrected consolidated local batch.
 Security profile names now use the same 256-byte bounded-reference rule and
 reject DEL and unpaired-surrogate values before a profile can be selected. The
-focused configuration regressions are authored and unrun; full S3-06
-qualification remains pending.
+focused configuration regressions passed locally; full S3-06 qualification
+remains pending.
 The common credential guard now extracts the token from case-insensitive Bearer
 authorization schemes with one or more spaces before projecting responses; a
-deterministic lowercase-scheme and repeated-space echo regression is authored and
-unrun. This narrows direct literal-echo behavior and does not claim broader
+deterministic lowercase-scheme and repeated-space echo regression passed in the
+documented focused local selection. This narrows direct literal-echo behavior and does not claim broader
 information-flow protection.
 Project Definition sections 11 and 22–25 govern this work. TODO.md retains the
 unchecked task. Source-only audits identify gaps; they do not establish behavioral
@@ -88,8 +89,13 @@ The API's global lifecycle snapshot and SSE reads now pass through the configure
 execution-authorization policy as `events.read` on `events:lifecycle`. When that
 policy is enabled, an authenticated profile without an explicit matching rule is
 denied before snapshot access or stream setup; a matching reader rule retains
-access. These regressions are authored for the consolidated batch and are not yet
-validated.
+access. The S3-06 core regressions passed in the corrected consolidated local
+batch and documented focused selections. A follow-up assertion in
+`test_actual_model_credential_ref_echo_is_guarded_before_archive_receipts_and_output`
+also checks that the actual model-credential canary is absent from captured
+logs, alongside its existing output, archive, receipt and lifecycle-event
+checks. That caplog assertion was authored after the consolidated run and
+remains unrun.
 
 ## Required qualification
 

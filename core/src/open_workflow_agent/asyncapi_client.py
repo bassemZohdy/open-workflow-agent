@@ -18,6 +18,7 @@ from urllib.parse import urlparse
 import yaml
 from jsonschema import Draft7Validator
 
+from ._reference_fragment import decode_local_pointer
 from .errors import OwaError, ToolError
 from .expressions import validate_expression_data
 
@@ -246,7 +247,11 @@ class _References:
         self.count += 1
         if self.count > MAX_LOCAL_REFERENCES:
             raise _failure("reference_bound")
-        return self.object(_pointer(self.document, reference[1:]), (*seen, reference))
+        try:
+            pointer = decode_local_pointer(reference)
+        except ValueError:
+            raise _failure("invalid_pointer") from None
+        return self.object(_pointer(self.document, pointer), (*seen, reference))
 
     def schema(self, value: Any, seen: tuple[str, ...] = (), depth: int = 0) -> Any:
         if type(value) is bool:

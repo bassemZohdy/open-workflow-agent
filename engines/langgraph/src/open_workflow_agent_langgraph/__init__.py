@@ -1,5 +1,6 @@
 """LangGraph engine adapter."""
 
+import asyncio
 import hashlib
 import json
 from pathlib import Path
@@ -9,6 +10,7 @@ from open_workflow_agent._native_sqlite_inspection import inspect_native_sqlite
 from open_workflow_agent.child_suspension import ChildSuspension
 from open_workflow_agent.engine import EngineCapabilities, InvocationResult, PortableWorkflowEngine
 from open_workflow_agent.errors import (
+    ConfigurationError,
     InvocationCancelled,
     InvocationStateError,
     OwaError,
@@ -16,6 +18,7 @@ from open_workflow_agent.errors import (
 )
 from open_workflow_agent.native_extensions import LANGGRAPH_CHANNELS
 from open_workflow_agent.persistence import ExecutionHandle
+from open_workflow_agent.storage import is_postgresql_datasource
 from open_workflow_agent.timers import TimerSuspension
 from open_workflow_agent.workflow import WorkflowPlan
 
@@ -39,6 +42,19 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         self.native = LangGraphFunctionalAdapter()
 
     async def initialize(self, services: Any) -> None:
+        database_path = services.engine_database_path("langgraph", create_namespace=False)
+        proactor_loop = getattr(asyncio, "ProactorEventLoop", None)
+        if (
+            native_module.LANGGRAPH_AVAILABLE
+            and getattr(native_module, "AsyncPostgresSaver", None) is not None
+            and is_postgresql_datasource(database_path)
+            and proactor_loop is not None
+            and isinstance(asyncio.get_running_loop(), proactor_loop)
+        ):
+            raise ConfigurationError(
+                "LangGraph PostgreSQL persistence requires a selector event loop on Windows",
+                details={"reason": "unsupported_event_loop"},
+            )
         await super().initialize(services)
         factory = LangGraphAgentFactory()
         self.agent = factory.create(
@@ -46,9 +62,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             services.config.model,
             factory.bind_tools(services.agent_tool_bindings()),
         )
-        self.native.database_path = services.engine_database_path(
-            "langgraph", create_namespace=False
-        )
+        self.native.database_path = database_path
 
     async def _native_initial_history_exists(self, handle: ExecutionHandle) -> bool:
         key = hashlib.sha256(

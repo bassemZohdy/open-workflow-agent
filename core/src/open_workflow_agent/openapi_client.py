@@ -20,6 +20,7 @@ import httpx
 import yaml
 from jsonschema import Draft202012Validator
 
+from ._reference_fragment import decode_local_pointer
 from .errors import OwaError, ToolError, WorkflowExecutionError
 from .expressions import validate_expression_data
 from .security import (
@@ -319,9 +320,16 @@ class _References:
             raise _failure("reference_bound")
         target: Any = self.document
         try:
-            for part in reference[2:].split("/"):
+            for part in decode_local_pointer(reference).split("/")[1:]:
+                if re.search(r"~(?![01])", part):
+                    raise ValueError
                 part = part.replace("~1", "/").replace("~0", "~")
-                target = target[int(part)] if isinstance(target, list) else target[part]
+                if isinstance(target, list):
+                    if not re.fullmatch(r"0|[1-9][0-9]*", part):
+                        raise ValueError
+                    target = target[int(part)]
+                else:
+                    target = target[part]
         except (ValueError, KeyError, IndexError, TypeError):
             raise _failure("invalid_reference_target") from None
         return self.object(target, (*seen, reference))

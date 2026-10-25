@@ -28,6 +28,7 @@ env:
 
 jobs:
   dependencies:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: Audit ${{ matrix.id }} dependencies
     runs-on: ubuntu-latest
     timeout-minutes: 15

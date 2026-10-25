@@ -21,6 +21,11 @@ RUN pip install --no-cache-dir "uv==0.11.26" \
        --extra native --extra knowledge --extra model --extra postgres \
        --no-install-project --no-install-package open-workflow-agent
 
+# Model assets depend on the locked dependencies, so source edits reuse this layer.
+RUN mkdir -p /build/opt/models \
+    && FASTEMBED_CACHE_PATH=/build/opt/models \
+       /opt/venv/bin/python -c "from fastembed import TextEmbedding; model = TextEmbedding(model_name='sentence-transformers/all-MiniLM-L6-v2', cache_dir='/build/opt/models'); next(iter(model.embed(['warmup'])))"
+
 COPY core ./core
 COPY engines/adk/src ./engines/adk/src
 COPY resources ./resources
@@ -31,10 +36,7 @@ RUN uv sync --directory /build/engines/adk --locked --no-dev --no-editable \
     && /opt/venv/bin/uvicorn --version \
     && rm -rf /tmp/uv-cache /root/.cache
 
-RUN mkdir -p /build/opt/models \
-    && FASTEMBED_CACHE_PATH=/build/opt/models \
-       /opt/venv/bin/python -c "from fastembed import TextEmbedding; model = TextEmbedding(model_name='sentence-transformers/all-MiniLM-L6-v2', cache_dir='/build/opt/models'); next(iter(model.embed(['warmup'])))" \
-    && find /opt/venv -type d -name __pycache__ -prune -exec rm -rf {} + \
+RUN find /opt/venv -type d -name __pycache__ -prune -exec rm -rf {} + \
     && find /opt/venv -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
 
 FROM ${PYTHON_IMAGE} AS runtime

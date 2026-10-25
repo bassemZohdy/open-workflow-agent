@@ -7,49 +7,68 @@
 - `TODO.md` — ordered backlog and any blocked-task deferrals.
 - `AGENTS.md` — mandatory repository/contributor rules.
 
-## Current backlog delivery mode — 2026-10-20
+## Development cleanup — 2026-10-25
 
-**20 of 37 backlog tasks are verified; 17 remain open. No task is deferred.**
-S2-09's finite VM01-VM08 policy, S3-01's finite Python MCP01-MCP08 profile,
-and S3-02's finite Python A2A profile are verified. S3-02 passed all six
-hosted workflows at exact source `3b6b32994d45bdb4cedb1135720da12fc4fe29ef`.
-Its bounded scope is the pinned A2A SDK 1.2.2 / wire 1.0 profile, advertised
-JSON-RPC and HTTP+JSON, ADK/LangGraph and SQLite/PostgreSQL. Durable Task/receipt
-expiry is explicitly excluded from the finite profile; no retention duration is
-selected. Push, delegated identity, JavaScript and full protocol/proposed
-criteria remain outside the qualification. See the [A2A acceptance record](docs/s3-02-a2a-acceptance.md)
-and [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329).
-JavaScript MCP, A145/full protocol coverage, proposed T29/T30/T31 criteria,
-and broader MCP extensions remain unqualified. Earlier failed, partial and
-superseded runs remain historical in the [validation history](docs/validation-history/pending-batch-results.md).
-The previously recorded local full suite (4,982 passed, 3,203 skipped,
-90.55% coverage) applies to source `52abe1f` before the current uncommitted
-additions. The current source batch, including dependency remediation and the
-listed S3/S4 regressions, has not yet been validated as a whole; the latest
-exact-source hosted security run at `52abe1f` failed and is being requalified.
-No task is complete from this pending batch.
+Automatic validation jobs now require `OWA_AUTOMATIC_CI=true`; manual validation
+remains available. Automatic publication separately requires
+`OWA_AUTOMATIC_RELEASES=true` and retains its existing exact-source release gates.
+These defaults apply after the workflow changes are pushed; remote settings and
+running jobs were not modified. No backlog task or feature is promoted by this
+cleanup. See the [review and remaining gaps](docs/development-cleanup-2026-10-25.md)
+and [automation controls](docs/development.md#fast-development-and-optional-automation).
+
+## Current backlog delivery mode
+
+Updated 2026-10-25. **20 of 37 tasks are verified; 17 remain open. None is deferred.**
+S3-03 is the next ordered open task. Its remaining work includes current-source
+qualification and the wider operation-adapter inventory; its background profile
+remains disabled. Local checks do not waive hosted, security or release gates.
+
+The encoded-reference follow-up fixes URI decoding in OpenAPI/pure AsyncAPI and
+rejects an unsupported Windows LangGraph/PostgreSQL loop before starting engine
+services. Common checks pass 309 tests; both principal engines pass the four new
+Windows SQLite/PostgreSQL witnesses with the supported loop configuration.
+The first Linux candidate passes 74 OpenAPI call/process cases per engine and
+seven additional LangGraph adapter checks; the final LangGraph lookup correction
+passes 57 call/adapter checks. Both final images pass packaged and sandbox scripts.
+Docker build caching now retains model assets across source edits. See the
+[current scope and evidence](docs/s3-03-operation-adapters-acceptance.md#encoded-reference-and-host-admission-follow-up--2026-10-25).
+
+The earlier Docker batch passed 663 checks per principal engine, 77 return/receipt
+checks per engine, four PostgreSQL tool/resume integrations per engine, and all
+packaged/restricted-sandbox scripts. Its native OpenAPI/gRPC grid ran all 114
+SQLite/PostgreSQL cases per engine. Windows background recovery passed 13 checks
+per engine; the common PostgreSQL selection passed 195 and the four Windows-only
+IPC controls passed. Scope, intentional skips and earlier failures are retained
+in the [Docker record](docs/s3-03-operation-adapters-acceptance.md#docker-and-postgresql-follow-up--2026-10-25).
+
+The earlier full local batch (5,004 passed, 3,206 skipped, 90.54% coverage) predates
+subsequent fixes. See its [validation record](docs/validation-history/pending-batch-results.md#corrected-working-tree-batch--local-validation-before-hosted-requalification).
+S3-02's finite profile remains verified at `3b6b329`; S3-01 at `af4acd6`.
+Those accepted scopes exclude full protocol/proposed-test and independent
+JavaScript conformance.
 
 | Work | Current state | Acceptance record |
 | --- | --- | --- |
-| S2-05 | Finite embedded event profile remains qualified at `58de90e`; regression requalification found the nondurable-listener test expected a fault result where common admission rejects before ownership. The test now checks the rejection and unchanged input/state; resume checks native continuation first. An invoke reorder broke gRPC and protected-approval pre-ownership gates and was reverted. Corrected local event/gRPC selectors pass; exact-source hosted qualification remains pending. | [Event acceptance](docs/s2-05-event-acceptance.md), [regression evidence](docs/validation-history/pending-batch-results.md#event-backend-admission-order-follow-up-at-9d4d3ec) |
+| S2-05 | Finite embedded event profile verified at `58de90e`; current-source regression qualification remains open. | [Event acceptance](docs/s2-05-event-acceptance.md), [regression evidence](docs/validation-history/pending-batch-results.md#event-backend-admission-order-follow-up-at-9d4d3ec) |
 | S2-07 / S2-08 | Verified CH01-CH10 / LC01-LC08 at 6b23e5d / 96ce610. | [Children](docs/s2-07-child-workflow-acceptance.md), [lifecycle](docs/s2-08-lifecycle-acceptance.md) |
 | S2-09 | Finite VM01-VM08 continuation/recovery policy verified at PR head 9578459; A086/T44 in-place mapping remains unsupported. | [Version recovery](docs/s2-09-version-recovery-acceptance.md) |
 | S3-01 | Finite Python MCP01-MCP08 profile verified at exact source `af4acd6`; full MCP/JS and proposed-test scope remains separate. | [MCP acceptance](docs/s3-01-mcp-acceptance.md), [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6) |
 | S3-02 | Finite Python A2A profile verified at exact source `3b6b329`; all six hosted workflows passed. Durable Task/receipt expiry, push, delegated identity, JavaScript and full proposed criteria remain outside this qualification. | [A2A acceptance](docs/s3-02-a2a-acceptance.md), [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329) |
-| S3-03 | Still open. The provider timeout bound has a focused local fix. A later ADK/SQLite JSON-RPC resume failure exposed an initial-delivery startup-replay race; waiting deliveries now settle under the execution lease. The recovery case passed five focused reruns. A safe stage/error diagnostic regression, 12 nonzero-script return-projection regressions, an eight-case actual-process OpenAPI agent-tool recovery witness, and imported-catalog resolver regressions are authored; SQLite selections for retained invocation grants and endpoint bindings pass locally. Credentialed redirect isolation, invalid HTTP method type/token-boundary cases, and an OpenAPI client-credentials scope-mismatch denial before secret resolution/network access are authored for the consolidated batch. Exact-source and PostgreSQL qualification is pending. Background execution remains default-off. | [Operation adapters](docs/s3-03-operation-adapters-acceptance.md), [validation history](docs/validation-history/pending-batch-results.md#partial-source-c3ca7f1) |
-| S3-04 | Captured sources and awaited controls remain authored. Only a dedicated expected source-policy error is translated into a workflow rejection; registry configuration/execution defects, including unrelated common unsupported-feature errors, propagate unchanged. Portable sandbox input paths reject Windows drive/UNC/backslash traversal, reserved device names, alternate data streams, invalid characters and trailing-dot/space aliases. Staged destination aliases reject case and Unicode normalization collisions. Awaited children bind TEMP/TMP to the execution workspace; PATH/HOME/TMPDIR/TEMP/TMP overrides are rejected case-insensitively, with lowercase admission and runtime regressions. YAML admission and runtime setup also reject non-string sandbox environment names. The new regressions await consolidated validation. Stdio startup errno categories are logged only around process creation. Exact-source, platform and publication qualification remains pending. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
-| S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored. Producer-stop cases replay reassignment/escalation and approved/rejected/expired terminal decisions after restart, requiring unchanged durable evidence. Rehashed audit tampering cannot move reassignment/escalation beyond original expiry or use non-positive/non-finite timestamps; a regression also prevents a corrupted common projection from downgrading an approval into legacy GET/list behavior. A SQLite/PostgreSQL-parameterized capacity regression now rejects `max_pending` admission when the configured limit is exactly full and verifies persisted state is unchanged. These additions await batch validation. Independent-SDK and hosted requalification remain pending. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md), [recovery evidence](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f) |
-| S3-06 | Identity, action policy, isolation and credential safeguards remain authored. Unpaired Unicode in identity, role, scope, audience and named-profile references now fails as a bounded-reference `ValueError`. External catalog credentials are restricted to the normalized HTTPS origin (scheme, host and effective port). Bearer credential projection handles case-insensitive schemes and repeated spaces; lifecycle snapshots and SSE reads pass through the configured `events.read` authorization gate before access. Foreign and missing schedule IDs now share the fixed `ScheduleNotFound` body for read and cancel APIs, with a regression checking all observable schedule/database state remains unchanged. These regressions await batch validation. Full qualification remains open. | [Security scope and gates](docs/s3-06-identity-security-acceptance.md) |
-| S3-07 | Eight finite recipe families and named role bindings remain authored. A focused native role-policy denial test proves the provider is untouched. Recovery rejects changed model bindings, tool allowlists, or role policy before provider or state mutation. A new producer-stop case broadens role permissions only after restart and requires rejection across ADK/LangGraph × SQLite/PostgreSQL; process-recovery drift cases assert the exact `InvocationStateError` reason `runtime_profile_changed`. These cases await batch validation. Hosted and broader family qualification remain pending. | [Pattern scope and gates](docs/s3-07-agent-pattern-acceptance.md), [timing-run evidence](docs/validation-history/pending-batch-results.md#windows-timing-suite-follow-up-at-8183776) |
-| S3-08 | Selected compiler/provider/memory/embedded event adaptations and grouped corrections are authored; integrated qualification remains open. Actual-native/backend regressions reject conflicting duplicate event data and verify the first committed payload remains intact. Direct LLM tool-request pass-through and sanitized surrogate handling are covered by authored regressions. Escaped lone-surrogate argument and object-key cases require sanitized `ModelError` handling; the regressions await consolidated validation. LiteLLM and the bounded model wrapper also reject non-object call options before dispatch; those cases await batch validation. | [Selected scope and gates](docs/s3-08-selected-adapter-acceptance.md) |
-| S4-01 | Shared versioned metadata declarations and exact capability admission are authored; S4-02's LangGraph channel extension is their first consumer. Adapter regressions assert that LangGraph advertises the extension only with its native backend and ADK advertises none. A withdrawal check verifies subsequent admission rejects the extension. Actual native regressions now require LangGraph to accept its declared channel capability and ADK to reject it before provider calls, invocation-state mutation or native database creation. The new cases await batch validation; broader tracker and exact-source hosted qualification remain open. | [Native extension admission](docs/s4-01-native-extension-acceptance.md) |
-| S4-02 | Exact `langgraph.channels@1.0.0` channel/reducer slice is authored using private reducer-backed LangGraph state; focused core (10) and native channel (3) tests passed in the earlier batch. A LangGraph × SQLite/PostgreSQL process-stop regression checks committed deltas survive without duplication; SQLite passed locally and PostgreSQL awaits hosted CI. A `last_value` writer/reader case and an actual native run/pause/resume regression checking channel values across a wait boundary are authored for the consolidated batch. Wider S4-02 capabilities remain open. | [Native channel scope and gates](docs/s4-02-native-channels-acceptance.md) |
-| S4-03 | A pinned optional TypeScript package parses YAML/JSON and validates against the SHA-256-pinned official OWS 1.0.3 schema. Python and TypeScript now share admission fixtures and error categories for duplicate keys, cyclic aliases, implicit timestamps, non-finite values, malformed documents and schema failures. Parity also covers rejecting numeric/boolean YAML mapping keys while accepting equivalent string-keyed JSON. This source batch is not yet validated. The package still does not compile or execute workflows; independent engine acceptance remains open. | [JavaScript engine scaffold](engines/langgraph-js/README.md) |
-| S4-04 | A machine-readable bridge inventories all 443 proposed CTK test IDs and 774 schema-constraint rows without crediting partial overlap as coverage. Integrity tests require live, non-skipped selectors and retained evidence before promotion. The bridge preserves and guards the source tracker's verification guidance for every schema row; this is context, not executed coverage. Full CTK, schema, parity and cross-engine qualification remain open. | [Coverage bridge](resources/compatibility/README.md) |
-| S4-05 | Existing bounded events, recovery diagnostics and workflow metrics are extended with a task-duration histogram using only engine and terminal-outcome labels. Terminal workflow metrics derive outcomes from the fixed event type, and arbitrary/non-string task statuses map to the fixed `unknown` label, preventing user-controlled metric series. An idle-child operator cancellation carries its stored parent invocation and task reference into the lifecycle event. Regressions are authored and await final-batch validation. Durable cross-process history, trace-context propagation, richer provenance and replay diagnostics remain open. | [Observability acceptance](docs/s4-05-observability-acceptance.md) |
-| S4-06 | A matched ADK/LangGraph × SQLite/PostgreSQL harness records warm-up/repeated latency, invocation CPU, process-lifetime RSS, persistence, recovery, and an eight-invocation concurrent wave. The new aggregate guard enforces bounded concurrency and complete finite latency/throughput summaries; tests await the consolidated batch. The earlier exact-source four-cell report remains retained, but fresh qualification is pending. PostgreSQL size is whole-database and recovery recreates services in one process rather than forcing an OS stop. | [Matched benchmark profile and limits](docs/benchmarks.md) |
-| S4-07 | Release version checks now include both published controller packages; exact-head publication acceptance is wired for CI, PostgreSQL, External Sandbox, Security and Docs. Agent Framework remains optional. Workflow guards and triggers pass local tests; a new release regression requires verified source/version/commit labels and SBOM/provenance on both published image paths. At pushed source `0d812b2`, five companion workflows passed; CI failed a Windows CPU-quota timing case and one Linux stdio child start. For pushed source `52abe1f`, Docs (`39525850419`) and External Sandbox (`39525850438`) passed, Security (`39525850472`) failed on fixable certifi/Pillow advisories, while CI (`39525850490`), Agent Framework (`39525850489`) and PostgreSQL (`39525850501`) were still running at the last snapshot. Dependency-lock remediation to certifi 2026.10.19 and Pillow `>=13.0.0,<14` is now authored; the import-only smoke passes against the synced locked Pillow version. The `windows-mcp` lane removes only the duplicate `test_native_sqlite_inspection` invocation, retaining that check in `windows-expressions` and `native`. The corrected full local batch passes 5,004 tests with 3,206 skips and 90.54% coverage; exact-source hosted requalification, rollback and broader capability/version gates remain open. | [Release gate acceptance](docs/s4-07-release-gates-acceptance.md), [hosted result](docs/validation-history/pending-batch-results.md#hosted-outcome-for-source-0d812b2), [corrected local batch](docs/validation-history/pending-batch-results.md#corrected-working-tree-batch--local-validation-before-hosted-requalification) |
-| S4-08 | The predecessor compatibility decision is documented: no import, CLI, or install-time aliases are promised, predecessor releases remain available, and the distribution-name collision must be resolved before a future Python publish. The canonical `owa validate PATH` command and safe-error tests pass locally; source-checkout usage and default-profile limits are now documented. Deployment credentials, trusted external catalogs, engine-specific configuration, and release identity work remain open. | [Compatibility decision](docs/s4-08-compatibility-decision.md) |
+| S3-03 | Local Docker/native/SQLite/PostgreSQL and Windows recovery selections pass. Current-source full/hosted qualification and wider adapter scope remain open; background execution stays disabled. | [Operation adapters](docs/s3-03-operation-adapters-acceptance.md), [validation history](docs/validation-history/pending-batch-results.md#partial-source-c3ca7f1) |
+| S3-04 | Captured sources and bounded process controls are authored; local native source/recovery and Docker probes pass. Remaining platform, complete-suite and deployment qualification is open. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
+| S3-05 | Protected approval decisions, expiry and recovery are authored; common PostgreSQL and repeat-run fixture checks pass. Full independent-SDK/process/backend qualification remains open. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md), [recovery evidence](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f) |
+| S3-06 | Identity, credential, authorization and isolation safeguards are authored. Broader qualification and the later model-credential logging canary remain open. | [Security scope and gates](docs/s3-06-identity-security-acceptance.md) |
+| S3-07 | Eight recipe families and role-binding safeguards are authored; selected native and recovery checks pass. Broader family/backend/hosted qualification remains open. | [Pattern scope and gates](docs/s3-07-agent-pattern-acceptance.md), [timing-run evidence](docs/validation-history/pending-batch-results.md#windows-timing-suite-follow-up-at-8183776) |
+| S3-08 | Selected provider, memory, compiler and embedded-event adaptations are authored; integrated qualification remains open. | [Selected scope and gates](docs/s3-08-selected-adapter-acceptance.md) |
+| S4-01 | Versioned native metadata declarations and exact capability admission are authored; broader tracker/native/hosted qualification remains open. | [Native extension admission](docs/s4-01-native-extension-acceptance.md) |
+| S4-02 | The bounded LangGraph channel/reducer slice has local evidence. Wider native state, streaming, replay/time-travel and backend qualification remain open. | [Native channel scope and gates](docs/s4-02-native-channels-acceptance.md) |
+| S4-03 | TypeScript schema admission is implemented and locally checked. Workflow compilation/execution and independent parity are still missing. | [JavaScript engine scaffold](engines/langgraph-js/README.md) |
+| S4-04 | The bridge inventories 443 proposed tests and 774 schema constraints as unmapped/unexecuted. Full CTK/schema/parity qualification remains open. | [Coverage bridge](resources/compatibility/README.md) |
+| S4-05 | Bounded task metrics and correlation have local evidence. Durable history, trace/causation propagation, richer provenance and replay diagnostics remain open. | [Observability acceptance](docs/s4-05-observability-acceptance.md) |
+| S4-06 | Matched benchmark harness and historical measurements are retained. Fresh qualification and documented measurement/recovery limitations remain open. | [Matched benchmark profile and limits](docs/benchmarks.md) |
+| S4-07 | Publication guards remain fail-closed; automatic CI/release are opt-in. Fresh exact-source gates, security, rollback and broader version/capability acceptance remain open. | [Release gate acceptance](docs/s4-07-release-gates-acceptance.md), [hosted result](docs/validation-history/pending-batch-results.md#hosted-outcome-for-source-0d812b2), [corrected local batch](docs/validation-history/pending-batch-results.md#corrected-working-tree-batch--local-validation-before-hosted-requalification) |
+| S4-08 | No predecessor import/CLI/install aliases are promised. The local validation CLI passes; package-name ownership and consumer-migration decisions remain open. | [Compatibility decision](docs/s4-08-compatibility-decision.md) |
 
 Historical source outcomes, full commands, hashes and correction details are
 retained in the [validation history](docs/validation-history/pending-batch-results.md).
@@ -635,7 +654,7 @@ these readiness foundations.
 
 ## Current Backlog State
 
-See the [current backlog delivery mode](#current-backlog-delivery-mode--2026-10-20)
+See the [current backlog delivery mode](#current-backlog-delivery-mode)
 and the ordered [TODO.md](TODO.md). Failed validation does not advance completion;
 no task currently satisfies the stuck-task deferral rule.
 

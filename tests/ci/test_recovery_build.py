@@ -61,7 +61,19 @@ def test_build_identity_matches_canonical_lock_content_across_checkout_newlines(
         path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
     with zipfile.ZipFile(wheel, "w") as archive:
         archive.writestr("test_runtime/_recovery_build.json", json.dumps(record))
+        archive.writestr("test_runtime/__init__.py", "")
     result = verify_wheel(wheel, directory)
     assert result["lock_sha256"] == record["lock_sha256"]
     assert result["metadata_sha256"] == record["metadata_sha256"]
     assert result["wheel_sha256"] == hashlib.sha256(wheel.read_bytes()).hexdigest()
+
+
+def test_valid_build_identity_cannot_qualify_a_metadata_only_wheel(
+    project: tuple[Path, dict[str, str]],
+) -> None:
+    directory, record = project
+    wheel = directory / "runtime.whl"
+    with zipfile.ZipFile(wheel, "w") as archive:
+        archive.writestr("test_runtime/_recovery_build.json", json.dumps(record))
+    with pytest.raises(ValueError, match="wheel package initialization is missing"):
+        verify_wheel(wheel, directory)

@@ -217,6 +217,100 @@ def test_server_parameter_overrides_relative_base_and_local_reference_are_captur
     assert replace(selected, remaining_timeout=0.25).as_value() == selected.as_value()
 
 
+@pytest.mark.parametrize("version", ["3.0.3", "3.2.0"])
+@pytest.mark.parametrize("name", ["Id~", "Id~2", "Id~10~"])
+def test_malformed_reference_escape_cannot_select_an_existing_parameter(version, name):
+    document = source(version)
+    parameter = operation(document)["parameters"][0]
+    document["components"] = {"parameters": {name: parameter}}
+    operation(document)["parameters"] = [{"$ref": "#/components/parameters/" + name}]
+    with pytest.raises(ToolError) as rejected:
+        selection(document)
+    assert rejected.value.details == {"reason": "invalid_reference_target"}
+
+
+@pytest.mark.parametrize("version", ["3.0.3", "3.2.0"])
+@pytest.mark.parametrize("index", ["-1", "+0", "00", " 0", "0 ", "٠", "-"])
+def test_noncanonical_reference_array_index_cannot_select_an_existing_parameter(version, index):
+    document = source(version)
+    document["x-parameters"] = operation(document)["parameters"]
+    operation(document)["parameters"] = [{"$ref": "#/x-parameters/" + index}]
+    with pytest.raises(ToolError) as rejected:
+        selection(document)
+    assert rejected.value.details == {"reason": "invalid_reference_target"}
+
+
+@pytest.mark.parametrize("version", ["3.0.3", "3.2.0"])
+@pytest.mark.parametrize(
+    "name,token", [("Id/part", "Id~1part"), ("Id~part", "Id~0part"), ("Id~1", "Id~01")]
+)
+def test_escaped_reference_tokens_keep_the_exact_parameter_binding(version, name, token):
+    document = source(version)
+    parameter = operation(document)["parameters"][0]
+    document["components"] = {"parameters": {name: parameter}}
+    operation(document)["parameters"] = [{"$ref": "#/components/parameters/" + token}]
+    selected = selection(document)
+    assert prepare_request(selected, {"id": "original/value"}).endpoint == (
+        "https://api.test/v1/items/original%2Fvalue"
+    )
+    assert OpenApiOperationSelection.from_value(selected.as_value()) == selected
+
+
+@pytest.mark.parametrize("version", ["3.0.3", "3.2.0"])
+@pytest.mark.parametrize("container", ["array", "object"])
+def test_reference_index_zero_preserves_array_and_numeric_object_key_bindings(version, container):
+    document = source(version)
+    parameter = operation(document)["parameters"][0]
+    document["x-parameters"] = [parameter] if container == "array" else {"0": parameter}
+    operation(document)["parameters"] = [{"$ref": "#/x-parameters/0"}]
+    assert prepare_request(selection(document), {"id": "original"}).endpoint == (
+        "https://api.test/v1/items/original"
+    )
+
+
+@pytest.mark.parametrize("version", ["3.0.3", "3.2.0"])
+@pytest.mark.parametrize(
+    "name,token",
+    [
+        ("Id entry", "Id%20entry"),
+        ("Id%entry", "Id%25entry"),
+        ("Idé", "Id%C3%A9"),
+        ("Id~1", "Id%7E01"),
+        ("Id%20entry", "Id%2520entry"),
+    ],
+)
+def test_reference_uri_fragment_decodes_once_before_selecting_parameter(version, name, token):
+    document = source(version)
+    parameter = operation(document)["parameters"][0]
+    decoy = {**parameter, "schema": {"type": "integer"}}
+    document["x-parameters"] = {name: parameter, token: decoy}
+    operation(document)["parameters"] = [{"$ref": "#/x-parameters/" + token}]
+    selected = selection(document)
+    assert prepare_request(selected, {"id": "original/value"}).endpoint == (
+        "https://api.test/v1/items/original%2Fvalue"
+    )
+    assert OpenApiOperationSelection.from_value(selected.as_value()) == selected
+
+
+@pytest.mark.parametrize("token", ["Id%", "Id%2", "Id%GG", "Id%FF", "Id%C3", "Id%7E2"])
+def test_invalid_reference_uri_encoding_rejects_even_when_raw_key_exists(token):
+    document = source()
+    document["x-parameters"] = {token: operation(document)["parameters"][0]}
+    operation(document)["parameters"] = [{"$ref": "#/x-parameters/" + token}]
+    with pytest.raises(ToolError) as rejected:
+        selection(document)
+    assert rejected.value.details == {"reason": "invalid_reference_target"}
+
+
+@pytest.mark.parametrize("token", ["%30", "nested%2FId"])
+def test_reference_uri_decoding_precedes_pointer_token_and_array_resolution(token):
+    document = source()
+    parameter = operation(document)["parameters"][0]
+    document["x-parameters"] = [parameter] if token == "%30" else {"nested": {"Id": parameter}}
+    operation(document)["parameters"] = [{"$ref": "#/x-parameters/" + token}]
+    assert prepare_request(selection(document), {"id": "original"}).endpoint.endswith("/original")
+
+
 @pytest.mark.parametrize(
     "damage",
     [

@@ -7,8 +7,8 @@ extension on LangGraph with SQLite and PostgreSQL: the producer commits one
 reducer delta, reaches a durable wait, and is killed; a new process resumes the
 invocation, checks the final reduced value contains the delta once, and verifies
 a duplicate terminal resume does not change the result. The SQLite selection
-passes locally; PostgreSQL and the full validation batch await hosted
-qualification.
+passes locally; PostgreSQL and exact-source hosted qualification remain
+pending.
 
 The recovery selector is
 `tests/contract/test_native_channel_process_recovery.py::test_process_stop_preserves_committed_native_channel_delta`.
@@ -18,9 +18,11 @@ The independent in-process reducer/privacy selectors are in
 A further integration regression exercises the `last_value` reducer through
 metadata admission, a real writer task, and a later reader task. It confirms
 that an object value replaces the declared initial object and is visible
-through the selected reader binding. This test is authored and awaits the final
-validation batch; it does not qualify other reducers, nested/parallel writers,
-or the wider S4-02 scope.
+through the selected reader binding. Its focused local selection passes; it
+does not qualify other reducers, nested/parallel writers, or the wider S4-02
+scope. The run/pause/resume wait-boundary case was included in the consolidated
+local batch where runnable; PostgreSQL and exact-source hosted qualification
+remain pending.
 
 This slice implements only declared LangGraph channels and reducers under the exact required extension declaration `langgraph.channels@1.0.0`. Its payload is stored at `document.metadata.owa.nativeExtensionData["langgraph.channels@1.0.0"]` and contains only `channels` and `reads`. It does not change the vendored OWS 1.0.3 schema or expose the derived execution plan.
 
@@ -32,4 +34,5 @@ The first slice deliberately excludes value schemas, nested or parallel
 writers, Command/Send, memory, streams, state-update APIs, replay, and time
 travel. Focused coverage now exercises admission, task-order reduction, reader
 visibility, checkpoint privacy, and oversized output rejection. Capability
-advertising and task completion remain gated on the final batch validations.
+advertising and task completion remain gated on exact-source hosted and
+PostgreSQL validation.

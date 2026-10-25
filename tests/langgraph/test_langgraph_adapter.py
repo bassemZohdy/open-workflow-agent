@@ -1,4 +1,11 @@
+import asyncio
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+import pytest
 from open_workflow_agent.config import AgentConfig, ModelConfig
+from open_workflow_agent.engine import PortableWorkflowEngine
+from open_workflow_agent.errors import ConfigurationError
 from open_workflow_agent.tools import AgentToolBinding
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 from open_workflow_agent_langgraph.agent import LangGraphAgentFactory
@@ -55,3 +62,39 @@ def test_native_backend_availability_does_not_require_sqlite_for_postgres(monkey
     adapter.database_path = "postgresql://example.test/runtime"
     monkeypatch.setattr(native, "AsyncPostgresSaver", None)
     assert not adapter.task_nodes_available
+
+
+@pytest.mark.asyncio
+async def test_postgres_rejects_proactor_before_starting_services(monkeypatch):
+    import open_workflow_agent_langgraph.native as native
+
+    monkeypatch.setattr(native, "LANGGRAPH_AVAILABLE", True)
+    monkeypatch.setattr(native, "AsyncPostgresSaver", object())
+    monkeypatch.setattr(
+        asyncio, "ProactorEventLoop", type(asyncio.get_running_loop()), raising=False
+    )
+    started = AsyncMock()
+    monkeypatch.setattr(PortableWorkflowEngine, "initialize", started)
+    services = SimpleNamespace(
+        engine_database_path=lambda engine, **kwargs: "postgresql://private:secret@invalid/runtime"
+    )
+    with pytest.raises(ConfigurationError) as raised:
+        await LangGraphWorkflowEngine().initialize(services)
+    assert raised.value.details == {"reason": "unsupported_event_loop"}
+    assert "secret" not in str(raised.value) and "private" not in str(raised.value)
+    started.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("simulate_proactor", [False, True])
+async def test_sqlite_initialization_does_not_require_selector_loop(
+    services, monkeypatch, simulate_proactor
+):
+    marker = type(asyncio.get_running_loop()) if simulate_proactor else type("OtherLoop", (), {})
+    monkeypatch.setattr(asyncio, "ProactorEventLoop", marker, raising=False)
+    engine = LangGraphWorkflowEngine()
+    try:
+        await engine.initialize(services)
+        assert engine.native.database_path.endswith("langgraph-checkpoints.sqlite3")
+    finally:
+        await engine.shutdown()

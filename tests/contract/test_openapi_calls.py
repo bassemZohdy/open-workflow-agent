@@ -212,6 +212,9 @@ async def test_registered_import_uses_original_parent_authority_for_inner_operat
         plan = compile_workflow(definition, trusted_catalogs=services.external_catalogs.policies)
         assert plan.imports == ()
         await engine.initialize(services)
+        # Cold SDK source attestation is setup for this authority witness,
+        # not part of its 15-second operation/synchronization budget.
+        await asyncio.wait_for(services.recovery_definitions.prepare_profile(engine_name), 60)
         invocation = handle(services, engine_name, plan)
         invoke_frozen = services.external_catalogs.invoke_frozen
         invoke_prepared = services.external_catalogs.invoke_prepared
@@ -523,6 +526,84 @@ async def test_native_operation_fetches_description_and_dispatches_exact_admitte
             services.invocations.read_input(invocation) == {"original": None}
             and services.model.calls == []
         )
+    finally:
+        await engine.shutdown()
+        services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("engine_name,engine_type", ENGINES)
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+@pytest.mark.parametrize("reference_kind", ["invalid-escape", "negative-index"])
+async def test_invalid_selected_reference_faults_before_business_dispatch(
+    tmp_path, engine_name, engine_type, backend, reference_kind
+):
+    engine = engine_type()
+    actual_native(engine, engine_name)
+    receiver = Receiver()
+    operation = receiver.description["paths"]["/items/{id}"]["get"]
+    parameter = operation["parameters"][0]
+    if reference_kind == "invalid-escape":
+        receiver.description["components"] = {"parameters": {"Id~2": parameter}}
+        reference = "#/components/parameters/Id~2"
+    else:
+        receiver.description["x-parameters"] = [parameter]
+        reference = "#/x-parameters/-1"
+    operation["parameters"] = [{"$ref": reference}]
+    services = runtime(tmp_path, backend, engine_name)
+    receiver.install(services)
+    try:
+        await engine.initialize(services)
+        plan = compile_workflow(source())
+        invocation = handle(services, engine_name, plan)
+        result = await asyncio.wait_for(engine.invoke(plan, invocation, {}), 15)
+        assert result.status == "faulted", result
+        assert result.error["code"] == "tool_error"
+        assert result.error["details"]["reason"] == "invalid_reference_target"
+        assert [(request.method, str(request.url)) for request in receiver.calls] == [
+            ("GET", DOCUMENT)
+        ]
+        assert identities(services, invocation.invocation_id) == []
+        assert services.model.calls == []
+    finally:
+        await engine.shutdown()
+        services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("engine_name,engine_type", ENGINES)
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+@pytest.mark.parametrize("name,token", [("Id entry", "Id%20entry"), ("Id%20entry", "Id%2520entry")])
+async def test_encoded_reference_uses_decoded_parameter_before_native_dispatch(
+    tmp_path, engine_name, engine_type, backend, name, token
+):
+    engine = engine_type()
+    actual_native(engine, engine_name)
+    receiver = Receiver()
+    operation = receiver.description["paths"]["/items/{id}"]["get"]
+    parameter = operation["parameters"][0]
+    receiver.description["x-parameters"] = {
+        name: parameter,
+        token: {**parameter, "schema": {"type": "integer"}},
+    }
+    operation["parameters"] = [{"$ref": "#/x-parameters/" + token}]
+    services = runtime(tmp_path, backend, engine_name)
+    receiver.install(services)
+    try:
+        await engine.initialize(services)
+        # Prepare cold artifact attestation separately from the operation bound.
+        await asyncio.wait_for(services.recovery_definitions.prepare_profile(engine_name), 60)
+        plan = compile_workflow(source())
+        invocation = handle(services, engine_name, plan)
+        result = await asyncio.wait_for(engine.invoke(plan, invocation, {}), 15)
+        assert result.status == "completed" and result.output == {"id": "original/value"}, result
+        assert [(request.method, str(request.url)) for request in receiver.calls] == [
+            ("GET", DOCUMENT),
+            ("GET", SERVER + "/items/original%2Fvalue"),
+        ]
+        assert len(identities(services, invocation.invocation_id)) == 1
+        assert any(native_snapshot(services, invocation, backend).values())
+        assert services.model.calls == []
     finally:
         await engine.shutdown()
         services.close()

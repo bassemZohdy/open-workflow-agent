@@ -2243,3 +2243,37 @@ source batch before the fixture-only rerun. Exact-source hosted CI, PostgreSQL,
 Agent Framework, External Sandbox, Security, and Docs requalification is still
 required; no backlog checkbox or feature is marked complete from this local
 run.
+
+### PostgreSQL exact-head result for source 5900c02
+
+Hosted PostgreSQL CI at exact source `5900c026c7e54cc6a63c54dc867ae4f466fd6b81`
+reported **1 failure, 1,987 passed, and 3 skipped**. The failing case was
+`test_protected_approval_queue_enforces_exact_pending_capacity[postgresql]`.
+Its fixture assumed the approval queue and protected-request table started
+empty, which is not guaranteed by the shared PostgreSQL test database. The
+fixture now captures both pre-existing row counts and checks the exact-capacity
+rejection and persisted totals relative to those baselines. This is a test-only
+correction; it does not change queue behavior. The corrected case awaits
+consolidated revalidation, and S3-05 remains unchecked pending that validation.
+
+### Working-tree encoded references and image follow-up — 2026-10-25
+
+The OpenAPI/pure AsyncAPI URI-fragment correction passes 309 common checks;
+adapter/build/development-automation guards pass 16. Both principal engines pass
+the four new Windows native SQLite/PostgreSQL witnesses, with the required
+selector loop for Windows LangGraph PostgreSQL. The unsupported Proactor profile
+now fails initialization with a sanitized common configuration error. Strict
+mypy passes 136 modules; Ruff, formatting and documentation checks pass.
+
+The first frozen Docker candidate passes 74 native OpenAPI call/process checks
+per engine across SQLite and PostgreSQL, plus seven LangGraph adapter checks.
+The final optional-import lookup correction passes 57 LangGraph call/adapter
+checks on its rebuilt image. Both final production images pass all packaged and
+restricted-sandbox scripts; installed changed-module hashes match source.
+Fresh root/core/LangGraph builds pass provenance and 250 source/resource byte
+comparisons. The real source-copy probe confirms model-layer cache reuse.
+
+These are local working-tree selections with separate first/final source and
+image records, not a whole-source or hosted qualification. Earlier failures and
+all task/feature gates remain preserved. See the
+[acceptance scope and retained evidence](../s3-03-operation-adapters-acceptance.md#encoded-reference-and-host-admission-follow-up--2026-10-25).

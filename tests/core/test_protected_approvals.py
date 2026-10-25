@@ -234,7 +234,12 @@ async def test_protected_approval_queue_enforces_exact_pending_capacity(approval
     services, _, _ = approval_runtime
     protected = services.approvals.protected_store
     assert protected is not None
-    protected.max_pending = 1
+    pending_query = f"SELECT COUNT(*) FROM {services.approvals.store._table} WHERE status='pending'"
+    baseline_pending = services.approvals.store._execute(pending_query).fetchone()[0]
+    baseline_requests = services.effect_journal.connection.execute(
+        f"SELECT COUNT(*) FROM {protected.requests}"
+    ).fetchone()[0]
+    protected.max_pending = baseline_pending + 1
     existing, _, _ = await seed(approval_runtime)
     before = snapshot(services, existing)
 
@@ -242,17 +247,12 @@ async def test_protected_approval_queue_enforces_exact_pending_capacity(approval
         await seed(approval_runtime)
 
     assert snapshot(services, existing) == before
-    assert (
-        services.approvals.store._execute(
-            f"SELECT COUNT(*) FROM {services.approvals.store._table} WHERE status='pending'"
-        ).fetchone()[0]
-        == 1
-    )
+    assert services.approvals.store._execute(pending_query).fetchone()[0] == baseline_pending + 1
     assert (
         services.effect_journal.connection.execute(
             f"SELECT COUNT(*) FROM {protected.requests}"
         ).fetchone()[0]
-        == 1
+        == baseline_requests + 1
     )
 
 
@@ -1313,7 +1313,7 @@ async def test_actor_decision_uses_atomic_protected_path_without_preflight_read(
         operator_id=principal.identity,
         actor=principal,
         revision=1,
-        operation_key="atomic-protected-decision",
+        operation_key="atomic-protected-decision-" + subject,
         value={"allowed": True},
     )
 
@@ -1325,7 +1325,7 @@ async def test_actor_decision_uses_atomic_protected_path_without_preflight_read(
 @pytest.mark.asyncio
 async def test_actor_decision_rejects_legacy_and_unknown_approval_ids(approval_runtime):
     services, _, _ = approval_runtime
-    legacy_id = "legacy-actor-denied"
+    legacy_id = "legacy-actor-denied-" + uuid4().hex
     services.approvals.store.create_request(
         EventEnvelope(
             id=legacy_id,

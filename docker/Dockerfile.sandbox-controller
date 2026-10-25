@@ -24,14 +24,18 @@ ENV PATH="/opt/venv/bin:/usr/local/bin:/usr/bin:/bin" \
 WORKDIR /app
 COPY sandbox-controller /app/sandbox-controller
 COPY LICENSE /app/LICENSE
-RUN pip install --no-cache-dir /app/sandbox-controller \
+RUN pip install --no-cache-dir "uv==0.11.26" \
+    && uv export --directory /app/sandbox-controller --locked --no-dev \
+       --no-emit-project --format requirements-txt --output-file /tmp/controller-requirements.txt \
+    && pip install --no-cache-dir --require-hashes --no-deps -r /tmp/controller-requirements.txt \
+    && pip install --no-cache-dir --no-deps /app/sandbox-controller \
     # Remove the package managers and ensurepip seeds after installation: the
     # controller installs nothing at runtime, and pip's vendored msgpack and
     # pkg_resources copies would otherwise persist as permanent scanned
     # attack surface that only a pip release can fix.
-    && pip uninstall -y pip \
+    && pip uninstall -y pip uv \
     && /usr/bin/python3 -m pip uninstall --break-system-packages -y pip \
-    && rm -rf /usr/lib/python3*/ensurepip /opt/venv/lib/python3*/ensurepip \
+    && rm -rf /usr/lib/python3*/ensurepip /opt/venv/lib/python3*/ensurepip /tmp/controller-requirements.txt \
     && mkdir -p /run/owa-sandbox \
     && chown 65532:0 /run/owa-sandbox \
     && chmod 0770 /run/owa-sandbox

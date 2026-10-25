@@ -45,6 +45,7 @@ env:
 
 jobs:
   contract:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: External sandbox contracts
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -113,6 +114,7 @@ jobs:
               tests/contract/test_container_sandbox_contract.py
 
   kubernetes-controller-image:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: Kubernetes sandbox controller image
     runs-on: ubuntu-latest
     needs: contract
@@ -137,6 +139,7 @@ jobs:
           test "$user" = "65532:65532"
 
   docker:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: Docker external sandbox ${{ matrix.engine }} acceptance
     runs-on: ubuntu-latest
     needs: contract

@@ -6,6 +6,11 @@ deterministic fake-model workflow for ADK and LangGraph with SQLite and actual
 PostgreSQL, using locked engine environments. No paid provider or external
 business endpoint is used.
 
+The matched-harness and aggregate-guard tests passed in the corrected
+consolidated local batch. A fresh four-cell hosted report for that exact source
+batch remains pending; retained measurements below are from an earlier exact
+source and do not substitute for requalification.
+
 Each engine/backend profile performs five warm-up invocations, thirty measured
 sequential invocations, one eight-invocation concurrent wave, and three
 restart/resume samples. It emits nearest-rank p50/p95 and mean latency, measured

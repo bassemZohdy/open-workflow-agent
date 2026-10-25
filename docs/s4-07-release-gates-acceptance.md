@@ -1,7 +1,8 @@
 # S4-07 release gates and publication evidence
 
-Status: workflow guards are authored and unvalidated as a combined source
-batch. S4-07 remains open. Publication follows successful main-push CI and
+Status: local workflow guards and release metadata checks passed in the
+corrected consolidated batch; S4-07 remains open pending exact-source hosted
+qualification. Publication follows successful main-push CI and
 requires successful PostgreSQL, External Sandbox, Security, and Docs runs for
 the same commit. Missing runs remain pending until timeout; failed runs stop
 publication. Agent Framework remains an optional evaluation adapter and is not
@@ -25,7 +26,7 @@ waits for both runtime and controller publication.
 A release-workflow regression now requires both runtime and controller image
 publication paths to carry the verified source URL, project version, and exact
 workflow-run commit as OCI labels, while preserving SBOM and provenance
-generation. This guard is authored and awaits the final validation batch.
+generation. The guard passed in the consolidated local suite.
 
 The `370d9cd` hosted root-quality run also exposed a 5-second readiness timeout
 in a sandbox control-fence fixture under runner load. The test now provides a
@@ -34,7 +35,12 @@ locally. Exact-head hosted requalification remains pending.
 
 Final acceptance must validate the Release workflow, exact-head gate selectors,
 all required hosted workflows, package/image metadata, and rollback records on
-one unchanged source commit. This record does not claim a release, production
+one unchanged source commit. Exact-head hosted runs for the corrected source
+batch—including Security after its audit-resolver adjustment—remain pending.
+The focused local Security audit uses pip-audit's `--disable-pip` mode with the
+fully pinned export and confirms FastEmbed and Pillow remain in the report; it
+does not substitute for that hosted exact-head gate.
+This record does not claim a release, production
 deployment, or successful qualification for the current source. It does not
 change repository rulesets, environment protection, support policy, or public
 isolation guarantees.

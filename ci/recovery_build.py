@@ -37,6 +37,8 @@ def verify_wheel(wheel: Path, project: Path) -> dict[str, Any]:
             value = json.loads(archive.read(record))
             if value != expected:
                 raise ValueError("recovery build record does not match package inputs")
+            if f"{Path(packages[0]).name}/__init__.py" not in archive.namelist():
+                raise ValueError("wheel package initialization is missing")
     except (KeyError, UnicodeError, json.JSONDecodeError, zipfile.BadZipFile):
         raise ValueError("wheel recovery build record is missing or invalid") from None
     return {**expected, "wheel_sha256": hashlib.sha256(wheel.read_bytes()).hexdigest()}
