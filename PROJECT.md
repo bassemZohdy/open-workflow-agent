@@ -32,7 +32,8 @@ Root has 5,197 passes and 90.26% coverage; all six workflows pass. See the
 
 S4-02 is the next ordered ready task. Later bounded Send implementation has
 focused physical/store proof and frozen default-fork checks; PostgreSQL-only
-test setup and an owned wait/end race are being corrected. Native memory,
+test setup and an owned wait/end race are corrected locally and await frozen
+qualification. Native memory,
 streams, state updates, replay and time travel remain open.
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
@@ -79,7 +80,7 @@ JavaScript conformance.
 | S2-09 | Finite VM01-VM08 continuation/recovery policy verified at PR head 9578459; A086/T44 in-place mapping remains unsupported. | [Version recovery](docs/s2-09-version-recovery-acceptance.md) |
 | S3-01 | Finite Python MCP01-MCP08 profile verified at exact source `af4acd6`; full MCP/JS and proposed-test scope remains separate. | [MCP acceptance](docs/s3-01-mcp-acceptance.md), [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6) |
 | S3-02 | Finite Python A2A profile verified at exact source `3b6b329`; all six hosted workflows passed. Durable Task/receipt expiry, push, delegated identity, JavaScript and full proposed criteria remain outside this qualification. | [A2A acceptance](docs/s3-02-a2a-acceptance.md), [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329) |
-| S3-03 | Finite runtime gates pass at `d72781f`. The background-profile publication candidate and subsequent source qualification remain open; deployment opt-in stays disabled by default. | [Operation adapters](docs/s3-03-operation-adapters-acceptance.md), [qualification](docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f) |
+| S3-03 | Finite operation/background profile verified at `f66cd23`; deployment opt-in stays disabled by default. | [Operation adapters](docs/s3-03-operation-adapters-acceptance.md#exact-source-qualification-f66cd23), [qualification](docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-f66cd23) |
 | S3-04 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s3-04-executable-source-acceptance.md#exact-source-qualification-d72781f) |
 | S3-05 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s3-05-protected-approval-acceptance.md#exact-source-qualification-d72781f) |
 | S3-06 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s3-06-identity-security-acceptance.md#exact-source-qualification-d72781f) |

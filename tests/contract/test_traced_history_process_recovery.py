@@ -36,6 +36,11 @@ def run_case(tmp_path, backend, name, engine_type, *, native_send=False):
         pytest.skip("actual independent native SDK required")
     if backend == "postgresql" and not os.getenv("OWA_TEST_POSTGRES_URL"):
         pytest.skip("actual PostgreSQL datasource required")
+    if backend == "sqlite" and name == "langgraph":
+        from open_workflow_agent_langgraph import native
+
+        if native.AsyncSqliteSaver is None:
+            pytest.skip("SQLite checkpoint dependency is absent from the PostgreSQL-only profile")
     (tmp_path / "scenario.json").write_text(
         json.dumps(
             {"engine": name, "backend": backend, "name": uuid4().hex, "native_send": native_send}

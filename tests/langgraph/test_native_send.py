@@ -55,6 +55,7 @@ async def test_actual_send_packets_launch_ordered_common_branches(
     )
     engine = LangGraphWorkflowEngine()
     await engine.initialize(services)
+    engine.native.database_path = None
     try:
         await services.recovery_definitions.prepare_profile("langgraph")
         handle = services.invocations.create(
@@ -78,7 +79,9 @@ async def test_actual_send_packets_launch_ordered_common_branches(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("outcome", ["end", "fault"])
-async def test_common_end_and_fault_drain_native_dispatched_siblings(services, outcome):
+async def test_common_end_and_fault_drain_native_dispatched_siblings(
+    services, monkeypatch, outcome
+):
     first = (
         {"winner": {"set": {"ended": True}, "then": "end"}}
         if outcome == "end"
@@ -97,6 +100,24 @@ async def test_common_end_and_fault_drain_native_dispatched_siblings(services, o
     plan = plan_for([first, {"waiting": {"wait": {"seconds": 300}}}])
     engine = LangGraphWorkflowEngine()
     await engine.initialize(services)
+    engine.native.database_path = None
+    waiting = asyncio.Event()
+    original_update = services.invocations.update
+    original_task = engine.executor._run_task
+
+    def update(handle, **changes):
+        result = original_update(handle, **changes)
+        if changes.get("status") == "waiting":
+            waiting.set()
+        return result
+
+    async def run_task(name, definition, state):
+        if name == "winner":
+            await waiting.wait()
+        return await original_task(name, definition, state)
+
+    monkeypatch.setattr(services.invocations, "update", update)
+    monkeypatch.setattr(engine.executor, "_run_task", run_task)
     try:
         await services.recovery_definitions.prepare_profile("langgraph")
         handle = services.invocations.create(
@@ -127,6 +148,7 @@ async def test_unsupported_send_scope_rejects_before_invocation_or_native_mutati
     engine = LangGraphWorkflowEngine()
     await engine.initialize(services)
     path = Path(engine.native.database_path)
+    engine.native.database_path = None
     try:
         before = list(services.invocations.connection.raw.iterdump())
         with pytest.raises(UnsupportedWorkflowFeature, match="non-competing"):

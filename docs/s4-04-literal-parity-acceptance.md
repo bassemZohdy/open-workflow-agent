@@ -55,3 +55,11 @@ blob bytes because of CRLF checkout conversion. The next candidate pins these
 fixtures to LF on every platform, requires a clean checkout, and will regenerate
 portable capture evidence. Expected ADK error-node tracebacks are quieted only
 inside declared-fault development captures; outcome verification is unchanged.
+
+The corrected portable Windows cohort at
+`7d1a37b0b405a9a251049433ff8f918485db2911` independently captures and matches
+all 13 outcomes on those three pinned SDKs. Fixture bytes match the Git blobs;
+the reports and aggregate are retained under
+`tmp/javascript-sandbox-20261025/7d1a37b/`. This qualifies the local literal
+comparison only. Hosted Linux execution and the broader S4-04 criteria remain
+pending.

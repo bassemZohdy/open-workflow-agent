@@ -18,6 +18,80 @@ from test_durable_timers import _handle, _idle_wait, _services, _terminal, _use_
 @pytest.mark.parametrize("engine_name,engine_type", engine_cases())
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 @pytest.mark.parametrize("compete", [False, True])
+async def test_owned_workflow_end_after_sibling_wait_uses_existing_running_transition(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    engine_name: str,
+    engine_type: Any,
+    backend: str,
+    compete: bool,
+) -> None:
+    model = FakeModel()
+    services = _services(tmp_path, backend, model)
+    engine = engine_type()
+    waiting = asyncio.Event()
+    transitions: list[str] = []
+    await engine.initialize(services)
+    await engine._timer_dispatcher.stop()
+    original_update = services.invocations.update
+    original_task = engine.executor._run_task
+
+    def update(handle: Any, **changes: Any) -> Any:
+        result = original_update(handle, **changes)
+        if "status" in changes:
+            transitions.append(changes["status"])
+        if changes.get("status") == "waiting":
+            waiting.set()
+        return result
+
+    async def run_task(name: str, definition: Any, state: Any) -> Any:
+        if name == "winner":
+            await waiting.wait()
+        return await original_task(name, definition, state)
+
+    monkeypatch.setattr(services.invocations, "update", update)
+    monkeypatch.setattr(engine.executor, "_run_task", run_task)
+    plan = compile_workflow(
+        _workflow(
+            [
+                {
+                    "parallel": {
+                        "fork": {
+                            "compete": compete,
+                            "branches": [
+                                {"winner": {"set": {"ended": True}, "then": "end"}},
+                                {"paused": {"wait": {"seconds": 300}}},
+                            ],
+                        }
+                    }
+                },
+                {"never": {"call": "llm:1.0.0@default"}},
+            ],
+            "end-after-sibling-wait",
+        )
+    )
+    handle = _handle(services, engine_name, plan)
+    try:
+        await services.recovery_definitions.prepare_profile(engine_name)
+        result = await asyncio.wait_for(engine.invoke(plan, handle, {}), timeout=20)
+        assert result.status == "completed" and result.output == {"ended": True}, result.error
+        assert waiting.is_set() and "waiting" in transitions
+        assert transitions[-1] == "completed"
+        last_wait = len(transitions) - 1 - transitions[::-1].index("waiting")
+        assert "running" in transitions[last_wait + 1 :]
+        assert services.invocations.get(handle.invocation_id).status == "completed"
+        again = await engine.resume(handle, {"ignored": True}, plan)
+        assert again.status == "completed" and again.output == {"ended": True}
+        assert model.calls == []
+    finally:
+        await engine.shutdown()
+        services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("engine_name,engine_type", engine_cases())
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+@pytest.mark.parametrize("compete", [False, True])
 async def test_all_waiting_fork_branches_release_execution_and_keep_original_due_times(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -75,9 +149,13 @@ async def test_all_waiting_fork_branches_release_execution_and_keep_original_due
         )
         assert services.fork_decisions.get(identity) is None and model.calls == []
         now = 1060.0
-        await dispatcher.tick(now=now, invocation_id=handle.invocation_id)
+        admitted = await dispatcher.tick(now=now, invocation_id=handle.invocation_id)
+        assert admitted == 1, [(type(error).__name__, str(error)) for error in dispatcher._errors]
         if not compete:
             await _idle_wait(engine, services, handle.invocation_id)
+            assert not dispatcher._errors, [
+                (type(error).__name__, str(error)) for error in dispatcher._errors
+            ]
             pending = services.timers.pending_for_invocation(handle.invocation_id, plan.fingerprint)
             assert len(pending) == 1 and pending[0].due_at == 1120
             assert model.calls == [] and services.fork_decisions.get(identity) is None

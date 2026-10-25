@@ -24,6 +24,37 @@ scope. The run/pause/resume wait-boundary case was included in the consolidated
 local batch where runnable; PostgreSQL and exact-source hosted qualification
 remain pending.
 
+## Owned wait/end and optional-store follow-up — 2026-10-25
+
+The PostgreSQL-only native CI environment intentionally lacks the optional
+SQLite saver. In-process Send cases now explicitly use the native memory saver,
+as other adapter tests do; physical recovery still uses the actual selected
+SQLite or PostgreSQL saver. Only physical SQLite cells skip when that dependency
+is absent. The exact PostgreSQL-only native task/Send/channel-process selection
+passes **30 tests with 17 optional-profile skips** on Windows with the supported
+Selector loop. Its genuine PostgreSQL physical recovery cells run.
+
+A deterministic barrier reproduced a separate common lifecycle race: an ending
+branch could win after a sibling recorded `waiting`, then attempt the forbidden
+`waiting -> completed` transition. Completion now restores `running` through the
+existing owned update before completing. It does not widen the lifecycle table,
+bypass ownership or treat diagnostic history as recovery authority. Regressions
+cover competing and ordinary forks, both principal engines and both stores,
+including terminal duplicate resume and zero model calls. The ADK native/timer
+selection passes **15 tests**; the isolated PostgreSQL-only LangGraph timer
+selection passes **4 tests**. Earlier SQLite selections pass **20 LangGraph
+tests with 9 unconfigured PostgreSQL skips**, and **8 ADK tests with 8 skips**.
+
+An earlier concurrent PostgreSQL-only timer selection had **2 passes and 2
+failures** in the existing all-waiting cases: one retained both timers after the
+first wake, and one reached the unchanged terminal deadline. The isolated
+four-case rerun passes. Added claim/error assertions preserve more useful
+evidence if the dispatcher fails again; these results do not establish the
+cause of that intermittent failure. The unrelated hosted `381b2c0` Windows
+scoped-fork five-second timeout also remains recorded without relaxing its
+deadline or claiming this lifecycle fix resolves it. Frozen Linux and hosted
+qualification are required before accepting this batch.
+
 This slice implements only declared LangGraph channels and reducers under the exact required extension declaration `langgraph.channels@1.0.0`. Its payload is stored at `document.metadata.owa.nativeExtensionData["langgraph.channels@1.0.0"]` and contains only `channels` and `reads`. It does not change the vendored OWS 1.0.3 schema or expose the derived execution plan.
 
 Each channel has `{id,reducer,initial,writes}`. The supported reducers are `append` for JSON arrays and `last_value` for any admitted JSON-safe value. Writers and readers bind only to direct root `/do/<index>` references. Writers are normalized to root task order. A reader receives only its selected channel values through the temporary `$owa_native_channels` expression variable for that task; the variable is removed before snapshotting task state.

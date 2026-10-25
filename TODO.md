@@ -219,6 +219,11 @@ treated as a deferred task or as additional feature completion.
   the actual SDK while core retains join/end/error/receipt policy. Thirteen
   focused cases include physical SQLite/PostgreSQL recovery; Linux/full-source
   and frozen default-fork regression qualification remain pending.
+  A later fix restores the existing owned waiting/running/completed transitions
+  when an ending branch wins after a sibling waits. Deterministic regressions
+  cover both fork modes. The PostgreSQL-only native selection passes 30 cases;
+  current-source qualification remains required. See the acceptance record for
+  retained failures, skips and isolated reruns.
   A bounded required `langgraph.command@1.0.0` candidate now uses real SDK
   Command updates and per-scope transitions without a new public payload.
   Required/optional root/nested routes and ADK admission rejection pass locally.
@@ -270,8 +275,9 @@ treated as a deferred task or as additional feature completion.
 - [ ] **S4-04** (L) — Automate official CTK plus all proposed tests, schema constraints, parity and cross-engine outcome checks.
   A finite comparison candidate captures the 13 shared literal success/fault
   outcomes from actual ADK, LangGraph Python and Node, then requires matched
-  source/SDK/runtime/fixture/schema evidence in CI. Native capture and full-source
-  qualification remain pending; no proposed/schema criterion is promoted.
+  source/SDK/runtime/fixture/schema evidence in CI. All 13 actual Windows native
+  outcomes match at `7d1a37b`, with fixture bytes matching Git. Hosted/full-source
+  qualification remains pending; no proposed/schema criterion is promoted.
   `resources/compatibility/coverage-bridge.json` now inventories all 443
   proposed test IDs and 774 schema-constraint rows. Every row remains explicitly
   unmapped and unexecuted because partial overlap is not evidence of equivalent

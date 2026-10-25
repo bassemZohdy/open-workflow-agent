@@ -1711,6 +1711,16 @@ class WorkflowExecutor:
             )
             validate_expression_data(result)
             self._validate_data_schema(output, result, "workflow output", state)
+            handle = state.metadata.get("_invocation_handle")
+            if (
+                state.flow.ended.is_set()
+                and isinstance(handle, ExecutionHandle)
+                and handle.status == "waiting"
+            ):
+                # A parallel sibling may register its wait before the ending
+                # branch wins. Execution never released ownership: finish via
+                # the existing owned waiting->running->completed transitions.
+                self._set_invocation_status(state, "running")
             self._set_invocation_status(state, "completed", output=result, error=None)
         except InvocationCancelled as exc:
             if getattr(self._control(state), "interruption_reason", None) in {

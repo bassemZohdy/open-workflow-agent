@@ -304,7 +304,7 @@ async def capture(engine_name: str, source: str) -> dict[str, Any]:
                         workflow_version=plan.version,
                         workflow_fingerprint=plan.fingerprint,
                     )
-                    logger = logging.getLogger("google.adk.workflow._node_runner")
+                    logger = logging.getLogger("google_adk.google.adk.workflow._node_runner")
                     previous_level = logger.level
                     if index == 1 and engine_name == "adk":
                         logger.setLevel(logging.CRITICAL)
