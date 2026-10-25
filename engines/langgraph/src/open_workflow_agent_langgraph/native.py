@@ -26,11 +26,26 @@ from open_workflow_agent.ownership import (
 from open_workflow_agent.storage import is_postgresql_datasource
 from open_workflow_agent.workflow import WorkflowExecutor, WorkflowPlan
 
+from .native_memory_setup import memory_setup_lock
+
 NATIVE_SCOPE_STEP_LIMIT = 1000000
 
 # None is a native resume signal. A private bytes value preserves JSON null
 # without changing existing non-null checkpoint inputs or colliding with JSON.
 _NULL_INPUT = b"owa/null-input/v1"
+
+
+async def _prepare_saver(saver: Any, path: str) -> None:
+    """Serialize SDK migrations across connections/processes, not workflow runs."""
+    try:
+        async with asyncio.timeout(10):
+            async with memory_setup_lock(saver, path, postgresql=is_postgresql_datasource(path)):
+                await saver.setup()
+    except Exception:
+        raise WorkflowExecutionError(
+            "native checkpoint storage setup failed", details={"reason": "checkpoint_setup_failure"}
+        ) from None
+
 
 try:
     from langgraph.checkpoint.memory import InMemorySaver
@@ -162,7 +177,7 @@ class LangGraphFunctionalAdapter:
             if self._prepared_database_path == path:
                 return
             async with AsyncSqliteSaver.from_conn_string(path) as saver:
-                await saver.setup()
+                await _prepare_saver(saver, path)
             self._prepared_database_path = path
 
     def compile(
@@ -204,12 +219,12 @@ class LangGraphFunctionalAdapter:
                     "PostgreSQL LangGraph persistence requires langgraph-checkpoint-postgres"
                 )
             async with AsyncPostgresSaver.from_conn_string(self.database_path) as saver:
-                await saver.setup()
+                await _prepare_saver(saver, self.database_path)
                 graph = self.compile(runner, checkpointer=saver)
                 return await graph.ainvoke(input_data, config=config)
         if self.database_path and AsyncSqliteSaver is not None:
             async with AsyncSqliteSaver.from_conn_string(self.database_path) as saver:
-                await saver.setup()
+                await _prepare_saver(saver, self.database_path)
                 graph = self.compile(runner, checkpointer=saver)
                 return await graph.ainvoke(input_data, config=config)
         graph = self.compile(runner)
@@ -404,14 +419,15 @@ class LangGraphFunctionalAdapter:
                     "PostgreSQL LangGraph persistence requires langgraph-checkpoint-postgres"
                 )
             async with _FencedAsyncPostgresSaver.from_conn_string(self.database_path) as saver:
-                await saver.setup()
+                await _prepare_saver(saver, self.database_path)
                 saver._execution_fence = _execution_fence
                 if _execution_fence is not None:
                     saver._native_write_database = self.database_path
                 return await run(saver)
         if self.database_path and AsyncSqliteSaver is not None:
             async with _FencedAsyncSqliteSaver.from_conn_string(self.database_path) as sqlite_saver:
-                await run_native_storage_write(sqlite_saver.setup)
+                sqlite_path = self.database_path
+                await run_native_storage_write(lambda: _prepare_saver(sqlite_saver, sqlite_path))
                 if _execution_fence is not None:
                     await install_sqlite_native_fence(
                         sqlite_saver.conn,
@@ -446,12 +462,12 @@ class LangGraphFunctionalAdapter:
                     "PostgreSQL LangGraph persistence requires langgraph-checkpoint-postgres"
                 )
             async with AsyncPostgresSaver.from_conn_string(self.database_path) as saver:
-                await saver.setup()
+                await _prepare_saver(saver, self.database_path)
                 graph = self.compile(runner, checkpointer=saver)
                 return await graph.ainvoke(Command(resume=resume_input), config=config)
         if self.database_path and AsyncSqliteSaver is not None:
             async with AsyncSqliteSaver.from_conn_string(self.database_path) as saver:
-                await saver.setup()
+                await _prepare_saver(saver, self.database_path)
                 graph = self.compile(runner, checkpointer=saver)
                 return await graph.ainvoke(Command(resume=resume_input), config=config)
         graph = self.compile(runner)
