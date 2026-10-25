@@ -192,3 +192,28 @@ async def test_provider_bound_read_receipt_in_actual_native_workflow(provider_se
     finally:
         await engine.shutdown()
         runtime.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("uri", [False, True])
+async def test_explicit_sqlite_datasource_uses_separate_native_database(tmp_path, uri):
+    common = tmp_path / "common.sqlite3"
+    config = RuntimeConfig(model={"provider": "fake"})
+    config.persistence.datasource = "sqlite:///" + common.as_posix() if uri else str(common)
+    services = RuntimeServices(config, model=FakeModel())
+    try:
+        native = services.memory_provider_database_path("langgraph", create_namespace=False)
+        assert native == str(tmp_path / "langgraph-memory.sqlite3")
+        assert native != services.datasource
+        async with providers.open_native_memory_provider(
+            services, provider_id="preferences", version="1.0.0"
+        ) as provider:
+            await provider.store.aput(("test",), "record", {"color": "blue"})
+        assert (
+            services.invocations.connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE name='store'"
+            ).fetchone()
+            is None
+        )
+    finally:
+        services.close()
