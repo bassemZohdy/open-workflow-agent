@@ -45,3 +45,13 @@ is cp1252, so locale-dependent decoding would change the Unicode fixture.
 The boundary/CLI/Unicode selection passes 24 tests, and the Node package passes
 49 tests including rejection of an unverified checkout without replacing an
 existing report. Actual native captures remain required.
+
+The first actual Windows capture cohort at
+`50c257b94d6a1dba9ba32bc051c604141f16c63a` matches all 13 outcomes on ADK 2.7.1,
+LangGraph Python 1.2.11 and LangGraph JS 1.4.21. Its raw files remain under
+`tmp/javascript-sandbox-20261025/50c257b/`. That cohort used the same Windows
+fixture bytes across all three producers; its raw hashes differ from the Git
+blob bytes because of CRLF checkout conversion. The next candidate pins these
+fixtures to LF on every platform, requires a clean checkout, and will regenerate
+portable capture evidence. Expected ADK error-node tracebacks are quieted only
+inside declared-fault development captures; outcome verification is unchanged.

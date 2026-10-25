@@ -19,6 +19,8 @@ async function main() {
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => ["PATH", "SYSTEMROOT", "WINDIR"].includes(key.toUpperCase())));
   const actual = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, env, encoding: "utf8", timeout: 5000, maxBuffer: 1024, stdio: ["ignore", "pipe", "ignore"] }).trim();
   if (actual !== values["source-commit"]) throw new Error("capture source differs from checkout");
+  const changed = execFileSync("git", ["status", "--porcelain", "--untracked-files=normal"], { cwd: root, env, encoding: "utf8", timeout: 5000, maxBuffer: 4096, stdio: ["ignore", "pipe", "ignore"] });
+  if (changed !== "") throw new Error("capture requires a clean source checkout");
   const hashes: Record<string, string> = {};
   const records: Record<string, unknown>[] = [];
   for (const [index, filename] of fixtures.entries()) {

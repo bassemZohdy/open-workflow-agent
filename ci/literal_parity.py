@@ -8,6 +8,7 @@ import hashlib
 import importlib
 import importlib.metadata
 import json
+import logging
 import os
 import platform
 import re
@@ -208,6 +209,23 @@ async def capture(engine_name: str, source: str) -> dict[str, Any]:
     ).stdout.strip()
     if actual != source:
         raise ParityError("literal capture source does not match its checkout")
+    changed = subprocess.run(
+        ["git", "status", "--porcelain", "--untracked-files=normal"],
+        cwd=ROOT,
+        env={
+            name: os.environ[name]
+            for name in ("PATH", "SYSTEMROOT", "WINDIR")
+            if name in os.environ
+        },
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        check=True,
+        timeout=5,
+    ).stdout
+    if changed:
+        raise ParityError("literal capture requires a clean source checkout")
     module_name, class_name, sdk_name = (
         ("open_workflow_agent_adk", "AdkWorkflowEngine", "google-adk")
         if engine_name == "adk"
@@ -258,11 +276,18 @@ async def capture(engine_name: str, source: str) -> dict[str, Any]:
                         workflow_version=plan.version,
                         workflow_fingerprint=plan.fingerprint,
                     )
-                    result = await engine.invoke(
-                        plan,
-                        handle,
-                        fixture["input"] if index == 0 else {"private": "not-error-data"},
-                    )
+                    logger = logging.getLogger("google.adk.workflow._node_runner")
+                    previous_level = logger.level
+                    if index == 1 and engine_name == "adk":
+                        logger.setLevel(logging.CRITICAL)
+                    try:
+                        result = await engine.invoke(
+                            plan,
+                            handle,
+                            fixture["input"] if index == 0 else {"private": "not-error-data"},
+                        )
+                    finally:
+                        logger.setLevel(previous_level)
                     field = "output" if result.status == "completed" else "error"
                     records.append(
                         {

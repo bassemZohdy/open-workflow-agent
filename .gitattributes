@@ -7,3 +7,6 @@ migration/reference/** binary
 
 # Shell scripts must use LF so Docker builds work on every host OS.
 *.sh text eol=lf
+
+# Cross-runtime outcome reports bind the exact shared fixture bytes.
+tests/fixtures/javascript-literal-*.json text eol=lf
