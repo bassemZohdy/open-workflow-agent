@@ -35,6 +35,7 @@ connection.commit()
 print('real independent job completed')
 """
 
+
 def _independent_job_timeout(services, job_id: str) -> AssertionError:
     """Return a timeout with bounded, value-free state for the parent artifact."""
     job = services.sandbox_jobs.get(job_id)
