@@ -20,6 +20,15 @@ provenance. Installing the frozen checkout's own locked environment resolves
 that mismatch; the three failed environment-smoke cases then pass. These partial
 runs and failures are retained, and are not passing qualification evidence.
 
+The initial Linux runs were interrupted after identifying test/environment
+corrections: ADK retained 388 passes, 16 skips and three failures; LangGraph
+retained 669 passes, 26 skips and six failures. No aggregate success is claimed.
+Some cross-adapter fallback cases correctly rejected the production-wheel test
+environment, which lacked CI's explicit editable-root provenance. The next
+test-only image setup installs that root at build time and checks both adapter
+profiles before running the suite. Production image provenance and runtime
+recovery guards remain unchanged.
+
 The initial native ADK run found a stale test expectation that a newly created
 handle had status `created`; the public contract initializes it as `running`.
 The corrected test compares the full common SQLite dump before/after unsupported
@@ -60,6 +69,33 @@ parser ingestion and retrieval with a deterministic local embedding. It passes
 with the patched parser; the security/build/knowledge selection passes 40 tests.
 Strict mypy passes four CI and 136 runtime/adapter modules. Ruff, changed-file
 formatting and documentation links pass.
+
+## Native credential witness correction
+
+The first native role-canary fixture was denied before credential resolution:
+the shared caller policy deliberately has no `credential.resolve` grant. Its
+provider also returns a JSON string, while the selected recipe requires an
+object with an `answer` field. The corrected witness grants only Alice access
+to that one named model secret and uses the standard `output.as` JSON transform,
+preserving the recipe's existing output schema. Lifecycle reads authenticate
+through the actual configured API profile and an exact `events.read` grant.
+
+The final witness also runs without the credential grant, where neither secret
+resolution nor provider dispatch may occur. Actual SDK checks pass all eight
+ADK/LangGraph × SQLite/PostgreSQL × allow/deny cases with the patched libraries.
+They inspect retained common rows, the archive, real native checkpoint rows,
+lifecycle events, logs, public results and the authenticated lifecycle response
+for the literal canary. This is direct-echo protection, not encoded-secret or
+general information-flow proof. Earlier failed reports remain retained.
+
+The complete in-process eight-family pattern suites pass 60 tests per principal
+SDK against both databases with the updated fixture and patched libraries.
+The source `88ca0f5` hosted checkpoint passed Security, Docs, External Sandbox
+and optional Framework. PostgreSQL passed nine jobs, including all matched
+measurements and aggregation, but each principal operation job failed only the
+uncorrected positive canary fixture (240 passed, one failed per SDK). CI is
+still running at this record. Those failures are preserved and do not qualify
+the candidate; the following source must re-run the exact-source gates.
 
 Dependency/SDK changes intentionally change recovery-profile identity. They do
 not grant in-place migration of existing invocations. Retained invocations need

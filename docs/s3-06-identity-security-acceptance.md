@@ -94,10 +94,19 @@ batch and documented focused selections. A follow-up assertion in
 `test_actual_model_credential_ref_echo_is_guarded_before_archive_receipts_and_output`
 also checks that the actual model-credential canary is absent from captured
 logs, alongside its existing output, archive, receipt and lifecycle-event
-checks. That caplog assertion was authored after the consolidated run and
-remains unrun.
+checks. Its two SQLite/PostgreSQL cases pass the 2026-10-25 common selection;
+they remain separate from the native qualification below.
 
 ## Required qualification
+
+The 2026-10-25 native credential witness passes eight Windows ADK/LangGraph ×
+SQLite/PostgreSQL × allowed/denied cases with patched runtime libraries. It
+grants only the fixture's named credential, retains the recipe's schema through
+a standard JSON output transform, authenticates lifecycle reads, and checks real
+native/common storage and logs for the canary. The denied variant proves zero
+secret resolution and provider calls. See the
+[qualification and fixture corrections](validation-history/ready-tasks-2026-10-25.md#native-credential-witness-correction).
+This focused evidence does not close the broader S3-06 gates.
 
 Author a coherent source batch before behavior testing. Use deterministic providers
 and local non-deduplicating peers, with no paid APIs. Exercise actual shared ADK and

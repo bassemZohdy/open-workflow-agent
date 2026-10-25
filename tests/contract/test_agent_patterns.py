@@ -32,13 +32,17 @@ from _agent_pattern_fixtures import (
     role_configuration,
     runtime,
     scripts,
+    source,
 )
+from _version_recovery_worker import native_snapshot
 from open_workflow_agent.api import create_app
 from open_workflow_agent.approvals import APPROVAL_DECISION_EVENT, APPROVAL_REQUEST_EVENT
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.errors import OwaError
 from open_workflow_agent.execution_authority import authority_scope
+from open_workflow_agent.security import AuthorizationRule
 from open_workflow_agent.services import RuntimeServices
+from open_workflow_agent.workflow import compile_workflow
 
 pytestmark = pytest.mark.usefixtures("explicit_workflow_delivery")
 QUESTION = {"question": "hello"}
@@ -255,19 +259,32 @@ async def test_native_role_archive_keeps_credential_reference_without_secret_val
 @pytest.mark.asyncio
 @pytest.mark.parametrize("engine_name,engine_type", ENGINES)
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+@pytest.mark.parametrize("allow_credential", [False, True])
 async def test_native_role_credential_echo_is_absent_from_logs_and_public_projections(
-    tmp_path, monkeypatch, caplog, engine_name, engine_type, backend
+    tmp_path, monkeypatch, caplog, engine_name, engine_type, backend, allow_credential
 ):
+    from open_workflow_agent import catalog
+
     env_name = "OWA_PATTERN_NATIVE_ROLE_CANARY"
     canary = "s3-06-native-provider-secret-must-not-leak"
     monkeypatch.setenv(env_name, canary)
     provider_calls = []
+    resolved = []
+    original_resolver = catalog.resolve_secret
+
+    def resolve(reference):
+        resolved.append(reference.from_env)
+        if not allow_credential:
+            pytest.fail("denied model credential reached secret resolution")
+        return original_resolver(reference)
+
+    monkeypatch.setattr(catalog, "resolve_secret", resolve)
 
     async def completion(**options):
         assert options["api_key"] == canary
         assert options["model"] == "provider/guarded-native"
         provider_calls.append(options["api_key"])
-        content = json.dumps({"echo": options["api_key"], "safe": None})
+        content = json.dumps({"answer": options["api_key"]})
         return SimpleNamespace(
             choices=[SimpleNamespace(message=SimpleNamespace(role="assistant", content=content))]
         )
@@ -281,8 +298,29 @@ async def test_native_role_credential_echo_is_absent_from_logs_and_public_projec
         "name": "provider/guarded-native",
         "credentials": {"api_key": {"from_env": env_name}},
     }
+    config = configuration(backend, roles)
+    # This positive echo witness needs an explicit grant for its one credential;
+    # the shared fixture deliberately grants no credential resolution by default.
+    if allow_credential:
+        config.execution_authorization.policy.rules.append(
+            AuthorizationRule(
+                actions=["credential.resolve"],
+                resources=["model-secret:" + env_name],
+                roles=["role-alice"],
+            )
+        )
+    config.execution_authorization.policy.rules.append(
+        AuthorizationRule(
+            actions=["events.read"],
+            resources=["events:lifecycle"],
+            roles=["role-alice"],
+        )
+    )
+    config.server.api_security_profile = "actor-alice"
+    reader_token = "native-role-lifecycle-reader-token"
+    monkeypatch.setenv("OWA_AUTHORITY_UNUSED_alice", reader_token)
     services = RuntimeServices(
-        configuration(backend, roles),
+        config,
         model=FakeModel(),
         database_root=None if backend == "postgresql" else tmp_path,
         recovery_profile_provider=lambda engine: {
@@ -293,13 +331,22 @@ async def test_native_role_credential_echo_is_absent_from_logs_and_public_projec
     engine = engine_type()
     actual_native(engine, engine_name)
     await engine.initialize(services)
-    plan = compiled(services, "assistant")
+    definition = source("assistant")
+    # The real provider returns a JSON string; the recipe's object schema stays
+    # enforced after an ordinary OWS output transformation.
+    definition["do"][0]["respond"]["output"]["as"] = "${ fromjson }"
+    plan = compile_workflow(definition, enabled_function_calls=services.role_function_calls)
     handle = create(services, engine_name, plan)
     try:
         result = await invoke(engine, services, plan, handle, QUESTION)
-        assert result.status == "completed", result.error
-        assert result.output == {"echo": "[REDACTED]", "safe": None}
-        assert provider_calls == [canary]
+        if allow_credential:
+            assert result.status == "completed", result.error
+            assert result.output == {"answer": "[REDACTED]"}
+            assert provider_calls == [canary] and resolved == [env_name]
+        else:
+            assert result.status == "faulted"
+            assert result.error["code"] == "execution_authorization_denied"
+            assert provider_calls == resolved == []
 
         _, archived = services.recovery_definitions._read(handle, allow_unqualified=True)
         connection = services.effect_journal.connection
@@ -318,12 +365,16 @@ async def test_native_role_credential_echo_is_absent_from_logs_and_public_projec
         assert canary not in json.dumps(result.as_dict(), sort_keys=True)
         assert canary not in json.dumps(lifecycle, sort_keys=True)
         assert canary not in caplog.text
+        assert native_snapshot(services, handle, backend, forbidden_literals=(canary,))["present"]
 
         app = create_app(config=services.config, services=services)
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://test"
         ) as client:
-            response = await client.get("/v1/events/lifecycle?limit=100")
+            response = await client.get(
+                "/v1/events/lifecycle?limit=100",
+                headers={"Authorization": "Bearer " + reader_token},
+            )
         assert response.status_code == 200
         assert canary not in response.text
     finally:

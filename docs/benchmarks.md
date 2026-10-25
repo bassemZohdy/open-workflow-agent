@@ -38,6 +38,35 @@ to the report.
 
 ## Retained exact-source measurements
 
+### Follow-up at `88ca0f5` — 2026-10-25
+
+The four matched cells and aggregate passed at
+`88ca0f515a3f00bf44e896bac621cf62cb32179a`, using the corrected dependency locks,
+Python 3.12.13 and the same 30/5/8/3 measurement parameters. The
+[raw report](benchmark-results/88ca0f5-matched.json) is retained from the
+[hosted artifact](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40169384763).
+The downloaded ZIP matches its GitHub SHA-256 digest
+`3c5176035ccef6e38b59ff2eab9ebebf22734ae176fe42c1d82d5616e5c4c956`.
+
+| Engine | Backend | Sequential p50 / p95 (s) | Concurrent throughput (/s) | CPU (s) | Peak RSS (MiB) | Persistence delta (bytes) | Resume p50 (s) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| ADK | SQLite | 0.421 / 0.476 | 1.61 | 19.43 | 183.62 | 1,187,840 | 0.597 |
+| ADK | PostgreSQL | 1.030 / 1.290 | 0.90 | 33.35 | 256.19 | 2,777,088 | 1.846 |
+| LangGraph | SQLite | 0.156 / 0.218 | 4.99 | 6.61 | 161.96 | 2,121,728 | 0.230 |
+| LangGraph | PostgreSQL | 0.264 / 0.317 | 2.64 | 8.40 | 128.36 | 3,506,176 | 0.480 |
+
+This table uses the separate sequential latency summary, rather than mixing its
+30 samples with the eight concurrent samples in the aggregate invocation
+summary. CPU still covers both measured phases. All twelve recovery samples
+completed with one model call, one side effect and one operation identity each.
+The footprint, memory and same-process recovery limitations below still apply.
+This benchmark success does not qualify the entire source: its PostgreSQL
+operation jobs each failed the role-canary fixture's missing credential grant,
+while the other nine PostgreSQL jobs passed. That fixture is corrected in the
+following working batch; full exact-source requalification remains required.
+
+### Earlier checkpoint at `4b22e80`
+
 The first hosted matched report was generated at exact source
 `4b22e801f4f7f01d475caa03a754dd3ac45bf64a` with 30 measured sequential
 invocations, five warm-ups, concurrency 8, and three recovery samples per

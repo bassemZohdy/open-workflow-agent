@@ -29,7 +29,13 @@ from test_workflow_version_recovery import (
 )
 
 
-def native_snapshot(services: Any, handle: Any, backend: str) -> dict[str, Any]:
+def native_snapshot(
+    services: Any,
+    handle: Any,
+    backend: str,
+    *,
+    forbidden_literals: tuple[str, ...] = (),
+) -> dict[str, Any]:
     """Read an existing native database without creating namespaces or SDK tables."""
     if backend == "sqlite":
         path = Path(services.engine_database_path(handle.engine, create_namespace=False))
@@ -65,7 +71,10 @@ def native_snapshot(services: Any, handle: Any, backend: str) -> dict[str, Any]:
         for table in tables:
             assert table.isascii() and table.isidentifier()
             rows = sorted(connection.execute('SELECT * FROM "' + table + '"').fetchall(), key=repr)
-            result[table] = hashlib.sha256(repr(rows).encode("utf-8")).hexdigest()
+            encoded = repr(rows).encode("utf-8")
+            if any(value.encode("utf-8") in encoded for value in forbidden_literals):
+                pytest.fail("native checkpoint contains a forbidden credential literal")
+            result[table] = hashlib.sha256(encoded).hexdigest()
         return result
     finally:
         connection.close()
