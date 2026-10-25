@@ -61,6 +61,8 @@ The [literal outcome comparison candidate](../../docs/s4-04-literal-parity-accep
 adds source-matched actual ADK/LangGraph Python/Node captures for 13 shared
 success/fault fixtures. Its required CI comparison is narrower than the proposed
 multi-runtime criteria. It leaves every proposed/schema bridge row unverified;
-all 13 actual Windows native outcomes match, while coherent hosted aggregation
-and complete source qualification remain pending. See the
+all 13 actual native outcomes also pass coherent hosted aggregation at
+`5310f5a`. This verifies that finite comparison only; complete integration
+qualification remains partial because of the separately repaired process test.
+See the
 [integration checkpoint](../../docs/validation-history/main-integration-2026-10-25.md).

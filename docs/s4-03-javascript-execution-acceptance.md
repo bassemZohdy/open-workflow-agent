@@ -1,5 +1,10 @@
 # S4-03 experimental JavaScript literal execution
 
+The frozen `5310f5a` CI run passes the JavaScript package job and the required
+13-case comparison across actual ADK, LangGraph Python and Node. This verifies
+the literal component's named outcome projection only. Full engine identity,
+durability, expressions, calls and the broader S4-03 scope remain open.
+
 Current integration: see the [main checkpoint](validation-history/main-integration-2026-10-25.md)
 for current results, the final hosted-fixture repair and remaining gates.
 The full task stays open. Earlier counts and pending statements below are

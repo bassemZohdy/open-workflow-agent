@@ -1,6 +1,7 @@
 # Main integration checkpoint — 2026-10-25
 
 Integration scope: [PR #64](https://github.com/bassemZohdy/open-workflow-agent/pull/64).
+Merged into main as `f013a2ec1ca7a471cb35e01329c5880b467b626b`.
 The integration includes the accumulated runtime work, task records, optional
 automation controls, Docker cache ordering and the final native recovery fixture
 repair. It is not a release, deployment or claim of complete conformance.
@@ -16,17 +17,27 @@ remain conditional at the user's instruction. None is deferred.
 ## Current validation, separate from the accepted baseline
 
 Frozen candidate `5310f5aa2916c150bb33ae889ba65bc480bed5c1` has these manual
-qualification runs. This table is an integration-time snapshot; consult Actions
-for later results.
+qualification runs. Their final results belong to that frozen source, not the
+later merge or its fixture repair.
 
-| Workflow | Run | Integration-time result |
+| Workflow | Run | Final frozen-source result |
 | --- | --- | --- |
-| CI | [40193137742](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40193137742) | 17 jobs passed; four remain running. No failed job in this snapshot. |
-| PostgreSQL | [40193140146](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40193140146) | Seven jobs passed; three remain running; native LangGraph fails four fixture setup checks described below. |
+| CI | [40193137742](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40193137742) | All 22 jobs pass, including actual three-runtime literal outcome comparison. |
+| PostgreSQL | [40193140146](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40193140146) | Ten jobs pass; native LangGraph fails four fixture setup checks described below; its dependent runtime-image job is skipped. |
 | Optional Framework | [40193142201](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40193142201) | Passed. This does not activate Framework production scope. |
 | External sandbox | [40193144264](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40193144264) | Passed. |
 | Security | [40193146652](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40193146652) | Passed. |
 | Docs | [40193148695](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40193148695) | Passed. |
+
+CI reports **5,236 root passes, 3,306 skips and 90.25% coverage**. The actual
+ADK/LangGraph shared suites pass **1,489 / 1,573 cases** (1,547 / 1,515 explicit
+opposite/unconfigured-profile skips), plus **96 selected CTK cases each**.
+The required literal aggregate job `121177010650` passes across actual ADK,
+LangGraph Python and Node with matched source/runtime/SDK/fixture/schema evidence.
+This verifies only the named 13-case comparison, not public identity, durability
+or any full proposed/schema criterion. Earlier intermittent scoped-flow/timer
+observations remain in the retained history; the corresponding current CI jobs
+pass without relaxing their original deadlines.
 
 The native PostgreSQL failure occurs after the producer has saved its durable
 checkpoint. The test's `ProducerIdentity` helper assumes `os.pidfd_open` exists;

@@ -242,8 +242,8 @@ treated as a deferred task or as additional feature completion.
 
 - [ ] **S4-04** (L) — Automate official CTK plus all proposed tests, schema constraints, parity and cross-engine outcome checks.
   The 13-case actual native outcome comparison requires one source, exact SDK/
-  runtime versions and matching fixture/schema bytes; coherent hosted aggregation
-  remains pending. Existing selected Portable Profile CTK automation does not
+  runtime versions and matching fixture/schema bytes; all 13 outcomes pass the
+  hosted aggregate at `5310f5a`. Existing selected Portable Profile CTK automation does not
   cover the full proposed inventory. All 443 proposed tests and 774 schema
   constraints remain unmapped/unexecuted in the coverage bridge. Its integrity
   checks are not conformance evidence. See the
