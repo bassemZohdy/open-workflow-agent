@@ -11,6 +11,7 @@ from typing import Any, Literal
 from .effects import EffectIdentity, effect_request_digest
 from .errors import InvocationStateError, ModelError
 from .memory_reads import MemoryReadBinding
+from .memory_retention import MemoryRecordRetention
 from .model_responses import bounded_model_json
 from .persistence import ExecutionHandle, InvocationStore, _verify_identity
 
@@ -38,6 +39,7 @@ class MemoryMutation:
     kind: Literal["put", "delete"]
     value_json: str | None
     max_record_bytes: int = 65_536
+    retention: MemoryRecordRetention | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -54,6 +56,9 @@ class MemoryMutation:
             or self.kind not in {"put", "delete"}
             or type(self.max_record_bytes) is not int
             or not 1 <= self.max_record_bytes <= 65_536
+            or (
+                self.retention is not None and not isinstance(self.retention, MemoryRecordRetention)
+            )
         ):
             raise mutation_error("request_invalid")
         if self.kind == "delete":
@@ -91,6 +96,7 @@ class MemoryMutation:
         value: dict[str, Any],
         *,
         max_record_bytes: int = 65_536,
+        retention: MemoryRecordRetention | None = None,
     ) -> MemoryMutation:
         if (
             type(value) is not dict
@@ -102,7 +108,9 @@ class MemoryMutation:
             encoded = bounded_model_json(value, limit=max_record_bytes)
         except ModelError:
             raise mutation_error("value_invalid") from None
-        return cls(parent, binding, namespace, collection, key, "put", encoded, max_record_bytes)
+        return cls(
+            parent, binding, namespace, collection, key, "put", encoded, max_record_bytes, retention
+        )
 
     @property
     def identity(self) -> EffectIdentity:
@@ -119,7 +127,7 @@ class MemoryMutation:
 
     @property
     def descriptor(self) -> dict[str, Any]:
-        return {
+        value = {
             "profile": PROFILE,
             "parent": {
                 **asdict(self.parent),
@@ -133,6 +141,9 @@ class MemoryMutation:
             "value": None if self.value_json is None else json.loads(self.value_json),
             "max_record_bytes": self.max_record_bytes,
         }
+        if self.retention is not None:
+            value["retention"] = self.retention.descriptor
+        return value
 
     @property
     def request_digest(self) -> str:
@@ -142,7 +153,7 @@ class MemoryMutation:
     def from_descriptor(cls, raw: Any) -> MemoryMutation:
         if (
             type(raw) is not dict
-            or set(raw)
+            or (set(raw) - {"retention"})
             != {
                 "profile",
                 "parent",
@@ -161,6 +172,9 @@ class MemoryMutation:
         if type(binding) is not dict or set(binding) != {"id", "version", "backend"}:
             raise mutation_error("binding_invalid")
         parent = EffectIdentity.from_value(raw["parent"])
+        retention = (
+            MemoryRecordRetention.from_descriptor(raw["retention"]) if "retention" in raw else None
+        )
         if raw["kind"] == "put":
             return cls.put(
                 parent,
@@ -170,6 +184,7 @@ class MemoryMutation:
                 raw["key"],
                 raw["value"],
                 max_record_bytes=raw["max_record_bytes"],
+                retention=retention,
             )
         if raw["kind"] != "delete" or raw["value"] is not None:
             raise mutation_error("value_invalid")
@@ -182,6 +197,7 @@ class MemoryMutation:
             "delete",
             None,
             raw["max_record_bytes"],
+            retention,
         )
 
     def verify_invocation(self, invocations: InvocationStore, handle: ExecutionHandle) -> None:

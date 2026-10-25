@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import importlib
 import json
 import os
 import subprocess
@@ -28,6 +29,19 @@ from open_workflow_agent.services import RuntimeServices
 pytest.importorskip("langgraph.store.base")
 from open_workflow_agent_langgraph.native_memory_mutations import apply_native_mutation
 from open_workflow_agent_langgraph.native_memory_provider import open_native_memory_provider
+
+
+def sdk_store_type(provider):
+    module = importlib.import_module(
+        "langgraph.store.postgres.aio"
+        if provider.binding.backend == "postgresql"
+        else "langgraph.store.sqlite.aio"
+    )
+    return (
+        module.AsyncPostgresStore
+        if provider.binding.backend == "postgresql"
+        else module.AsyncSqliteStore
+    )
 
 
 @pytest.fixture(params=["sqlite", "postgresql"])
@@ -197,7 +211,7 @@ async def test_failure_after_sdk_sql_rolls_back_both_value_and_marker(
     mutation_runtime, monkeypatch, failure
 ):
     _, handle, provider, _ = mutation_runtime
-    base = type(provider.store)
+    base = sdk_store_type(provider)
     original = base._batch_put_ops
     written = []
 
@@ -234,7 +248,7 @@ async def test_cancellation_drains_transaction_before_return_and_retry_does_not_
     mutation_runtime, monkeypatch
 ):
     _, _, provider, _ = mutation_runtime
-    base = type(provider.store)
+    base = sdk_store_type(provider)
     original = base._batch_put_ops
     started, release = threading.Event(), threading.Event()
     calls = []
@@ -265,7 +279,7 @@ async def test_cancellation_drains_transaction_before_return_and_retry_does_not_
 @pytest.mark.asyncio
 async def test_concurrent_retries_and_last_quota_slot_are_serialized(mutation_runtime, monkeypatch):
     _, _, provider, mutation = mutation_runtime
-    base = type(provider.store)
+    base = sdk_store_type(provider)
     original = base._batch_put_ops
     calls = []
 
@@ -409,7 +423,7 @@ async def test_damaged_marker_rejects_retry_without_sdk_sql(mutation_runtime, mo
     async def forbidden(*_):
         pytest.fail("damaged marker reached SDK mutation SQL")
 
-    monkeypatch.setattr(type(store), "_batch_put_ops", forbidden)
+    monkeypatch.setattr(sdk_store_type(provider), "_batch_put_ops", forbidden)
     with pytest.raises(InvocationStateError):
         await apply(mutation_runtime)
     assert await value(mutation_runtime) == {"version": 1}
