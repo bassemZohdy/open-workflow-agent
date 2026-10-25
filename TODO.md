@@ -228,13 +228,15 @@ treated as a deferred task or as additional feature completion.
   acknowledgement recovers without rewriting; dispatched writes with no marker
   fail as uncertain and are never blindly redispatched. Read observations,
   common intents and native markers each have a 64-per-invocation ceiling.
-  Active expiry follow-up `810c723` passes a 355-case memory/journal/ownership
+  PR #78 merged expiry at `b344058`. Source `810c723` passes a 355-case memory/journal/ownership
   cohort on both Windows and frozen Linux with zero skips. A typed policy uses
   database time to commit the record deadline with its value and native marker;
   fresh get reads omit expired records while replay retains past observations.
-  Retries do not renew expiry. This is logical expiry; no public memory
-  capability is enabled. Next add namespace storage bounds and bounded physical
-  cleanup, versioned public bindings and remaining resolution/recovery gates.
+  Retries do not renew expiry. Capacity/cleanup source `6a0ac8c` passes 399 cases
+  on each platform with zero skips. Fixed namespace record/serialized-value byte
+  budgets and authorized bounded physical expiry cleanup retain recovery proof.
+  Native memory admission stays closed. Next complete versioned public bindings,
+  explicit uncertain-outcome resolution and remaining provider/recovery gates.
   See the [memory scope](docs/s4-02-native-memory-acceptance.md).
   Then continue streams, public state updates, replay and
   time travel. Preserve common authority, ownership, receipts and private

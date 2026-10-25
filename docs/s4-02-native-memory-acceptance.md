@@ -202,6 +202,55 @@ cleanup, namespace storage quotas and independent invocation/history retention
 remain separate acceptance work. Raw SDK deployment/admin access is not a
 public workflow interface; no background sweep is started here.
 
+## Private namespace capacity and physical cleanup follow-up
+
+`MemoryNamespaceBounds` defines an exact `owa/memory-namespace-bounds/v1`
+deployment policy with a fixed ID/version, 1–10,000 records, 1–67,108,864
+serialized-value bytes, and a cleanup batch of 1–64 records. The private mutation
+descriptor and provider identity include that policy. Default omission preserves
+the earlier descriptor and provider digest. Workflow input cannot choose scope
+or raise the limits.
+
+Capacity applies to the exact principal/collection namespace. It counts physical
+SDK rows, including expired rows, and UTF-8 bytes of the backend's serialized
+value representation. SQLite storage bytes and PostgreSQL JSONB text may differ;
+these are provider storage units, not a portable canonical-JSON size or a bound
+on database files, indexes, logs or retained workflow history. The bounded
+aggregate inspects at most `max_records + 1` rows and returns only totals.
+An over-budget put rolls back its value, expiry and marker together. Replacing
+an existing key is allowed if the resulting namespace fits; explicit deletion
+can restore capacity without requiring an already over-budget namespace to fit.
+
+The first bounded mutation seals the namespace policy in a native metadata row.
+Existing unsealed legacy data is not silently adopted, and a lost seal with data
+still present fails closed. Unbounded or differently configured writers cannot
+bypass an existing seal. Every new PostgreSQL mutation takes a namespace lock,
+including unbounded callers; SQLite's native writer transaction supplies the
+same exclusion. The existing execution fence also protects namespace metadata.
+
+The private writer's `sweep_expired()` requires `memory.delete`, the original
+principal authority and installed namespace bounds. It selects only expired
+keys in the fixed collection, ordered by expiry and key, up to `cleanup_limit`.
+Selection and the pinned SDK delete batch share the owned native transaction
+and namespace lock. PostgreSQL also locks selected rows against direct SDK
+updates. Cleanup verifies those keys are absent before recording completion.
+It therefore cannot delete a record refreshed by a concurrent writer between
+selection and deletion. A silent failure, exception
+or ownership loss aborts the transaction; common dispatch ambiguity retains its
+existing conservative rules.
+
+One sweep is one immutable logical operation. Repeating it acknowledges its
+original batch and does not delete records that expire or reappear later. A new
+logical occurrence/invocation can perform the next batch. The API returns no
+native identifier or deleted-key list. Native markers, common write intents and
+read observations are not removed, so old operations still reconcile after their
+data records are physically gone. There is no global or background sweep.
+
+Scope permission checks now match the portable memory tools. Multiple distinct
+writes in one catalog action reuse the same principal-scope permission; each
+write's contents remain independently bound by its common intent and native
+marker. Changed contents for the same logical record slot still reject.
+
 ## Verification scope
 
 The focused tests use actual pinned LangGraph stores (in-memory and optional
@@ -369,15 +418,49 @@ enforcement or full repository/release qualification. Historical common payloads
 and proof remain retained. S4-02 stays unchecked; public native memory admission
 remains closed.
 
+### Namespace capacity and cleanup qualification — `6a0ac8c`
+
+Source `6a0ac8cc0a3a17cd3b34573e3ca430a80bcb634d` passes **399 cases with zero
+skips on each of Windows and frozen Linux**: the prior 355-case cohort, 20 new
+core policy/descriptor cases and 24 actual SQLite/PostgreSQL capacity/cleanup
+cases. These cover record and byte budgets, replacement rollback, concurrent
+last-slot admission, bounded cleanup, original authority and collection scope,
+permission denial, repeated sweeps, later refreshed records, preserved recovery
+proof, SDK failures, silently suppressed deletes, lost policy seals and unbounded
+writer rejection. Multiple distinct writes in one workflow action succeed while
+changed contents for the same logical operation still reject.
+
+Linux uses the immutable dependency image and restrictions recorded above,
+matching locks and a fresh `owa_memory_6a0ac8c` PostgreSQL database. All **1,192
+frozen source inputs remain unchanged**; nothing is installed at startup. Reports
+are under `tmp/merge-20261025/6a0ac8c/` and
+`memory-capacity-final-qualified-windows.xml`.
+
+Eight shared LangGraph SQLite/PostgreSQL authority isolation/denial checks pass
+at this runtime source, with 44 unrelated cases deselected; see
+`memory-capacity-shared-contract.xml`. The core-only policy/request selection
+passes 56 cases and skips one optional SDK module. Relative Markdown links and
+four inventory/tracking checks pass. Ruff, formatting and strict typing pass.
+
+The preceding `b8a5d07` cohort passed 397 cases on each platform. A subsequent
+fault test reproduced a false cleanup acknowledgement when a database trigger
+quietly skipped deletion. The final source adds row locking and an absence check;
+both stores now reject that case and roll back the marker. An earlier workflow
+test exposed content-dependent parent permission reuse; the corrected writer
+uses the same scope permission identity as portable memory tools, retaining
+per-write immutable intent checks. Earlier failed reports remain alongside the
+successful results. This is finite private-component evidence, not full
+repository/release qualification or S4-02 completion.
+
 ## Remaining work before enabling the capability
 
 - Define and validate the versioned workflow bindings, logical record/schema and
   retention semantics within the approved metadata extension boundary.
 - Connect the private provider factories and read receipts to those validated
   workflow bindings without making external services mandatory.
-- Add namespace storage bounds and bounded physical cleanup without discarding
-  proof needed by recoverable invocations. Logical expiry for new puts/fresh get
-  reads now has finite evidence. Define explicit resolution of uncertain dispatched
+- Qualify the complete public binding profile over the private namespace bounds,
+  bounded physical cleanup and logical expiry, preserving recovery proof.
+  Define explicit resolution of uncertain dispatched
   writes. The private authorized writer now connects native transactions to
   common intents, completed receipts, native receipt observation and missing
   evidence rejection; versioned public workflow bindings remain open.

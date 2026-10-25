@@ -10,6 +10,7 @@ from typing import Any, Literal
 
 from .effects import EffectIdentity, effect_request_digest
 from .errors import InvocationStateError, ModelError
+from .memory_capacity import MemoryNamespaceBounds
 from .memory_reads import MemoryReadBinding
 from .memory_retention import MemoryRecordRetention
 from .model_responses import bounded_model_json
@@ -36,10 +37,11 @@ class MemoryMutation:
     namespace: str
     collection: str
     key: str
-    kind: Literal["put", "delete"]
+    kind: Literal["put", "delete", "sweep"]
     value_json: str | None
     max_record_bytes: int = 65_536
     retention: MemoryRecordRetention | None = None
+    namespace_limits: MemoryNamespaceBounds | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -53,15 +55,21 @@ class MemoryMutation:
             or type(self.key) is not str
             or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}", self.key)
             or type(self.kind) is not str
-            or self.kind not in {"put", "delete"}
+            or self.kind not in {"put", "delete", "sweep"}
             or type(self.max_record_bytes) is not int
             or not 1 <= self.max_record_bytes <= 65_536
             or (
                 self.retention is not None and not isinstance(self.retention, MemoryRecordRetention)
             )
+            or (
+                self.namespace_limits is not None
+                and not isinstance(self.namespace_limits, MemoryNamespaceBounds)
+            )
         ):
             raise mutation_error("request_invalid")
-        if self.kind == "delete":
+        if self.kind == "sweep" and (self.namespace_limits is None or self.key != "expired"):
+            raise mutation_error("cleanup_policy_required")
+        if self.kind != "put":
             if self.value_json is not None:
                 raise mutation_error("value_invalid")
         else:
@@ -97,6 +105,7 @@ class MemoryMutation:
         *,
         max_record_bytes: int = 65_536,
         retention: MemoryRecordRetention | None = None,
+        namespace_limits: MemoryNamespaceBounds | None = None,
     ) -> MemoryMutation:
         if (
             type(value) is not dict
@@ -109,7 +118,16 @@ class MemoryMutation:
         except ModelError:
             raise mutation_error("value_invalid") from None
         return cls(
-            parent, binding, namespace, collection, key, "put", encoded, max_record_bytes, retention
+            parent,
+            binding,
+            namespace,
+            collection,
+            key,
+            "put",
+            encoded,
+            max_record_bytes,
+            retention,
+            namespace_limits,
         )
 
     @property
@@ -143,6 +161,8 @@ class MemoryMutation:
         }
         if self.retention is not None:
             value["retention"] = self.retention.descriptor
+        if self.namespace_limits is not None:
+            value["namespace_limits"] = self.namespace_limits.descriptor
         return value
 
     @property
@@ -153,7 +173,7 @@ class MemoryMutation:
     def from_descriptor(cls, raw: Any) -> MemoryMutation:
         if (
             type(raw) is not dict
-            or (set(raw) - {"retention"})
+            or (set(raw) - {"retention", "namespace_limits"})
             != {
                 "profile",
                 "parent",
@@ -172,8 +192,15 @@ class MemoryMutation:
         if type(binding) is not dict or set(binding) != {"id", "version", "backend"}:
             raise mutation_error("binding_invalid")
         parent = EffectIdentity.from_value(raw["parent"])
+        if type(raw["kind"]) is not str:
+            raise mutation_error("request_invalid")
         retention = (
             MemoryRecordRetention.from_descriptor(raw["retention"]) if "retention" in raw else None
+        )
+        limits = (
+            MemoryNamespaceBounds.from_descriptor(raw["namespace_limits"])
+            if "namespace_limits" in raw
+            else None
         )
         if raw["kind"] == "put":
             return cls.put(
@@ -185,19 +212,22 @@ class MemoryMutation:
                 raw["value"],
                 max_record_bytes=raw["max_record_bytes"],
                 retention=retention,
+                namespace_limits=limits,
             )
-        if raw["kind"] != "delete" or raw["value"] is not None:
+        if raw["kind"] not in {"delete", "sweep"} or raw["value"] is not None:
             raise mutation_error("value_invalid")
+        kind: Literal["delete", "sweep"] = "delete" if raw["kind"] == "delete" else "sweep"
         return cls(
             parent,
             MemoryReadBinding(**binding),
             raw["namespace"],
             raw["collection"],
             raw["key"],
-            "delete",
+            kind,
             None,
             raw["max_record_bytes"],
             retention,
+            limits,
         )
 
     def verify_invocation(self, invocations: InvocationStore, handle: ExecutionHandle) -> None:
