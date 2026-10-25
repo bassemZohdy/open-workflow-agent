@@ -13,10 +13,12 @@ from pathlib import Path
 from langgraph.store.base import BaseStore
 from open_workflow_agent.errors import ConfigurationError
 from open_workflow_agent.memory_reads import MemoryReadBinding
+from open_workflow_agent.memory_retention import MemoryRecordRetention
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.storage import is_postgresql_datasource
 
 from .native_memory import NativeMemoryReadBounds, NativeMemoryReader
+from .native_memory_expiry import expiry_filtered_store
 from .native_memory_writes import NativeMemoryWriter, mutation_backend, mutation_storage_identity
 
 
@@ -37,10 +39,15 @@ class NativeMemoryProvider:
     services: RuntimeServices
     store: BaseStore
     binding: MemoryReadBinding
+    retention: MemoryRecordRetention | None = None
 
     def writer(self, collection: str, *, max_record_bytes: int = 65_536) -> NativeMemoryWriter:
         return NativeMemoryWriter(
-            self.services, self.binding, collection, max_record_bytes=max_record_bytes
+            self.services,
+            self.binding,
+            collection,
+            max_record_bytes=max_record_bytes,
+            retention=self.retention,
         )
 
     def reader(
@@ -58,14 +65,18 @@ async def open_native_memory_provider(
     provider_id: str,
     version: str,
     setup_timeout_seconds: float = 10.0,
+    retention: MemoryRecordRetention | None = None,
 ) -> AsyncIterator[NativeMemoryProvider]:
     """Open separate embedded storage or the deployment's optional PostgreSQL.
 
-    No semantic index, embeddings, TTL worker or write API is configured here.
+    No semantic index, embedding service or TTL sweeper is started here.
+    The private writer may apply a typed deployment-side record expiry policy.
     Dependency and platform checks precede namespace/directory creation.
     """
     if not services.memory_enabled:
         raise ConfigurationError("native memory is disabled by deployment")
+    if retention is not None and not isinstance(retention, MemoryRecordRetention):
+        raise ValueError("native memory requires a typed installed retention policy")
     if (
         type(setup_timeout_seconds) not in (int, float)
         or not 0 < setup_timeout_seconds <= 30
@@ -82,6 +93,7 @@ async def open_native_memory_provider(
     )
     try:
         store_type = getattr(import_module(module_name), class_name)
+        store_type = expiry_filtered_store(store_type, postgresql=postgresql)
     except (ImportError, AttributeError):
         raise ConfigurationError(
             "native memory requires its installed storage extra",
@@ -98,7 +110,7 @@ async def open_native_memory_provider(
             details={"reason": "unsupported_event_loop"},
         )
     stack = AsyncExitStack()
-    services.memory_writes.check_binding(binding, mutation_storage_identity(path))
+    services.memory_writes.check_binding(binding, mutation_storage_identity(path, retention))
     try:
         async with asyncio.timeout(setup_timeout_seconds):
             path = services.memory_provider_database_path("langgraph")
@@ -109,7 +121,7 @@ async def open_native_memory_provider(
             from .native_memory_mutations import prepare_mutation_storage
 
             await prepare_mutation_storage(store, postgresql=postgresql)
-            services.memory_writes.register(mutation_backend(services, path, binding))
+            services.memory_writes.register(mutation_backend(services, path, binding, retention))
     except BaseException as error:
         try:
             await _close(stack, setup_timeout_seconds)
@@ -121,7 +133,7 @@ async def open_native_memory_provider(
             "native memory store setup failed", details={"reason": "store_setup_failure"}
         ) from None
     try:
-        yield NativeMemoryProvider(services, store, binding)
+        yield NativeMemoryProvider(services, store, binding, retention)
     except BaseException:
         try:
             await _close(stack, setup_timeout_seconds)

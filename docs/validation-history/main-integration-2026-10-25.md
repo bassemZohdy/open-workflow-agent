@@ -95,3 +95,22 @@ Work continues from this main commit on `codex/s4-02-memory-write-recovery`,
 integrating common write intents/completions and native evidence verification.
 The current state and remaining gates are recorded in the
 [native memory acceptance record](../s4-02-native-memory-acceptance.md).
+
+## PR #77 integration — 2026-10-26 Asia/Dubai
+
+[PR #77](https://github.com/bassemZohdy/open-workflow-agent/pull/77) merged at
+`df8c0d7c6ee753e25470f4e150cd835dbca0980b`, preserving head
+`496b977cf6c4fd229fc1365ee0e7cdbcbf9d5378`. GitHub records the merge at
+2026-10-25T21:21:57Z, which is 2026-10-26 locally. Local `main` was fast-forwarded
+to the merge and its push confirmed GitHub was up to date.
+
+The required hosted Markdown check passed on the exact PR head in
+[Docs run 40235040643](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40235040643).
+No protections or automatic CI/release flags were changed. The accepted finite
+implementation evidence remains the 322-case Windows/frozen-Linux cohort at
+`54103b9`; the merge does not claim a full repository/release qualification.
+The backlog stays 31/37 verified and S4-02 remains open.
+
+The next ready work starts from this main commit on
+`codex/s4-02-memory-retention`, adding database-timed record expiry while
+preserving common observations and native/common completion evidence.

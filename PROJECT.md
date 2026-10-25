@@ -19,7 +19,7 @@ and [automation controls](docs/development.md#fast-development-and-optional-auto
 
 ## Current backlog delivery mode
 
-Updated 2026-10-25. **31 of 37 tasks are verified; 6 remain open. None is deferred.**
+Updated 2026-10-26. **31 of 37 tasks are verified; 6 remain open. None is deferred.**
 Eleven of the original 17 open tasks are verified. The user kept S4-09/S4-10/S4-11
 conditional. The three ready tasks are S4-02, S4-03 and S4-04.
 
@@ -59,14 +59,22 @@ process exit. Core-only request checks pass without SDK installation, and eight
 shared LangGraph SQLite/PostgreSQL isolation/denial checks pass. The earlier
 read/provider cohort remains recorded at `0268ea1`.
 Existing effect/ownership regressions previously passed all 99 cases with
-PostgreSQL enabled. The next branch adds common prepared/dispatched/completed
+PostgreSQL enabled. PR #77 merged common write recovery into main at `df8c0d7`
+after its required hosted Docs check passed. It adds prepared/dispatched/completed
 write intents, owned completion receipts, installed-location verification and
 an authorized private writer. A committed native marker can finish an
 interrupted common completion; dispatched writes with missing markers fail as
 uncertain and are never blindly dispatched again. Source `54103b9` passes a
 322-case memory/journal/ownership cohort on Windows and frozen Linux with zero
-skips, including the combined abrupt-process-exit recovery path. Retention, public workflow
-bindings and broader recovery qualification remain open; required native memory
+skips, including the combined abrupt-process-exit recovery path. The active
+retention follow-up adds a typed opt-in record expiry policy: database time
+sets a deadline atomically with the native write, and fresh get reads omit
+expired records on both stores. Historical observations and retry evidence
+remain available; retries do not renew the deadline. This is logical record
+expiry, not physical purge or workflow-history deletion. Source `810c723` passes
+355 selected memory/journal/ownership cases on each of Windows and frozen Linux
+with zero skips. Namespace bounds,
+bounded cleanup, public bindings and broader qualification remain open; native memory
 admission stays closed. See the
 [native memory scope](docs/s4-02-native-memory-acceptance.md).
 

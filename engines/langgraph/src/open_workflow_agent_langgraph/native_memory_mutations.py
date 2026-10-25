@@ -134,12 +134,43 @@ async def _apply_in_transaction(
         )
     finally:
         store._mutation_cursor = None
+    if request.kind == "put" and request.retention is not None:
+        await _set_record_expiry(cursor, namespace, request, postgresql=postgresql)
     if not postgresql:
         # Recheck lease time at the end, including a delete of an absent item.
         await cursor.execute(
             f"UPDATE {TABLE} SET request_digest=request_digest WHERE identity=?", (marker.identity,)
         )
     return marker
+
+
+async def _set_record_expiry(
+    cursor: Any, namespace: tuple[str, ...], request: MemoryMutation, *, postgresql: bool
+) -> None:
+    assert request.retention is not None
+    if postgresql:
+        from langgraph.store.postgres.base import _namespace_to_text
+
+        await cursor.execute(
+            "UPDATE store SET expires_at=clock_timestamp()+(%s*interval '1 second'),"
+            "ttl_minutes=NULL WHERE prefix=%s AND key=%s",
+            (request.retention.ttl_seconds, _namespace_to_text(namespace), request.key),
+        )
+    else:
+        from langgraph.store.sqlite.base import _namespace_to_text
+
+        await cursor.execute(
+            "UPDATE store SET expires_at=strftime('%Y-%m-%d %H:%M:%f','now',?),"
+            "ttl_minutes=NULL WHERE prefix=? AND key=?",
+            (
+                f"+{request.retention.ttl_seconds} seconds",
+                _namespace_to_text(namespace),
+                request.key,
+            ),
+        )
+
+    if cursor.rowcount != 1:
+        raise mutation_error("expiry_update_unavailable")
 
 
 async def apply_native_mutation(
@@ -154,7 +185,7 @@ async def apply_native_mutation(
 
     Use a worker-owned SDK connection and drain cancellation before releasing
     ownership. A marker and SDK mutation commit together in the native DB;
-    common effect completion is deliberately a separate, unimplemented gate.
+    its caller coordinates common intent/completion separately.
     """
     if not isinstance(request, MemoryMutation) or not isinstance(fence, NativeWriteFence):
         raise mutation_error("request_invalid")

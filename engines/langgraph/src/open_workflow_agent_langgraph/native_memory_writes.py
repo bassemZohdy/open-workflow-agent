@@ -13,6 +13,7 @@ from open_workflow_agent.errors import ConfigurationError, ToolError
 from open_workflow_agent.execution_context import current_action_context
 from open_workflow_agent.memory_mutations import TABLE, MemoryMutation, MemoryMutationMarker
 from open_workflow_agent.memory_reads import MemoryReadBinding
+from open_workflow_agent.memory_retention import MemoryRecordRetention
 from open_workflow_agent.memory_writes import MemoryMutationBackend
 from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.services import RuntimeServices
@@ -21,7 +22,7 @@ from open_workflow_agent.storage import is_postgresql_datasource
 from .native_memory_mutations import apply_native_mutation
 
 
-def mutation_storage_identity(database: str) -> str:
+def mutation_storage_identity(database: str, retention: MemoryRecordRetention | None = None) -> str:
     """Bind the installed location without retaining authentication secrets."""
     if is_postgresql_datasource(database):
         from psycopg.conninfo import conninfo_to_dict
@@ -33,7 +34,13 @@ def mutation_storage_identity(database: str) -> str:
         }
     else:
         location = str(Path(database).resolve()) if database != ":memory:" else database
-    return effect_request_digest("owa/memory-storage/v1", {"location": location})
+    identity = effect_request_digest("owa/memory-storage/v1", {"location": location})
+    if retention is not None:
+        return effect_request_digest(
+            "owa/memory-storage-policy/v1",
+            {"location": identity, "retention": retention.descriptor},
+        )
+    return identity
 
 
 def inspect_native_marker(database: str, request: MemoryMutation) -> MemoryMutationMarker | None:
@@ -80,9 +87,19 @@ def inspect_native_marker(database: str, request: MemoryMutation) -> MemoryMutat
 
 
 def mutation_backend(
-    services: RuntimeServices, database: str, binding: MemoryReadBinding
+    services: RuntimeServices,
+    database: str,
+    binding: MemoryReadBinding,
+    retention: MemoryRecordRetention | None = None,
 ) -> MemoryMutationBackend:
+    def inspect(request: MemoryMutation) -> MemoryMutationMarker | None:
+        if request.retention != retention:
+            raise ConfigurationError("native memory retention differs from the installed policy")
+        return inspect_native_marker(database, request)
+
     async def apply(request: MemoryMutation, handle: ExecutionHandle) -> MemoryMutationMarker:
+        if request.retention != retention:
+            raise ConfigurationError("native memory retention differs from the installed policy")
         if handle._execution_lease is None:
             raise ConfigurationError("native memory requires original execution ownership")
         return await apply_native_mutation(
@@ -95,9 +112,9 @@ def mutation_backend(
 
     return MemoryMutationBackend(
         binding,
-        mutation_storage_identity(database),
+        mutation_storage_identity(database, retention),
         apply,
-        lambda request: inspect_native_marker(database, request),
+        inspect,
     )
 
 
@@ -111,16 +128,19 @@ class NativeMemoryWriter:
         collection: str,
         *,
         max_record_bytes: int = 65_536,
+        retention: MemoryRecordRetention | None = None,
     ) -> None:
         if (
             type(collection) is not str
             or not re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", collection)
             or type(max_record_bytes) is not int
             or not 1 <= max_record_bytes <= 65_536
+            or (retention is not None and not isinstance(retention, MemoryRecordRetention))
         ):
             raise ValueError("native memory writes require finite collection and record bounds")
         self._services, self._binding = services, binding
         self._collection, self._maximum = collection, max_record_bytes
+        self._retention = retention
 
     async def put(self, key: str, value: dict[str, Any]) -> None:
         await self._write(key, value, delete=False)
@@ -145,6 +165,7 @@ class NativeMemoryWriter:
                 "delete",
                 None,
                 self._maximum,
+                self._retention,
             )
         else:
             if type(value) is not dict:
@@ -157,6 +178,7 @@ class NativeMemoryWriter:
                 key,
                 value,
                 max_record_bytes=self._maximum,
+                retention=self._retention,
             )
         await self._services.authorize_current_action(
             "memory.delete" if delete else "memory.add", "memory:self", request.request_digest
