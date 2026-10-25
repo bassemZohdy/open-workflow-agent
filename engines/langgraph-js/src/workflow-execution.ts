@@ -10,6 +10,7 @@ type Task = Readonly<{
   next: string;
   endsWorkflow: boolean;
   value?: Json;
+  problem?: Readonly<Record<string, Json>>;
   children?: readonly Task[];
 }>;
 
@@ -28,6 +29,7 @@ export class WorkflowExecutionError extends Error {
     readonly code: "unsupported_workflow_feature" | "workflow_semantic_error" | "workflow_execution_error",
     message: string,
     readonly reference: string,
+    private readonly problem?: Readonly<Record<string, Json>>,
   ) {
     super(message);
     this.name = "WorkflowExecutionError";
@@ -35,7 +37,11 @@ export class WorkflowExecutionError extends Error {
   }
 
   asDict() {
-    return { code: this.code, message: this.message, details: { reference: this.reference } };
+    return {
+      code: this.code, message: this.message,
+      details: this.problem === undefined ? { reference: this.reference }
+        : { ...structuredClone(this.problem), instance: this.reference },
+    };
   }
 }
 
@@ -114,8 +120,8 @@ function compileScope(value: unknown, reference: string, budget: { tasks: number
   }
   return freeze(entries.map((entry, index): Task => {
     const { name, body, reference: taskReference, key } = entry;
-    if (Object.keys(body).some((field) => !["set", "do", "then", "metadata"].includes(field))) reject(taskReference);
-    if (Object.hasOwn(body, "set") === Object.hasOwn(body, "do")) reject(taskReference);
+    if (Object.keys(body).some((field) => !["set", "do", "raise", "then", "metadata"].includes(field))) reject(taskReference);
+    if (["set", "do", "raise"].filter((kind) => Object.hasOwn(body, kind)).length !== 1) reject(taskReference);
     const transition = body.then ?? "continue";
     if (typeof transition !== "string") reject(`${taskReference}/then`);
     let next = entries[index + 1]?.key ?? END;
@@ -127,10 +133,16 @@ function compileScope(value: unknown, reference: string, budget: { tasks: number
       }
       next = target;
     }
+    let operation: Pick<Task, "value" | "children" | "problem">;
+    if (Object.hasOwn(body, "set")) operation = { value: bounded(body.set, `${taskReference}/set`, true) };
+    else if (Object.hasOwn(body, "do")) operation = { children: compileScope(body.do, `${taskReference}/do`, budget, depth + 1) };
+    else {
+      if (!object(body.raise) || Object.keys(body.raise).length !== 1 || !object(body.raise.error)) reject(`${taskReference}/raise`);
+      operation = { problem: bounded(body.raise.error, `${taskReference}/raise/error`, true) as Record<string, Json> };
+    }
     return {
       name, key, reference: taskReference, next, endsWorkflow: transition === "end",
-      ...(Object.hasOwn(body, "set") ? { value: bounded(body.set, `${taskReference}/set`, true) }
-        : { children: compileScope(body.do, `${taskReference}/do`, budget, depth + 1) }),
+      ...operation,
     };
   }));
 }
@@ -141,6 +153,10 @@ async function runScope(tasks: readonly Task[], input: Json, budget: { steps: nu
     builder.addNode(task.key, async (state) => {
       if (++budget.steps > MAX_STEPS) {
         throw new WorkflowExecutionError("workflow_execution_error", "workflow step limit exceeded", task.reference);
+      }
+      if (task.problem !== undefined) {
+        const message = task.problem.detail || task.problem.title || task.problem.type;
+        throw new WorkflowExecutionError("workflow_execution_error", String(message), task.reference, task.problem);
       }
       const result = task.children !== undefined
         ? await runScope(task.children, structuredClone(state.data), budget)
@@ -165,7 +181,7 @@ const DEFAULT_WORKFLOW = {
 export function literalExecutionCapabilities() {
   return {
     engine: "langgraph-js", experimental: true, dsl: "1.0.3",
-    tasks: ["set", "do"], transitions: ["continue", "exit", "end", "scope_task_name"],
+    tasks: ["set", "do", "raise"], transitions: ["continue", "exit", "end", "scope_task_name"],
     expressions: false, catalogCalls: false, nativeExtensions: [],
     persistence: false, recovery: false, publicInvocationIdentity: false,
     maxTasks: MAX_TASKS, maxSteps: MAX_STEPS, maxScopeDepth: MAX_SCOPE_DEPTH, maxValueBytes: MAX_VALUE_BYTES,

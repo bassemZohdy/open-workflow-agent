@@ -8,6 +8,9 @@ import { executeLiteralWorkflow, literalExecutionCapabilities, WorkflowExecution
 const cases = JSON.parse(await readFile(new URL("../../../../tests/fixtures/javascript-literal-execution.json", import.meta.url), "utf8")) as {
   id: string; tasks: unknown[]; input: unknown; expected: unknown;
 }[];
+const faults = JSON.parse(await readFile(new URL("../../../../tests/fixtures/javascript-literal-faults.json", import.meta.url), "utf8")) as {
+  id: string; tasks: unknown[]; expected: unknown;
+}[];
 
 function workflow(tasks: unknown[], extras = {}) {
   return JSON.stringify({ document: { dsl: "1.0.3", namespace: "tests", name: "literal", version: "1.0.0" }, do: tasks, ...extras });
@@ -22,6 +25,42 @@ for (const fixture of cases) {
     assert.deepEqual(Object.keys(result).sort(), ["output", "status"]);
   });
 }
+
+for (const fixture of faults) {
+  test(`actual JavaScript native fault matches shared literal fixture: ${fixture.id}`, async () => {
+    await assert.rejects(executeLiteralWorkflow(workflow(fixture.tasks), { private: "not-error-data" }), (error: unknown) => {
+      assert.ok(error instanceof WorkflowExecutionError);
+      assert.deepEqual(error.asDict(), fixture.expected);
+      Object.assign(error.asDict().details, { title: "mutated caller projection" });
+      assert.deepEqual(error.asDict(), fixture.expected);
+      assert.ok(!JSON.stringify(error.asDict()).includes("not-error-data"));
+      return true;
+    });
+  });
+}
+
+test("raise admission rejects references and expressions before native construction", async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(StateGraph.prototype, "compile")!;
+  Object.defineProperty(StateGraph.prototype, "compile", { ...descriptor, value() { throw new Error("must-not-compile"); } });
+  try {
+    for (const raised of [{ error: "declaredError" }, { error: { status: 400, type: "https://errors.test/", detail: "${ .secret }" } }]) {
+      await assert.rejects(executeLiteralWorkflow(workflow([{ fail: { raise: raised } }]), {}), (error: unknown) => {
+        assert.ok(error instanceof WorkflowExecutionError);
+        assert.equal(error.code, "unsupported_workflow_feature");
+        return true;
+      });
+    }
+    const problem = { error: { status: 400, type: "https://errors.test/", title: "must-not-run" } };
+    await assert.rejects(executeLiteralWorkflow(workflow([{ fail: { raise: problem } }, { late: { call: "agent:1.0.0@default" } }]), {}), (error: unknown) => {
+      assert.ok(error instanceof WorkflowExecutionError);
+      assert.equal(error.code, "unsupported_workflow_feature");
+      assert.ok(!error.message.includes("must-not-run"));
+      return true;
+    });
+  } finally {
+    Object.defineProperty(StateGraph.prototype, "compile", descriptor);
+  }
+});
 
 test("unsupported late tasks reject before constructing a native graph", async () => {
   const descriptor = Object.getOwnPropertyDescriptor(StateGraph.prototype, "compile")!;

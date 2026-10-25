@@ -48,3 +48,25 @@ The frozen `b9b72ee20d7184a91fe7f92860f14048707df80c` test image passes all
 43 cases on Linux under those controls, with no skips. Its source input manifest
 contains 1,151 files. Coherent hosted qualification of this component remains
 pending. Local reports are retained under `tmp/javascript-sandbox-20261025/`.
+
+## Literal structured faults candidate — 2026-10-25
+
+The next candidate admits literal inline `raise.error` objects. Actual native
+nodes throw the common `workflow_execution_error` with the Python contract's
+detail/title/type message precedence and canonical JSON Pointer `instance`.
+Nested scopes propagate the same public error. The immutable private program
+and error projections contain no SDK object; a caller can mutate its returned
+projection without changing the original admitted error. Definition-wide
+admission still precedes native construction, including unreachable later tasks.
+Named error references and any expressions remain unsupported.
+
+Four exact fault fixtures now join the nine success fixtures. Windows Node
+passes all 48 package tests; each independent actual Python SDK passes all
+13 shared cases. The initial two Node failures exposed invalid fixture
+assumptions: a URI was used where the schema describes a JSON Pointer, and a
+named error reference was placed outside its required `raise.error` envelope.
+The fixtures now use their valid official forms; the schema and validators are
+unchanged. Python's annotation-only default accepts the former URI format,
+while the pinned JS validator rejects it. This known format-validation
+difference remains an S4-04 parity gap, with no full criterion promoted.
+Current-source Docker and coherent hosted qualification remain required.

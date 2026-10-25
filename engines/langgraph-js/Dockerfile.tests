@@ -7,7 +7,7 @@ COPY engines/langgraph-js/src ./engines/langgraph-js/src
 COPY engines/langgraph-js/test ./engines/langgraph-js/test
 COPY engines/langgraph-js/tsconfig.json ./engines/langgraph-js/tsconfig.json
 COPY resources/open-workflow/1.0.3/workflow.yaml ./resources/open-workflow/1.0.3/workflow.yaml
-COPY tests/fixtures/workflow-definition-admission.json tests/fixtures/javascript-literal-execution.json ./tests/fixtures/
+COPY tests/fixtures/workflow-definition-admission.json tests/fixtures/javascript-literal-execution.json tests/fixtures/javascript-literal-faults.json ./tests/fixtures/
 RUN npm run build --prefix engines/langgraph-js
 USER node
 CMD ["node", "--test", "engines/langgraph-js/dist/test/*.test.js"]

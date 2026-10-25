@@ -1,0 +1,22 @@
+[
+  {
+    "id": "literal-inline-error",
+    "tasks": [{"fail": {"raise": {"error": {"status": 400, "type": "https://errors.test/compliance", "title": "Compliance Error"}}}}],
+    "expected": {"code": "workflow_execution_error", "message": "Compliance Error", "details": {"status": 400, "type": "https://errors.test/compliance", "title": "Compliance Error", "instance": "/do/0/fail"}}
+  },
+  {
+    "id": "literal-detail-precedence",
+    "tasks": [{"fail": {"raise": {"error": {"status": 409, "type": "https://errors.test/conflict", "title": "Conflict", "detail": "Declared conflict", "instance": "/caller/instance"}}}}],
+    "expected": {"code": "workflow_execution_error", "message": "Declared conflict", "details": {"status": 409, "type": "https://errors.test/conflict", "title": "Conflict", "detail": "Declared conflict", "instance": "/do/0/fail"}}
+  },
+  {
+    "id": "literal-nested-fault",
+    "tasks": [{"outer": {"do": [{"first": {"set": {"intermediate": true}}}, {"inner": {"raise": {"error": {"status": 400, "type": "https://errors.test/nested"}}}}]}}, {"unreachable": {"set": {"wrong": true}}}],
+    "expected": {"code": "workflow_execution_error", "message": "https://errors.test/nested", "details": {"status": 400, "type": "https://errors.test/nested", "instance": "/do/0/outer/do/1/inner"}}
+  },
+  {
+    "id": "literal-escaped-fault-reference",
+    "tasks": [{"slash/tilde~": {"raise": {"error": {"status": 422, "type": "https://errors.test/escaped", "title": "Invalid"}}}}],
+    "expected": {"code": "workflow_execution_error", "message": "Invalid", "details": {"status": 422, "type": "https://errors.test/escaped", "title": "Invalid", "instance": "/do/0/slash~1tilde~0"}}
+  }
+]

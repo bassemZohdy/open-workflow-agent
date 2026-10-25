@@ -35,6 +35,10 @@ The isolated JavaScript package now has a bounded literal-only native execution
 component. Its nine shared cases pass on Node and the actual Python SDKs; public
 identity, durable engine services and broader execution remain unimplemented.
 See the [JavaScript acceptance record](docs/s4-03-javascript-execution-acceptance.md).
+The later literal-fault candidate adds inline raised errors and four shared
+fault cases; all 13 success/fault cases pass each actual Python SDK and the Node
+package passes 48 tests. Full JavaScript services, identity and durability remain
+open, and the current format-validation difference remains explicit.
 The [ready-task qualification record](docs/validation-history/ready-tasks-2026-10-25.md)
 tracks the frozen baseline, corrected test expectation and newly repaired
 dependency advisories. The full green `d72781f` checkpoint closes eight finite

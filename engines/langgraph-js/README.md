@@ -17,7 +17,7 @@ invocation identity or a production-qualified engine adapter.
 
 `executeLiteralWorkflow(source, input)` is an experimental execution component.
 It validates the complete official definition, derives a typed immutable private
-program, and builds actual LangGraph nodes for literal `set` and nested `do`
+program, and builds actual LangGraph nodes for literal `set`, inline `raise` and nested `do`
 tasks. Fixed `continue`, scope-local named transitions, `exit`, and workflow `end`
 are supported. Whole-definition admission precedes native graph construction.
 Missing source generates the canonical one-task `agent:1.0.0@default` workflow,
@@ -31,12 +31,24 @@ Compilation caps task names at 256 UTF-8 bytes, task references at 8 KiB,
 total tasks at 256 and nested scope depth at eight; a shared
 512-step budget bounds routing loops. `literalExecutionCapabilities()` exposes
 these restrictions. `WorkflowExecutionError.asDict()` projects a bounded common
-error code/message/reference without SDK objects or source excerpts.
+error code/message/reference without SDK objects or source excerpts. A declared
+inline `raise.error` instead projects the literal standard error fields with
+the canonical task `instance`, matching the Python contract. Error references,
+expressions and runtime lookup are unsupported and reject before execution.
 
 Nine exact shared fixtures exercise this component and the Python adapters.
 They cover literal data, sequences, local jumps, nested exit and workflow end;
 they do not establish full cross-language parity. Neither checkpointing nor
 common invocation identity is qualified by these cases.
+
+Four additional shared fault fixtures cover inline errors, detail/title/type
+message precedence, nested propagation and escaped canonical task references.
+The current package suite passes 48 tests; each actual Python SDK passes all
+13 shared success/fault cases. This finite comparison does not establish full
+schema or runtime parity. The pinned JS validator checks JSON Pointer formats;
+Python's current default schema validator treats `format` as an annotation.
+Fixtures use a valid JSON Pointer for a supplied error instance; broader format
+parity remains part of S4-04.
 
 The package is optional and is not included in production images, release
 artifacts, or Python environments. Its future engine API must accept canonical

@@ -287,6 +287,10 @@ treated as a deferred task or as additional feature completion.
   qualification remain pending. Broader S4-02 features remain open. See
   [the S4-02 acceptance record](docs/s4-02-native-channels-acceptance.md).
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
+  A later literal-fault candidate adds standard inline `raise.error` and four
+  exact shared fault cases. Node passes 48 package tests and each actual Python
+  SDK passes all 13 shared success/fault cases. A format-validation difference
+  remains explicit; full current-source/Docker qualification is pending.
   An experimental native literal execution component now supports `set`, nested
   `do` and fixed scope transitions. Nine exact fixtures run on Node and Python;
   unsupported features reject before native graph construction. It has no public
