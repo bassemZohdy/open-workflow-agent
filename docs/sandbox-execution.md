@@ -271,9 +271,10 @@ other applications. Node needs several threads during startup. A shared runner
 whose user already exceeds the selected quota can therefore abort Node before
 the script runs. Shared-host JavaScript test fixtures explicitly omit that one
 quota; they do not alter runtime defaults or claim process-count enforcement.
-The image gate keeps the default quota of 32 under a dedicated arbitrary UID,
+The image gate explicitly selects a quota of 32 under a dedicated arbitrary UID,
 plus Docker's independent PID and memory limits. Isolated contract runners use
-`OWA_TEST_ISOLATED_PROCESS_USER=1` to require the default quota as well.
+`OWA_TEST_ISOLATED_PROCESS_USER=1` to require that quota as well. The application
+default remains 64.
 
 For an enabled internal JavaScript profile, recovery includes the resolved
 interpreter path, physical binary SHA-256 and byte count. A changed interpreter

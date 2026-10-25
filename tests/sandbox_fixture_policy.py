@@ -19,7 +19,7 @@ def javascript_process_limits() -> dict[str, int | None]:
 
     Node creates threads during startup. A quota of 32 cannot be applied to a
     shared runner UID already owning more than 32 threads. Physical image gates
-    retain the production default under a dedicated non-root UID; isolated
+    retain an explicit quota of 32 under a dedicated non-root UID; isolated
     contract runners can select the same profile explicitly.
     """
     limits = supported_process_limits()

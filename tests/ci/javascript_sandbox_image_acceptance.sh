@@ -37,7 +37,7 @@ async def main(directory):
     config = RuntimeConfig.model_validate({"model": {"provider": "fake"}, "sandbox": {
         "enabled": True, "script_runtimes": ["javascript"],
         "workspace_root": str(directory / "workspace"),
-        "memory_bytes": None, "timeout_seconds": 15,
+        "memory_bytes": None, "process_count": 32, "timeout_seconds": 15,
     }})
     assert config.sandbox.process_count == 32
     services = RuntimeServices(config, model=FakeModel(), database_root=directory / "runtime")

@@ -189,10 +189,10 @@ threads and `RLIMIT_NPROC=32`; Node reports failure creating a startup thread.
 The same probe succeeds with quota 128. This supports a shared-UID quota
 explanation, but the hosted failure logs do not retain the runner's thread count.
 Shared-host JavaScript fixtures now explicitly omit that quota. Production
-defaults are unchanged; the packaged image gate asserts the default 32-process
-quota and its capability under a dedicated arbitrary UID, with independent
+default of 64 is unchanged; the packaged image gate explicitly selects and
+asserts a 32-process quota under a dedicated arbitrary UID, with independent
 Docker PID/memory limits. Isolated contract runners also require the default
-quota through `OWA_TEST_ISOLATED_PROCESS_USER=1`. No secrets, environment or
+quota of 32 through `OWA_TEST_ISOLATED_PROCESS_USER=1`. No secrets, environment or
 output controls are relaxed.
 
 Separately, frozen local source `df6b725` passes 19 tests per SDK in Docker
@@ -203,3 +203,8 @@ extend the `a6a95cd` production images; runtime code, locks and metadata match
 between those commits. This remains focused local evidence, not an exact-source
 production-image rebuild. Reports and the thread-quota probe are retained under
 `tmp/javascript-sandbox-20261025/`.
+
+The first `4866840` local image run built both images but rejected before
+invocation because the new fixture asserted quota 32 without selecting it (the
+real default is 64). The image fixture now selects 32 explicitly. The earlier
+failed logs remain retained; this correction changes no application default.
