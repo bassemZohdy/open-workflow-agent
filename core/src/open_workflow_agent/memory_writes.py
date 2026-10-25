@@ -12,7 +12,7 @@ from dataclasses import asdict, dataclass
 from typing import Any
 from weakref import WeakValueDictionary
 
-from ._effect_storage import insert_pending_receipt
+from ._effect_storage import insert_completed_receipt, insert_pending_receipt
 from .effects import (
     EffectIdentity,
     EffectJournal,
@@ -29,6 +29,16 @@ from .memory_mutations import (
     mutation_error,
 )
 from .memory_reads import MemoryReadBinding, _bounded_column, _unique
+from .memory_resolution import (
+    PREFIX as RESOLUTION_PREFIX,
+)
+from .memory_resolution import (
+    MemoryWriteResolution,
+    abandoned_receipt,
+    abandonment_error,
+    resolution_identity,
+    resolution_receipt,
+)
 from .model_responses import bounded_model_json
 from .ownership import execution_write_guard, owned_write_transaction
 from .persistence import ExecutionHandle, InvocationStore
@@ -170,7 +180,8 @@ class MemoryWrites:
             or row[0] != identity.invocation_id
             or row[1] != identity.workflow_fingerprint
             or type(row[2]) is not str
-            or row[5] not in {"prepared", "dispatched", "completed"}
+            or row[5]
+            not in {"prepared", "dispatched", "completed", "resolved_complete", "abandoned"}
         ):
             raise mutation_error("intent_changed")
         request = MemoryMutation.from_descriptor(json.loads(row[2], object_pairs_hook=_unique))
@@ -203,14 +214,138 @@ class MemoryWrites:
             != identity
         ):
             raise mutation_error("identity_missing")
-        if receipt != _receipt(request, completed=row[5] == "completed"):
+        resolution = self._resolution(request, backend)
+        resolved = row[5] in {"resolved_complete", "abandoned"}
+        if (resolution is not None) != resolved:
+            raise mutation_error("resolution_missing_or_orphaned")
+        if resolution is not None:
+            decision, audit = resolution
+            if decision.principal != saved.owner_principal or (
+                (decision.decision == "abandon_unknown") != (row[5] == "abandoned")
+            ):
+                raise mutation_error("resolution_changed")
+        expected = (
+            abandoned_receipt(request, audit)
+            if row[5] == "abandoned" and resolution is not None
+            else _receipt(request, completed=row[5] in {"completed", "resolved_complete"})
+        )
+        if receipt != expected:
             raise mutation_error("receipt_changed")
         marker = self._marker(backend, request)
-        if (row[5] == "completed" and marker is None) or (
+        if (row[5] in {"completed", "resolved_complete"} and marker is None) or (
             row[5] == "prepared" and marker is not None
         ):
             raise mutation_error("marker_missing_or_orphaned")
         return request, row[5], backend
+
+    def _resolution(
+        self, request: MemoryMutation, backend: MemoryMutationBackend
+    ) -> tuple[MemoryWriteResolution, EffectReceipt] | None:
+        identity = resolution_identity(request.identity)
+        row = self.connection.execute(
+            "SELECT owner,status,"
+            + _bounded_column(self.connection, "payload", 8192)
+            + " FROM workflow_effects WHERE identity=?",
+            (identity.key,),
+        ).fetchone()
+        index = self.connection.execute(
+            "SELECT invocation_id,fingerprint,"
+            + _bounded_column(self.connection, "payload", 8192)
+            + " FROM workflow_effect_invocations WHERE identity=?",
+            (identity.key,),
+        ).fetchone()
+        if row is None and index is None:
+            return None
+        if row is None or index is None or type(row[2]) is not str or type(index[2]) is not str:
+            raise mutation_error("resolution_missing_or_orphaned")
+        try:
+            raw = json.loads(row[2], object_pairs_hook=_unique)
+            decision = MemoryWriteResolution.from_descriptor(raw["output"]["resolution"])
+            expected = resolution_receipt(request, backend.storage_identity, decision)
+            if (
+                tuple(row[:2]) != (expected.owner, expected.status)
+                or raw != _receipt_payload(expected)
+                or tuple(index[:2]) != (identity.invocation_id, identity.workflow_fingerprint)
+                or EffectIdentity.from_value(json.loads(index[2], object_pairs_hook=_unique))
+                != identity
+            ):
+                raise ValueError("resolution evidence changed")
+        except (KeyError, TypeError, ValueError):
+            raise mutation_error("resolution_changed") from None
+        return decision, expected
+
+    def verify_resolution(self, identity: EffectIdentity, receipt: EffectReceipt) -> None:
+        from dataclasses import replace
+
+        mutation = replace(
+            identity, operation=PREFIX + identity.operation[len(RESOLUTION_PREFIX) :]
+        )
+        known = self.journal.get(mutation)
+        if known is None:
+            raise mutation_error("intent_missing")
+        request, phase, backend = self._load(mutation, known)
+        resolution = self._resolution(request, backend)
+        if (
+            phase not in {"resolved_complete", "abandoned"}
+            or resolution is None
+            or resolution[1] != receipt
+        ):
+            raise mutation_error("resolution_changed")
+
+    async def resolve(
+        self, handle: ExecutionHandle, request: MemoryMutation, decision: MemoryWriteResolution
+    ) -> EffectReceipt:
+        """Trusted preauthorized control primitive; never redispatch SDK writes.
+
+        Ingress must authenticate and authorize the original principal first.
+        Abandonment acknowledges uncertainty; it asserts neither rollback nor
+        nonexecution. Its immutable fault prevents any later automatic retry.
+        """
+        if not isinstance(decision, MemoryWriteResolution):
+            raise mutation_error("resolution_invalid")
+        request.verify_invocation(self.invocations, handle)
+        if (
+            decision.principal != handle.owner_principal
+            or request.binding.backend != self.connection.kind
+        ):
+            raise mutation_error("resolution_authority_changed")
+        lock = self._locks.setdefault(request.identity.key, asyncio.Lock())
+        async with lock:
+            with owned_write_transaction(
+                self.connection,
+                handle._execution_lease,
+                invocation_id=handle.invocation_id,
+                workflow_fingerprint=handle.workflow_fingerprint,
+            ):
+                request.verify_invocation(self.invocations, handle)
+                known = self.journal.get(request.identity)
+                if known is None:
+                    raise mutation_error("intent_missing")
+                saved, phase, backend = self._load(request.identity, known)
+                if saved != request:
+                    raise mutation_error("request_changed")
+                audit = resolution_receipt(request, backend.storage_identity, decision)
+                if phase in {"resolved_complete", "abandoned"}:
+                    if self._resolution(request, backend) != (decision, audit):
+                        raise mutation_error("resolution_changed")
+                    return audit
+                if phase != "dispatched":
+                    raise mutation_error("resolution_requires_dispatch")
+                marker = self._marker(backend, request)
+                if (marker is not None) != (decision.decision == "complete"):
+                    raise mutation_error("resolution_evidence_mismatch")
+                insert_completed_receipt(
+                    self.connection, resolution_identity(request.identity), audit
+                )
+                outcome = (
+                    abandoned_receipt(request, audit)
+                    if marker is None
+                    else _receipt(request, completed=True)
+                )
+                self._finish(
+                    handle, request, outcome, "abandoned" if marker is None else "resolved_complete"
+                )
+                return audit
 
     def verify(self, identity: EffectIdentity, receipt: EffectReceipt) -> None:
         self._load(identity, receipt)
@@ -296,7 +431,7 @@ class MemoryWrites:
             saved_request, phase, _ = self._load(identity, receipt)
             if saved_request != request:
                 raise mutation_error("request_changed")
-        if phase != "completed":
+        if phase not in {"completed", "resolved_complete", "abandoned"}:
             marker = self._marker(backend, request)
             if phase == "dispatched" and marker is None:
                 raise mutation_error("outcome_unknown")
@@ -338,32 +473,44 @@ class MemoryWrites:
                 ):
                     raise mutation_error("marker_missing_or_orphaned")
                 receipt = _receipt(request, completed=True)
-                if self.journal._execution_authorization_seal is not None:
-                    self.journal._execution_authorization_seal(
-                        identity, receipt, execution_lease=lease
-                    )
-                self.connection.execute(
-                    f"UPDATE {TABLE} SET phase='completed' WHERE identity=? AND phase='dispatched'",
-                    (identity.key,),
-                )
-                self.connection.execute(
-                    "UPDATE workflow_effects SET status='completed',payload=? "
-                    "WHERE identity=? AND owner=? AND status='pending'",
-                    (
-                        json.dumps(_receipt_payload(receipt), ensure_ascii=False, allow_nan=False),
-                        identity.key,
-                        OWNER,
-                    ),
-                )
-                if self.journal.get(identity) != receipt:
-                    raise mutation_error("receipt_changed")
-                guard, values = execution_write_guard(self.connection, lease)
-                if self.connection.execute(guard, values).fetchone() is None:
-                    raise mutation_error("ownership_lost")
+                self._finish(handle, request, receipt, "completed")
         if observer is not None:
             result = observer(identity, receipt)
             if inspect.isawaitable(result):
                 await result
+        if receipt.status == "faulted":
+            assert receipt.error is not None
+            raise abandonment_error(receipt.error["details"]["resolution_digest"])
+
+    def _finish(
+        self, handle: ExecutionHandle, request: MemoryMutation, receipt: EffectReceipt, phase: str
+    ) -> None:
+        """Participant in the caller's owned transaction; never commits itself."""
+        identity, lease = request.identity, handle._execution_lease
+        assert lease is not None
+        if self.journal._execution_authorization_seal is not None:
+            self.journal._execution_authorization_seal(identity, receipt, execution_lease=lease)
+        changed = self.connection.execute(
+            f"UPDATE {TABLE} SET phase=? WHERE identity=? AND phase='dispatched'",
+            (phase, identity.key),
+        )
+        if changed.rowcount != 1:
+            raise mutation_error("intent_changed")
+        changed = self.connection.execute(
+            "UPDATE workflow_effects SET status=?,payload=? "
+            "WHERE identity=? AND owner=? AND status='pending'",
+            (
+                receipt.status,
+                json.dumps(_receipt_payload(receipt), ensure_ascii=False, allow_nan=False),
+                identity.key,
+                OWNER,
+            ),
+        )
+        if changed.rowcount != 1 or self.journal.get(identity) != receipt:
+            raise mutation_error("receipt_changed")
+        guard, values = execution_write_guard(self.connection, lease)
+        if self.connection.execute(guard, values).fetchone() is None:
+            raise mutation_error("ownership_lost")
 
 
 def verify_memory_write_index(
