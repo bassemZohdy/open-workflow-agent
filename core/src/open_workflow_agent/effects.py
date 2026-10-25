@@ -18,6 +18,7 @@ from .storage import StorageConnection, open_storage
 
 if TYPE_CHECKING:
     from .external_recovery import ExternalOutcomeDependency
+    from .memory_writes import MemoryWrites
 
 
 @dataclass(frozen=True, slots=True)
@@ -403,6 +404,7 @@ class EffectJournal:
         self, database: str | Path = ":memory:", *, invocations: InvocationStore | None = None
     ) -> None:
         self._invocations = invocations
+        self._memory_writes: MemoryWrites | None = None
         self._sandbox_job_verifier: Callable[[EffectIdentity, EffectReceipt], None] | None = None
         self._execution_authorization_seal: OutcomeParticipant | None = None
         self._execution_authorization_intent: IntentParticipant | None = None
@@ -432,7 +434,9 @@ class EffectJournal:
     def get(self, identity: EffectIdentity) -> EffectReceipt | None:
         try:
             payload_column = "payload"
-            if identity.operation.startswith("policy:memory-read:v1:"):
+            if identity.operation.startswith(
+                ("policy:memory-read:v1:", "policy:memory-mutation:v1:")
+            ):
                 size = (
                     "octet_length(payload)"
                     if self.connection.is_postgresql
@@ -547,6 +551,10 @@ class EffectJournal:
                 from .memory_reads import verify_memory_read_receipt
 
                 verify_memory_read_receipt(self.connection, self._invocations, identity, receipt)
+            if identity.operation.startswith("policy:memory-mutation:v1:"):
+                if self._memory_writes is None:
+                    raise ValueError("memory mutation backend is unavailable")
+                self._memory_writes.verify(identity, receipt)
             if identity.operation == "policy:a2a-agent-card:v1":
                 from .a2a_admission import verify_a2a_card_receipt
 
@@ -741,6 +749,7 @@ class EffectJournal:
                     (current_id,),
                 ).fetchall()
                 memory_reads: set[str] = set()
+                memory_writes: set[str] = set()
                 for key, stored_fingerprint, payload in rows:
                     identity = EffectIdentity.from_value(json.loads(payload))
                     if (
@@ -755,6 +764,11 @@ class EffectJournal:
                         raise ValueError("admitted workflow effect receipt is absent")
                     if identity.operation.startswith("policy:memory-read:v1:"):
                         memory_reads.add(identity.key)
+                    if identity.operation.startswith("policy:memory-mutation:v1:"):
+                        memory_writes.add(identity.key)
+                        if receipt.status == "pending":
+                            assert self._memory_writes is not None
+                            self._memory_writes.verify_recovery(identity, receipt)
                     if receipt.child_invocation is not None:
                         if self._invocations is None:
                             raise ValueError("child invocation service is unavailable")
@@ -772,6 +786,11 @@ class EffectJournal:
 
                 verify_memory_read_index(
                     self.connection, current_id, current_fingerprint, memory_reads
+                )
+                from .memory_writes import verify_memory_write_index
+
+                verify_memory_write_index(
+                    self.connection, current_id, current_fingerprint, memory_writes
                 )
         except Exception:
             raise WorkflowExecutionError(

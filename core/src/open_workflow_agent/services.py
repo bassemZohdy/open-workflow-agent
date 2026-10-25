@@ -47,6 +47,7 @@ from .initial_delivery import InitialDeliveryStore
 from .knowledge import FastEmbedEmbeddingProvider, KnowledgeService
 from .lifecycle_history import LifecycleHistory
 from .memory import MemoryService
+from .memory_writes import MemoryWrites
 from .metrics import Metrics, MetricsEventSink
 from .observability import EventSink, InMemoryEventSink, LifecycleCloudEventSink
 from .openapi_admission import OpenApiOperationAdmission
@@ -255,6 +256,7 @@ class RuntimeServices:
         self.execution_ownership = ExecutionOwnershipStore(invocation_path)
         self.fork_decisions = ForkDecisionStore(invocation_path)
         self.effect_journal = EffectJournal(invocation_path, invocations=self.invocations)
+        self.memory_writes = MemoryWrites(self.effect_journal, self.invocations)
         self.external_action_recovery: HttpExternalActionRecovery | None = (
             HttpExternalActionRecovery(
                 self.effect_journal,

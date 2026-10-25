@@ -138,6 +138,52 @@ class MemoryMutation:
     def request_digest(self) -> str:
         return effect_request_digest(PROFILE + ":request", self.descriptor)
 
+    @classmethod
+    def from_descriptor(cls, raw: Any) -> MemoryMutation:
+        if (
+            type(raw) is not dict
+            or set(raw)
+            != {
+                "profile",
+                "parent",
+                "binding",
+                "namespace",
+                "collection",
+                "key",
+                "kind",
+                "value",
+                "max_record_bytes",
+            }
+            or raw["profile"] != PROFILE
+        ):
+            raise mutation_error("request_invalid")
+        binding = raw["binding"]
+        if type(binding) is not dict or set(binding) != {"id", "version", "backend"}:
+            raise mutation_error("binding_invalid")
+        parent = EffectIdentity.from_value(raw["parent"])
+        if raw["kind"] == "put":
+            return cls.put(
+                parent,
+                MemoryReadBinding(**binding),
+                raw["namespace"],
+                raw["collection"],
+                raw["key"],
+                raw["value"],
+                max_record_bytes=raw["max_record_bytes"],
+            )
+        if raw["kind"] != "delete" or raw["value"] is not None:
+            raise mutation_error("value_invalid")
+        return cls(
+            parent,
+            MemoryReadBinding(**binding),
+            raw["namespace"],
+            raw["collection"],
+            raw["key"],
+            "delete",
+            None,
+            raw["max_record_bytes"],
+        )
+
     def verify_invocation(self, invocations: InvocationStore, handle: ExecutionHandle) -> None:
         saved = invocations.get(handle.invocation_id)
         if (
