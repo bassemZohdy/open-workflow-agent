@@ -73,3 +73,25 @@ tests pass. Streams, public state updates, replay and time travel remain open.
 
 The complete original ready-task notes are retained in the
 [pre-integration history](pre-integration-open-tasks-2026-10-25.md).
+
+## PR #76 integration — private native memory foundations
+
+[PR #76](https://github.com/bassemZohdy/open-workflow-agent/pull/76) merged on
+2026-10-25 at `56e68b048c2d67c9216956962a9f49fe1fa9527d`, preserving head
+`659dae1b10656515e7e094bcd1367636db303980`. Local `main` was fast-forwarded to
+that commit and its push confirmed GitHub was already up to date. The checkout
+was clean before the next feature branch was created. No unrelated dependency
+PRs, release flags or repository protections were changed.
+
+The required hosted Markdown check passed on the exact PR head in
+[Docs run 40225187186](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40225187186)
+before the merge. Automatic CI remains disabled as requested. The private
+memory implementation retains its recorded 169-case Windows/frozen-Linux
+qualification at `f76fed9`; this merge is not a full repository or release
+qualification and does not enable a memory capability. S4-02 stays open, with
+the task total unchanged at 31 of 37 verified.
+
+Work continues from this main commit on `codex/s4-02-memory-write-recovery`,
+integrating common write intents/completions and native evidence verification.
+The current state and remaining gates are recorded in the
+[native memory acceptance record](../s4-02-native-memory-acceptance.md).

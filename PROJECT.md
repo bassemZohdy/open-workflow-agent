@@ -44,7 +44,8 @@ S4-02 remains the next ordered ready task, beginning with native memory. Bounded
 Send, the owned wait/end repair and Docker cache ordering have focused evidence.
 Memory, streams, public state updates, replay and time travel remain open.
 
-After the `f013a2e` main integration, the active S4-02 branch adds private native
+PR #76 merged the private native memory foundations into main at `56e68b0`;
+the required hosted Docs check passed before merging. These include native
 memory readers and SQLite/optional PostgreSQL provider factories. Bound readers
 retain the first committed value, including absence, in owned common receipts
 and recheck original authority before reuse. The read profile caps observations
@@ -58,10 +59,15 @@ process exit. Core-only request checks pass without SDK installation, and eight
 shared LangGraph SQLite/PostgreSQL isolation/denial checks pass. The earlier
 read/provider cohort remains recorded at `0268ea1`.
 Existing effect/ownership regressions previously passed all 99 cases with
-PostgreSQL enabled. Required native memory admission stays closed. Native
-markers are not common completion receipts; common write intents/completions,
-public authorization/bindings, retention and broader recovery qualification
-remain open. See the
+PostgreSQL enabled. The next branch adds common prepared/dispatched/completed
+write intents, owned completion receipts, installed-location verification and
+an authorized private writer. A committed native marker can finish an
+interrupted common completion; dispatched writes with missing markers fail as
+uncertain and are never blindly dispatched again. Source `54103b9` passes a
+322-case memory/journal/ownership cohort on Windows and frozen Linux with zero
+skips, including the combined abrupt-process-exit recovery path. Retention, public workflow
+bindings and broader recovery qualification remain open; required native memory
+admission stays closed. See the
 [native memory scope](docs/s4-02-native-memory-acceptance.md).
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault

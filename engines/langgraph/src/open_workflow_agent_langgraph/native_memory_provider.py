@@ -17,6 +17,7 @@ from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.storage import is_postgresql_datasource
 
 from .native_memory import NativeMemoryReadBounds, NativeMemoryReader
+from .native_memory_writes import NativeMemoryWriter, mutation_backend, mutation_storage_identity
 
 
 async def _close(stack: AsyncExitStack, timeout: float) -> None:
@@ -36,6 +37,11 @@ class NativeMemoryProvider:
     services: RuntimeServices
     store: BaseStore
     binding: MemoryReadBinding
+
+    def writer(self, collection: str, *, max_record_bytes: int = 65_536) -> NativeMemoryWriter:
+        return NativeMemoryWriter(
+            self.services, self.binding, collection, max_record_bytes=max_record_bytes
+        )
 
     def reader(
         self, collection: str, *, bounds: NativeMemoryReadBounds | None = None
@@ -92,6 +98,7 @@ async def open_native_memory_provider(
             details={"reason": "unsupported_event_loop"},
         )
     stack = AsyncExitStack()
+    services.memory_writes.check_binding(binding, mutation_storage_identity(path))
     try:
         async with asyncio.timeout(setup_timeout_seconds):
             path = services.memory_provider_database_path("langgraph")
@@ -102,6 +109,7 @@ async def open_native_memory_provider(
             from .native_memory_mutations import prepare_mutation_storage
 
             await prepare_mutation_storage(store, postgresql=postgresql)
+            services.memory_writes.register(mutation_backend(services, path, binding))
     except BaseException as error:
         try:
             await _close(stack, setup_timeout_seconds)

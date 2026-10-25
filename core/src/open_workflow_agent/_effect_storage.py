@@ -16,6 +16,21 @@ def insert_completed_receipt(
     """Insert immutable index and outcome inside the caller's transaction."""
     if receipt.status != "completed":
         raise WorkflowExecutionError("atomic internal outcomes require a completed receipt")
+    _insert_receipt(connection, identity, receipt)
+
+
+def insert_pending_receipt(
+    connection: StorageConnection, identity: EffectIdentity, receipt: EffectReceipt
+) -> None:
+    """Insert an internal intent inside its caller's owned transaction."""
+    if receipt.status != "pending":
+        raise WorkflowExecutionError("atomic internal intents require a pending receipt")
+    _insert_receipt(connection, identity, receipt)
+
+
+def _insert_receipt(
+    connection: StorageConnection, identity: EffectIdentity, receipt: EffectReceipt
+) -> None:
     identity_payload = json.dumps(asdict(identity), sort_keys=True, allow_nan=False)
     payload = json.dumps(
         _receipt_payload(receipt), sort_keys=True, ensure_ascii=False, allow_nan=False
