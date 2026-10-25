@@ -1,5 +1,12 @@
 # S4-04 finite native outcome comparison candidate
 
+The final frozen `5310f5a` CI run passes all 22 jobs, including required
+three-runtime outcome comparison job `121177010650`. Its 13 actual native
+outcomes have matched source, exact SDK/runtime versions and fixture/schema
+bytes. Full S4-04 and all 443 proposed/774 schema criteria remain unverified.
+The separate PostgreSQL run is partial because of the subsequently repaired
+process fixture; a full green merged-source qualification is not claimed.
+
 Current integration: see the [main checkpoint](validation-history/main-integration-2026-10-25.md)
 for current results, the final hosted-fixture repair and remaining gates.
 The full task stays open. Earlier counts and pending statements below are

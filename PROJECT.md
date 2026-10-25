@@ -32,11 +32,13 @@ Root has 5,197 passes and 90.26% coverage; all six workflows pass. See the
 
 The [main integration record](docs/validation-history/main-integration-2026-10-25.md)
 tracks PR #64 and keeps accepted task evidence separate from later candidates.
-At `5310f5a`, Framework, External Sandbox, Security and Docs pass; CI and
-PostgreSQL remain partial at integration time. The PostgreSQL native fixture
-assumed a missing hosted process API. Its owned-child repair passes all eight
-Linux store/routing/scope cases without that API and four Windows PostgreSQL
-cases. This is not a full green hosted result for the repaired source.
+PR #64 is merged at `f013a2e`. The final `5310f5a` results pass all 22 CI jobs
+(5,236 root passes, 90.25% coverage), Framework, External Sandbox, Security and
+Docs, including the three-runtime literal comparison. PostgreSQL has ten
+successful jobs and the native fixture failure caused by a missing hosted
+process API. Its repair is merged and passes eight Linux store/routing/scope
+cases without that API and four Windows PostgreSQL cases. The old PostgreSQL
+run remains partial; this is not a full green result for the merged source.
 
 S4-02 remains the next ordered ready task, beginning with native memory. Bounded
 Send, the owned wait/end repair and Docker cache ordering have focused evidence.
@@ -45,8 +47,9 @@ Memory, streams, public state updates, replay and time travel remain open.
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior
 remain missing. S4-04 has a new 13-case actual native outcome comparison with
-source/SDK/runtime/fixture/schema checks; broader CTK/proposed/schema coverage
-remains unverified. These later candidates do not qualify the integration
+source/SDK/runtime/fixture/schema checks; its finite hosted comparison passes
+at `5310f5a`. Broader CTK/proposed/schema coverage remains unverified. These
+later candidates do not qualify the integration
 for release or change any research row into a shipped capability.
 
 After the progress audit, development uses one active feature, focused local
