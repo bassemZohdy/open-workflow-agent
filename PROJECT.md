@@ -44,14 +44,17 @@ S4-02 remains the next ordered ready task, beginning with native memory. Bounded
 Send, the owned wait/end repair and Docker cache ordering have focused evidence.
 Memory, streams, public state updates, replay and time travel remain open.
 
-After the `f013a2e` main integration, the active S4-02 branch adds a private
-read-only native store component. It uses original common authority and access
-decisions, projects finite JSON and keeps required native memory admission
-closed. Windows and frozen offline Linux reader/admission selections each pass
-41 cases with zero skips; the shared original-authority contract also passes.
-Provider
-factories, durable read/write receipts, quotas/retention, recovery and public
-workflow bindings remain open. See the
+After the `f013a2e` main integration, the active S4-02 branch adds private native
+memory readers and SQLite/optional PostgreSQL provider factories. Bound readers
+retain the first committed value, including absence, in owned common receipts
+and recheck original authority before reuse. The read profile caps observations
+at 64 per invocation and detects inconsistent observations/indexes/receipts.
+Source `0268ea1` passes 118 focused cases with zero skips on both Windows and
+frozen Linux, including actual native workflows/stores and abrupt-process
+recovery. Existing effect/ownership regressions also pass all 99 cases after
+including their optional PostgreSQL selection.
+Required native memory admission stays closed. Public workflow bindings,
+write fencing/recovery, retention and broader qualification remain open. See the
 [native memory scope](docs/s4-02-native-memory-acceptance.md).
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
