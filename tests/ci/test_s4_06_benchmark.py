@@ -8,10 +8,34 @@ from typing import Any
 import pytest
 import yaml
 
+from benchmarks import matched
 from benchmarks.aggregate_matched import aggregate_profiles
 from benchmarks.matched import latency_summary, percentile, validate_concurrency
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+@pytest.mark.parametrize(
+    "hosted,legacy,expected",
+    [
+        ("hosted-linux-7", "legacy-host", "hosted-linux-7"),
+        (None, "explicit-benchmark-host", "explicit-benchmark-host"),
+        (None, None, "local"),
+        ("", "explicit-benchmark-host", "explicit-benchmark-host"),
+        ("", "", "local"),
+    ],
+)
+def test_report_identifies_the_actual_hosted_or_local_runner(
+    monkeypatch, hosted: str | None, legacy: str | None, expected: str
+) -> None:
+    for variable, value in (("RUNNER_NAME", hosted), ("GITHUB_RUNNER", legacy)):
+        if value is None:
+            monkeypatch.delenv(variable, raising=False)
+        else:
+            monkeypatch.setenv(variable, value)
+    monkeypatch.setenv("GITHUB_SHA", "a" * 40)
+    metadata = matched._metadata("adk", "sqlite", {"iterations": 30}, "workflow-fingerprint")
+    assert metadata["runner"]["name"] == expected
 
 
 def _profile(engine: str, backend: str, *, commit: str = "a" * 40) -> dict[str, Any]:

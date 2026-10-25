@@ -94,8 +94,24 @@ The source `88ca0f5` hosted checkpoint passed Security, Docs, External Sandbox
 and optional Framework. PostgreSQL passed nine jobs, including all matched
 measurements and aggregation, but each principal operation job failed only the
 uncorrected positive canary fixture (240 passed, one failed per SDK). CI is
-still running at this record. Those failures are preserved and do not qualify
-the candidate; the following source must re-run the exact-source gates.
+complete and failed only that same uncorrected SQLite canary in each principal
+native suite and the Windows timer lane. The ADK native suite has 1,449 passes,
+LangGraph 1,511, and the Windows timer lane 742; each has one failure. Root
+quality passed 5,069 tests with 3,230 environment/profile skips and 90.14%
+coverage. The other 18 CI jobs passed. These failures are preserved and do not
+qualify the candidate; the following source must re-run the exact-source gates.
+
+## Matched report identity correction
+
+The retained `88ca0f5` four-cell report records runner name `local` because the
+harness read the nonstandard `GITHUB_RUNNER` variable. It now prefers the
+standard `RUNNER_NAME`, retains the explicit legacy fallback and identifies a
+local run only when neither is present. Five parameterized cases cover those
+paths; the original raw report remains unchanged. The benchmark aggregation and
+runtime helpers now pass strict mypy, which is included in the Linux root gate.
+The benchmark/role selection passes 55 tests with 25 unconfigured PostgreSQL
+skips; actual PostgreSQL credential checks are recorded separately above.
+Fresh source-matched measurements are still required after this correction.
 
 Dependency/SDK changes intentionally change recovery-profile identity. They do
 not grant in-place migration of existing invocations. Retained invocations need

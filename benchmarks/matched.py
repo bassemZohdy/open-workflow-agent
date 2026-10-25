@@ -19,12 +19,13 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 import httpx
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
+from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import WorkflowPlan, compile_workflow
@@ -124,7 +125,7 @@ def _engine_type(engine_name: str) -> type[Any]:
 
     module_name, class_name = ENGINE_MODULES[engine_name]
     module = importlib.import_module(module_name)
-    return getattr(module, class_name)
+    return cast(type[Any], getattr(module, class_name))
 
 
 def _commit() -> str:
@@ -158,7 +159,7 @@ def _metadata(
         "backend": backend,
         "workflow_fingerprint": workflow_fingerprint,
         "runner": {
-            "name": os.getenv("GITHUB_RUNNER", "local"),
+            "name": os.getenv("RUNNER_NAME") or os.getenv("GITHUB_RUNNER") or "local",
             "os": os.getenv("RUNNER_OS", platform.system()),
             "platform": platform.platform(),
             "machine": platform.machine(),
@@ -194,7 +195,10 @@ def _database_bytes(backend: str, database_root: str, datasource: str | None) ->
     # PostgreSQL profiles get one fresh service/database per engine job; this
     # reports whole-database size, including all benchmark schemas and rows.
     with psycopg.connect(datasource) as connection:
-        return int(connection.execute("SELECT pg_database_size(current_database())").fetchone()[0])
+        row = connection.execute("SELECT pg_database_size(current_database())").fetchone()
+        if row is None:
+            raise RuntimeError("PostgreSQL persistence measurement is unavailable")
+        return int(row[0])
 
 
 def _config(backend: str, datasource: str | None) -> RuntimeConfig:
@@ -203,9 +207,7 @@ def _config(backend: str, datasource: str | None) -> RuntimeConfig:
         if datasource is None:
             raise RuntimeError("OWA_TEST_POSTGRES_URL is required for PostgreSQL profile")
         persistence["datasource"] = datasource
-    return RuntimeConfig.model_validate(
-        {"model": {"provider": "fake"}, "persistence": persistence}
-    )
+    return RuntimeConfig.model_validate({"model": {"provider": "fake"}, "persistence": persistence})
 
 
 def _services(
@@ -227,7 +229,7 @@ def _services(
     return services
 
 
-def _handle(services: RuntimeServices, engine_name: str, plan: WorkflowPlan):
+def _handle(services: RuntimeServices, engine_name: str, plan: WorkflowPlan) -> ExecutionHandle:
     return services.invocations.create(
         engine=engine_name,
         session_id=f"s4-06-{uuid4().hex}",
@@ -238,7 +240,9 @@ def _handle(services: RuntimeServices, engine_name: str, plan: WorkflowPlan):
     )
 
 
-async def _timed_invoke(engine: Any, services: RuntimeServices, engine_name: str, plan: Any):
+async def _timed_invoke(
+    engine: Any, services: RuntimeServices, engine_name: str, plan: WorkflowPlan
+) -> tuple[float, float]:
     started = time.perf_counter()
     persistence_started = time.perf_counter()
     handle = _handle(services, engine_name, plan)
@@ -266,9 +270,7 @@ async def _recovery_sample(
 
     plan = compile_workflow(RECOVERY_WORKFLOW)
     model = FakeModel()
-    first_services = _services(
-        config, model, backend, database_root, receiver=receiver
-    )
+    first_services = _services(config, model, backend, database_root, receiver=receiver)
     first_engine = engine_type()
     await first_engine.initialize(first_services)
     first_engine.executor._absolute_clock = lambda: 1000.0
@@ -331,9 +333,7 @@ async def run_profile(
     if engine_name not in ENGINE_MODULES or backend not in BACKENDS:
         raise ValueError("unsupported engine or persistence backend")
     if iterations < 2 or warmups < 1 or recovery_samples < 2:
-        raise ValueError(
-            "profile requires iterations>=2, warmups>=1, recovery_samples>=2"
-        )
+        raise ValueError("profile requires iterations>=2, warmups>=1, recovery_samples>=2")
     validate_concurrency(concurrency)
     parameters = {
         "iterations": iterations,

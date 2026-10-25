@@ -107,6 +107,7 @@ def aggregate_profiles(profiles: list[dict[str, Any]]) -> dict[str, Any]:
             not isinstance(concurrency, int)
             or isinstance(concurrency, bool)
             or not 1 <= concurrency <= 16
+            or not isinstance(concurrent, dict)
             or not latency_fields_valid
             or not latency_values_valid
             or concurrent["p50_seconds"] > concurrent["p95_seconds"]

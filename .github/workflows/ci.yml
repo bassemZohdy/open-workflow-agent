@@ -487,6 +487,7 @@ jobs:
             --package open_workflow_agent_adk \
             --package open_workflow_agent_langgraph \
             --package open_workflow_agent_agent_framework
+          uv run --locked mypy benchmarks
       - name: Tests
         shell: bash
         run: |

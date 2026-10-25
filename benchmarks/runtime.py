@@ -12,6 +12,7 @@ from typing import Any
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.engine import PortableWorkflowEngine
+from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import WorkflowPlan, compile_workflow
 
@@ -43,7 +44,7 @@ def benchmark_compilation(iterations: int) -> float:
     return time.perf_counter() - started
 
 
-def _new_handle(services: RuntimeServices, plan: WorkflowPlan):
+def _new_handle(services: RuntimeServices, plan: WorkflowPlan) -> ExecutionHandle:
     return services.invocations.create(
         engine="portable",
         session_id=None,
