@@ -34,3 +34,14 @@ Existing release gates continue to require overall CI success.
 Synthetic validator/CLI tests cover the report boundary and do not prove a
 native runtime. Actual capture and coherent hosted qualification remain pending.
 The source research rows and coverage bridge remain unchanged and unverified.
+
+The source-label guard now checks the actual Git checkout in both development
+capture tools before fixture execution or output. Git runs with fixed arguments,
+a filtered environment and a five-second bound; it is development evidence
+collection, not a workflow execution path. An initial manually mislabelled local
+Node report is retained as invalid evidence and will not be used as acceptance.
+Python reads every shared source explicitly as UTF-8; the local Windows default
+is cp1252, so locale-dependent decoding would change the Unicode fixture.
+The boundary/CLI/Unicode selection passes 24 tests, and the Node package passes
+49 tests including rejection of an unverified checkout without replacing an
+existing report. Actual native captures remain required.

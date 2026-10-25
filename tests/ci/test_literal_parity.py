@@ -25,6 +25,32 @@ from ci.literal_parity import (
 SOURCE = "a" * 40
 
 
+def test_unicode_fixture_is_read_as_utf8_and_keeps_its_json_scalar():
+    record = next(record for record in expected_records() if record["id"] == "literal-object")
+    assert record["output"]["values"][2] == "\u96ea"
+
+
+def test_capture_cli_rejects_a_mislabelled_checkout_without_creating_output(tmp_path):
+    output = tmp_path / "outcomes.json"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "ci/literal_parity.py",
+            "capture",
+            "--engine",
+            "adk",
+            "--source-commit",
+            SOURCE,
+            "--output",
+            str(output),
+        ],
+        capture_output=True,
+        timeout=10,
+    )
+    assert result.returncode == 2 and b"evidence rejected" in result.stderr
+    assert not output.exists()
+
+
 def test_shared_outcome_job_requires_actual_all_three_source_matched_producers():
     from ci.literal_parity import ROOT
 

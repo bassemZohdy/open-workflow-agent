@@ -1,5 +1,6 @@
 /** Development-only native outcome capture; no public engine or plan API. */
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,6 +16,9 @@ const hash = (value: Uint8Array) => createHash("sha256").update(value).digest("h
 async function main() {
   const { values } = parseArgs({ options: { "source-commit": { type: "string" }, output: { type: "string" } }, strict: true });
   if (values["source-commit"] === undefined || !/^[0-9a-f]{40}$/.test(values["source-commit"]) || values.output === undefined) throw new Error("invalid capture selection");
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => ["PATH", "SYSTEMROOT", "WINDIR"].includes(key.toUpperCase())));
+  const actual = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, env, encoding: "utf8", timeout: 5000, maxBuffer: 1024, stdio: ["ignore", "pipe", "ignore"] }).trim();
+  if (actual !== values["source-commit"]) throw new Error("capture source differs from checkout");
   const hashes: Record<string, string> = {};
   const records: Record<string, unknown>[] = [];
   for (const [index, filename] of fixtures.entries()) {

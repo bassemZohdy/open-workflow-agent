@@ -8,8 +8,10 @@ import hashlib
 import importlib
 import importlib.metadata
 import json
+import os
 import platform
 import re
+import subprocess
 import tempfile
 import tomllib
 from pathlib import Path
@@ -41,7 +43,9 @@ def fixture_hashes() -> dict[str, str]:
 def sdk_versions() -> dict[str, str]:
     versions = {}
     for engine, sdk in (("adk", "google-adk"), ("langgraph", "langgraph")):
-        project = tomllib.loads((ROOT / f"engines/{engine}/pyproject.toml").read_text())["project"]
+        project = tomllib.loads(
+            (ROOT / f"engines/{engine}/pyproject.toml").read_text(encoding="utf-8")
+        )["project"]
         dependencies = project["dependencies"] + project["optional-dependencies"].get("native", [])
         matches = [
             value.split("==", 1)[1] for value in dependencies if value.startswith(sdk + "==")
@@ -49,7 +53,7 @@ def sdk_versions() -> dict[str, str]:
         if len(matches) != 1:
             raise ParityError("literal SDK pin is ambiguous")
         versions[engine] = matches[0]
-    package = json.loads((ROOT / "engines/langgraph-js/package.json").read_text())
+    package = json.loads((ROOT / "engines/langgraph-js/package.json").read_text(encoding="utf-8"))
     versions["langgraph-js"] = package["dependencies"]["@langchain/langgraph"]
     return versions
 
@@ -57,7 +61,7 @@ def sdk_versions() -> dict[str, str]:
 def expected_records() -> list[dict[str, Any]]:
     records = []
     for index, filename in enumerate(FIXTURES):
-        for fixture in json.loads((ROOT / filename).read_text()):
+        for fixture in json.loads((ROOT / filename).read_text(encoding="utf-8")):
             status = "completed" if index == 0 else "faulted"
             field = "output" if index == 0 else "error"
             records.append({"id": fixture["id"], "status": status, field: fixture["expected"]})
@@ -187,6 +191,23 @@ async def capture(engine_name: str, source: str) -> dict[str, Any]:
 
     if engine_name not in {"adk", "langgraph"} or not _SHA.fullmatch(source):
         raise ParityError("literal native capture selection is invalid")
+    actual = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=ROOT,
+        env={
+            name: os.environ[name]
+            for name in ("PATH", "SYSTEMROOT", "WINDIR")
+            if name in os.environ
+        },
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        check=True,
+        timeout=5,
+    ).stdout.strip()
+    if actual != source:
+        raise ParityError("literal capture source does not match its checkout")
     module_name, class_name, sdk_name = (
         ("open_workflow_agent_adk", "AdkWorkflowEngine", "google-adk")
         if engine_name == "adk"
@@ -196,7 +217,7 @@ async def capture(engine_name: str, source: str) -> dict[str, Any]:
     records = []
     with tempfile.TemporaryDirectory(prefix="owa-literal-outcomes-") as root:
         for index, filename in enumerate(FIXTURES):
-            for fixture in json.loads((ROOT / filename).read_text()):
+            for fixture in json.loads((ROOT / filename).read_text(encoding="utf-8")):
                 if not isinstance(fixture["id"], str) or not re.fullmatch(
                     r"[a-z][a-z0-9-]{0,127}", fixture["id"]
                 ):

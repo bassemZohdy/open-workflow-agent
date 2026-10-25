@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { StateGraph } from "@langchain/langgraph";
 import { executeLiteralWorkflow, literalExecutionCapabilities, WorkflowExecutionError } from "../src/workflow-execution.js";
@@ -15,6 +19,24 @@ const faults = JSON.parse(await readFile(new URL("../../../../tests/fixtures/jav
 function workflow(tasks: unknown[], extras = {}) {
   return JSON.stringify({ document: { dsl: "1.0.3", namespace: "tests", name: "literal", version: "1.0.0" }, do: tasks, ...extras });
 }
+
+test("capture rejects an unverified checkout and preserves an existing report", async () => {
+  const prefix = join(tmpdir(), "owa-literal-capture-");
+  const directory = await mkdtemp(prefix);
+  assert.ok(resolve(directory).startsWith(resolve(prefix)));
+  try {
+    const output = join(directory, "report.json");
+    await writeFile(output, "original report", "utf8");
+    const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => ["PATH", "SYSTEMROOT", "WINDIR", "TEMP", "TMP"].includes(key.toUpperCase())));
+    const result = spawnSync(process.execPath, [fileURLToPath(new URL("./export-literal-outcomes.js", import.meta.url)), "--source-commit", "a".repeat(40), "--output", output], { env, encoding: "utf8", timeout: 10_000, maxBuffer: 4096 });
+    assert.equal(result.status, 2);
+    assert.equal(result.stderr, "literal outcome evidence rejected\n");
+    assert.equal(await readFile(output, "utf8"), "original report");
+  } finally {
+    assert.ok(resolve(directory).startsWith(resolve(prefix)));
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 for (const fixture of cases) {
   test(`actual JavaScript native execution matches shared literal fixture: ${fixture.id}`, async () => {
