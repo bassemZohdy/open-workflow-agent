@@ -236,11 +236,16 @@ treated as a deferred task or as additional feature completion.
   Capacity/cleanup source `6a0ac8c` passes 399 cases
   on each platform with zero skips. Fixed namespace record/serialized-value byte
   budgets and authorized bounded physical expiry cleanup retain recovery proof.
-  Provider lifecycle source `738b393` passes 415 cases per platform with zero
+  PR #80 merged provider lifecycle at `1a0b0a9`. Source `738b393` passes 415 cases per platform with zero
   skips, adding concurrent first-use migration exclusion and setup/shutdown
   cancellation, timeout and process-exit witnesses.
-  Native memory admission stays closed. Next complete versioned public bindings,
-  explicit uncertain-outcome resolution and remaining provider/recovery gates.
+  Resolution source `74294b5` passes 475 cases per platform with zero skips. A
+  private preauthorized control atomically records completion from matching
+  native proof or explicit unknown-outcome abandonment; neither redispatches
+  the write. Audit, phase and outcome survive process exit and reject corruption.
+  Native memory admission stays closed. Next complete versioned public workflow
+  bindings, authenticated/authorized resolution controls and remaining public
+  recovery qualification.
   See the [memory scope](docs/s4-02-native-memory-acceptance.md).
   Then continue streams, public state updates, replay and
   time travel. Preserve common authority, ownership, receipts and private

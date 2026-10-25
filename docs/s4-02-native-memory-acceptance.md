@@ -270,6 +270,41 @@ or dependency installation are performed by workflow calls. Normal shutdown
 failures remain sanitized and bounded. When the caller is already failing or
 cancelled, cleanup preserves that original exception.
 
+## Private explicit write resolution
+
+`MemoryWrites.resolve` is a trusted, preauthorized control primitive for an
+already dispatched write in a running invocation. It requires the exact
+original request, installed backend/storage policy, original principal and live
+execution lease. It never invokes the backend's write callback. A versioned
+`owa/memory-write-resolution/v1` decision has a bounded operation ID and two
+choices:
+
+- `complete` requires a matching native marker and records the original write's
+  common completion without replaying the write.
+- `abandon_unknown` requires explicit `acknowledge_unknown: true` and no matching
+  marker at decision time. It records a permanent fault whose outcome is still
+  **unknown**. It promises neither nonexecution, rollback nor compensation.
+
+The decision, its common identity index, mutation phase and resulting receipt
+commit in one owned transaction. There is at most one immutable choice for each
+logical write. Repeating that choice returns the existing audit; changing its
+operation ID, principal or outcome rejects. An unadmitted/prepared write cannot
+be resolved, and an automatically completed write cannot be relabeled.
+
+Abandoned writes replay the same common memory error after observing their
+fault receipt; they never dispatch again. A late matching native marker does
+not rewrite the acknowledged unknown outcome or the operator's decision.
+Retained audit evidence contains request/storage digests and common identity,
+not the record value, credentials or a native checkpoint. Recovery checks
+audit/index/phase/outcome consistency in both directions. Missing or altered
+evidence fails closed. Completion still requires retained native proof.
+
+This primitive does not authenticate its caller or expose an HTTP endpoint,
+catalog function or agent tool. Those are separate pending public-control and
+binding work: ingress must authenticate the caller, enforce original-principal
+access and authorize the resolution before using this private method. It does
+not reopen terminal invocations or add a force-retry/force-success operation.
+
 ## Verification scope
 
 The focused tests use actual pinned LangGraph stores (in-memory and optional
@@ -500,6 +535,37 @@ authority isolation/denial checks pass, with 44 unrelated cases deselected; see
 `memory-lifecycle-shared-contract.xml`. Public memory admission remains closed and
 S4-02 remains open.
 
+### Explicit resolution qualification — `74294b5`
+
+Source `74294b541b126ed7fc1d725c43264551dd4f7cbf` passes **475 cases with zero
+skips on each of Windows and frozen Linux**: the prior 415-case cohort, 52 new common resolution
+cases and eight actual SQLite/PostgreSQL resolution cases. These cover exact
+typed acknowledgement, matching/missing native proof, immutable repeat decisions,
+service reopen, original request/principal, prepared/terminal-state rejection,
+stale and expiring leases, atomic audit/outcome rollback, damaged or missing
+audit/index/phase evidence, and late native evidence after abandonment. Actual
+store cases preserve later values and survive child-process exit immediately
+after resolution commit, without normal cleanup. No resolution dispatches a
+native write.
+
+Linux reuses the immutable dependency image and controls recorded above, with
+matching locks, a fresh `owa_memory_74294b5` PostgreSQL database and **1,197
+unchanged source inputs**. Reports, XML, log and manifest are under
+`tmp/merge-20261025/74294b5/`; Windows uses
+`memory-resolution-qualified-windows.xml`. The focused new selection also passes
+60 cases on Windows. Eight shared LangGraph SQLite/PostgreSQL authority
+isolation/denial checks pass, with 44 unrelated cases deselected; see
+`memory-resolution-shared-contract.xml`.
+Core-only resolution checks pass 32 cases, skip 20 optional PostgreSQL cases
+and one optional SDK module; four inventory checks also pass. Ruff, formatting,
+strict typing and Markdown links pass. The initial core test used a nonexistent
+test-helper method to persist cancellation; its corrected case now uses the
+existing invocation transition API. The failed report is retained.
+
+This qualifies private control and evidence semantics. It does not qualify
+public resolution authorization, API discovery/control or workflow bindings,
+reopen terminal invocations, promote any research row or complete S4-02.
+
 ## Remaining work before enabling the capability
 
 - Define and validate the versioned workflow bindings, logical record/schema and
@@ -508,8 +574,10 @@ S4-02 remains open.
   workflow bindings without making external services mandatory.
 - Qualify the complete public binding profile over the private namespace bounds,
   bounded physical cleanup and logical expiry, preserving recovery proof.
-  Define explicit resolution of uncertain dispatched
-  writes. The private authorized writer now connects native transactions to
+  Connect explicit resolution of uncertain dispatched writes to authenticated,
+  authorized public controls and qualify that complete boundary. The private
+  control primitive above records proof-based completion or acknowledged unknown
+  abandonment. The private authorized writer connects native transactions to
   common intents, completed receipts, native receipt observation and missing
   evidence rejection; versioned public workflow bindings remain open.
 - Complete the public profile's native-checkpoint/crash recovery and changed
