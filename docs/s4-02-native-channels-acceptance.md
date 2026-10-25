@@ -43,7 +43,12 @@ existing PostgreSQL event-loop admission check: the parent's Selector policy
 does not carry into a new process. The worker now explicitly selects that
 supported loop for Windows/PostgreSQL. The actual **four Command/default by
 root/nested PostgreSQL restart cells pass**, with no skips, in 59.88 seconds.
-Their Linux rerun and final hosted qualification remain pending.
+At source `9aa44ae95accf3621dd1390d881bd12dc647555e`, the same **four Linux
+cells pass with zero skips** in 30.105 seconds, using the pinned `bc87e0d`
+LangGraph dependency image and a read-only frozen source mount. Final hosted
+qualification remains pending. The dedicated PostgreSQL native step now
+requires the actual LangGraph profile; a missing checkpoint dependency fails
+that required profile instead of silently skipping its recovery cells.
 
 A deterministic barrier reproduced a separate common lifecycle race: an ending
 branch could win after a sibling recorded `waiting`, then attempt the forbidden

@@ -389,6 +389,7 @@ jobs:
       - name: Verify native LangGraph task checkpoints and interrupted restart
         env:
           OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
+          OWA_TEST_REQUIRED_ENGINE: langgraph
           PYTHONUNBUFFERED: "1"
         shell: bash
         run: |

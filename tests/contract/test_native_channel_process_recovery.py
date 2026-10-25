@@ -51,6 +51,12 @@ def test_process_stop_preserves_committed_native_channel_delta(
         try:
             importlib.import_module(module)
         except ImportError:
+            if (
+                backend == "postgresql"
+                and os.getenv("OWA_TEST_POSTGRES_URL")
+                and os.getenv("OWA_TEST_REQUIRED_ENGINE") == "langgraph"
+            ):
+                raise
             pytest.skip("independent LangGraph checkpoint dependency environment is required")
     if backend == "postgresql" and not os.getenv("OWA_TEST_POSTGRES_URL"):
         pytest.skip("actual PostgreSQL datasource required")

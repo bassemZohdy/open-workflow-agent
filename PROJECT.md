@@ -38,9 +38,9 @@ streams, state updates, replay and time travel remain open.
 
 The follow-up frozen Linux checks pass 129 ADK cases and 176 LangGraph cases.
 Skip review uncovered four incorrectly skipped PostgreSQL channel-recovery
-cells; their corrected Windows run passes all four. Linux and hosted checks of
-that test correction remain required. Docker metadata caching is measured and
-verified; source labels still identify the exact build.
+cells; the corrected Windows run and frozen `9aa44ae` Linux run each pass all
+four with zero skips. Hosted qualification remains open. Docker metadata
+caching is measured and verified; source labels still identify the exact build.
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior

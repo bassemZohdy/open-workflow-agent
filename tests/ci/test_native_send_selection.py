@@ -26,5 +26,7 @@ def test_native_send_windows_and_postgresql_selections_remain_required():
             assert "--extra postgres" in commands
             assert "tests/langgraph/test_native_send.py" in workflow["on"]["pull_request"]["paths"]
             assert job["services"]["postgres"]["image"] == "postgres:16"
+            native_step = next(step for step in job["steps"] if SELECTOR in step.get("run", ""))
+            assert native_step["env"]["OWA_TEST_REQUIRED_ENGINE"] == "langgraph"
         else:
             assert job["runs-on"] == "windows-latest" and "--extra sqlite" in commands
