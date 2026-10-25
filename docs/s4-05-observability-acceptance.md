@@ -156,3 +156,15 @@ Actual ADK history/native recovery plus common history passes 51 cases across
 SQLite/PostgreSQL with two opposite-SDK skips; actual LangGraph passes both
 native database cases with two opposite-SDK skips. These are working-tree
 results, not a substitute for exact-source Linux/hosted qualification.
+
+A later real native process-stop witness passes all four Windows
+ADK/LangGraph × SQLite/PostgreSQL cells. After the HTTP receipt and native wait
+checkpoint commit, the producer is killed without cleanup. A different process
+resumes to completion with the original invocation/fingerprint and retained
+events, the same trace ID and fresh segment/task span IDs. A non-deduplicating,
+fsynced business log proves one transport-fake dispatch; original input is absent
+from retained diagnostic evidence. This proves recovery from the committed wait
+boundary, not arbitrary native checkpoints or atomic business/event commits.
+The principal PostgreSQL operation jobs and both Windows SQLite SDK matrix cells
+now explicitly require this witness; complete native/root suites also collect
+it. Its Linux/current-source hosted gates remain pending.
