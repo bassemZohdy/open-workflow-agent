@@ -270,6 +270,41 @@ or dependency installation are performed by workflow calls. Normal shutdown
 failures remain sanitized and bounded. When the caller is already failing or
 cancelled, cleanup preserves that original exception.
 
+## Private explicit write resolution
+
+`MemoryWrites.resolve` is a trusted, preauthorized control primitive for an
+already dispatched write in a running invocation. It requires the exact
+original request, installed backend/storage policy, original principal and live
+execution lease. It never invokes the backend's write callback. A versioned
+`owa/memory-write-resolution/v1` decision has a bounded operation ID and two
+choices:
+
+- `complete` requires a matching native marker and records the original write's
+  common completion without replaying the write.
+- `abandon_unknown` requires explicit `acknowledge_unknown: true` and no matching
+  marker at decision time. It records a permanent fault whose outcome is still
+  **unknown**. It promises neither nonexecution, rollback nor compensation.
+
+The decision, its common identity index, mutation phase and resulting receipt
+commit in one owned transaction. There is at most one immutable choice for each
+logical write. Repeating that choice returns the existing audit; changing its
+operation ID, principal or outcome rejects. An unadmitted/prepared write cannot
+be resolved, and an automatically completed write cannot be relabeled.
+
+Abandoned writes replay the same common memory error after observing their
+fault receipt; they never dispatch again. A late matching native marker does
+not rewrite the acknowledged unknown outcome or the operator's decision.
+Retained audit evidence contains request/storage digests and common identity,
+not the record value, credentials or a native checkpoint. Recovery checks
+audit/index/phase/outcome consistency in both directions. Missing or altered
+evidence fails closed. Completion still requires retained native proof.
+
+This primitive does not authenticate its caller or expose an HTTP endpoint,
+catalog function or agent tool. Those are separate pending public-control and
+binding work: ingress must authenticate the caller, enforce original-principal
+access and authorize the resolution before using this private method. It does
+not reopen terminal invocations or add a force-retry/force-success operation.
+
 ## Verification scope
 
 The focused tests use actual pinned LangGraph stores (in-memory and optional
@@ -500,16 +535,109 @@ authority isolation/denial checks pass, with 44 unrelated cases deselected; see
 `memory-lifecycle-shared-contract.xml`. Public memory admission remains closed and
 S4-02 remains open.
 
+### Explicit resolution qualification — `74294b5`
+
+Source `74294b541b126ed7fc1d725c43264551dd4f7cbf` passes **475 cases with zero
+skips on each of Windows and frozen Linux**: the prior 415-case cohort, 52 new common resolution
+cases and eight actual SQLite/PostgreSQL resolution cases. These cover exact
+typed acknowledgement, matching/missing native proof, immutable repeat decisions,
+service reopen, original request/principal, prepared/terminal-state rejection,
+stale and expiring leases, atomic audit/outcome rollback, damaged or missing
+audit/index/phase evidence, and late native evidence after abandonment. Actual
+store cases preserve later values and survive child-process exit immediately
+after resolution commit, without normal cleanup. No resolution dispatches a
+native write.
+
+Linux reuses the immutable dependency image and controls recorded above, with
+matching locks, a fresh `owa_memory_74294b5` PostgreSQL database and **1,197
+unchanged source inputs**. Reports, XML, log and manifest are under
+`tmp/merge-20261025/74294b5/`; Windows uses
+`memory-resolution-qualified-windows.xml`. The focused new selection also passes
+60 cases on Windows. Eight shared LangGraph SQLite/PostgreSQL authority
+isolation/denial checks pass, with 44 unrelated cases deselected; see
+`memory-resolution-shared-contract.xml`.
+Core-only resolution checks pass 32 cases, skip 20 optional PostgreSQL cases
+and one optional SDK module; four inventory checks also pass. Ruff, formatting,
+strict typing and Markdown links pass. The initial core test used a nonexistent
+test-helper method to persist cancellation; its corrected case now uses the
+existing invocation transition API. The failed report is retained.
+
+This qualifies private control and evidence semantics. It does not qualify
+public resolution authorization, API discovery/control or workflow bindings,
+reopen terminal invocations, promote any research row or complete S4-02.
+
+### Premerge context and checkpoint follow-up
+
+The following review retained the green `74294b5` component evidence but found
+two additional gaps before merging:
+
+- An accepted long task context exceeded the resolution-only 8 KiB read bound.
+  Both stores reproduced failure. Source `a830e3c` stores the common mutation key
+  rather than copying the full identity into the audit payload, retaining its
+  8 KiB bound. Its identity index uses the existing write-profile limit plus
+  the resolution operation prefix's two-byte envelope difference. The expanded
+  **477-case** cohort passes on Windows and frozen Linux with zero skips and
+  1,197 unchanged Linux inputs. Reports are in `a830e3c/` and
+  `memory-resolution-final-qualified-windows.xml`; the red cases remain in
+  `memory-resolution-context-red.xml`.
+- The separate fresh-database Linux shared-authority run passed seven cases and
+  failed concurrent PostgreSQL first invocation before the actions entered. A
+  diagnostic run confirmed `AsyncPostgresSaver.setup()` raised `UniqueViolation`
+  (`23505`). Warm-store checks had not covered simultaneous first migration.
+  Failed reports remain in `memory-resolution-final-shared-cold-failed-linux.xml`
+  and `memory-resolution-shared-debug-linux.xml`.
+
+Source `602449e0a2eee91c5686c61ee71165cb1da77eca` applies the existing cross-process
+setup lock and a finite migration deadline to native checkpoint savers as well
+as memory stores, without replacing their SDK SQL or checkpoint formats. The
+new empty-store concurrent checkpoint test passes on SQLite/PostgreSQL; its
+native adapter/graph/fencing selection passes 46 cases on Windows, with eight
+unrelated cases deselected. Eight shared authority checks pass against a fresh
+Windows PostgreSQL test database, with 44 unrelated cases deselected; see
+`checkpoint-repair-cold-contract-windows.xml`.
+
+### Final combined qualification — `602449e`
+
+The final runtime source above passes **523 cases with zero skips on each of
+Windows and frozen Linux**, with eight unrelated cases deselected. The selection
+comprises the 477-case memory/journal/ownership/lifecycle/resolution cohort and
+46 native checkpoint/adapter/graph/fencing cases, including simultaneous first
+use of an empty SQLite/PostgreSQL checkpoint store. All **1,198 frozen Linux
+source inputs remain unchanged**, using the same immutable dependency image,
+matching locks and restrictions recorded above, with a fresh
+`owa_memory_602449e` PostgreSQL database. Reports are under
+`tmp/merge-20261025/602449e/` and
+`memory-resolution-checkpoint-qualified-windows.xml`.
+
+Eight shared authority checks additionally pass on Linux against its separate
+fresh `owa_memory_602449e_contract` database, with 44 unrelated cases deselected;
+see `checkpoint-repair-cold-contract-linux.xml`. The Windows fresh-database
+eight-case result above uses identical runtime bytes. Neither successful cold
+run relies on tables warmed by the larger cohort. Earlier cold failures remain
+failed evidence; the final checkpoint repair supplies their green replacement.
+Ruff, formatting, strict typing, Markdown links and four inventory checks pass.
+The final core-only resolution/tracking selection passes 37 cases with 23
+expected optional skips (21 PostgreSQL cases and two SDK modules); see
+`memory-checkpoint-final-core-only.xml`. Core remains independent of both SDKs. These are finite component/native
+regression results, not full repository/release qualification or completion of
+S4-02; public memory admission remains closed.
+
 ## Remaining work before enabling the capability
 
 - Define and validate the versioned workflow bindings, logical record/schema and
   retention semantics within the approved metadata extension boundary.
 - Connect the private provider factories and read receipts to those validated
   workflow bindings without making external services mandatory.
+- Complete bounded native search and its declared filter/index/semantic profile.
+  The tracker maps B052/B053 to T51's put/get/search/delete, restart and
+  cross-thread contract and B079 to T68's embedded-store profile. Repeatable
+  point reads alone do not establish those search or complete public outcomes.
 - Qualify the complete public binding profile over the private namespace bounds,
   bounded physical cleanup and logical expiry, preserving recovery proof.
-  Define explicit resolution of uncertain dispatched
-  writes. The private authorized writer now connects native transactions to
+  Connect explicit resolution of uncertain dispatched writes to authenticated,
+  authorized public controls and qualify that complete boundary. The private
+  control primitive above records proof-based completion or acknowledged unknown
+  abandonment. The private authorized writer connects native transactions to
   common intents, completed receipts, native receipt observation and missing
   evidence rejection; versioned public workflow bindings remain open.
 - Complete the public profile's native-checkpoint/crash recovery and changed

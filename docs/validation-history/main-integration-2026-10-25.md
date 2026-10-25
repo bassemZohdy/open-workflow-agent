@@ -150,3 +150,22 @@ and no protections or automatic CI/release flags changed.
 Work continues from this main commit on `codex/s4-02-memory-provider-lifecycle`
 with simultaneous first-use migration, bounded setup waits, shutdown errors and
 cleanup after cancellation or abrupt process exit.
+
+## PR #80 integration — 2026-10-26 Asia/Dubai
+
+[PR #80](https://github.com/bassemZohdy/open-workflow-agent/pull/80) merged at
+`1a0b0a95e2110df045cef2838d0e1acc78314b96`, preserving head
+`d599587039cabe794105c4703df71189fbf90ce3`. GitHub records the merge at
+2026-10-25T22:40:27Z (2026-10-26 locally). Local `main` was fast-forwarded and
+its push confirmed GitHub was up to date. The required exact-head check passed
+in [Docs run 40241216746](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40241216746).
+
+The retained finite provider lifecycle evidence is the 415-case Windows/frozen
+Linux cohort at `738b393`, plus eight shared authority checks. Native memory
+admission remains closed; this is not full repository/release qualification or
+completion of S4-02. The count stays 31/37 verified. No protections or automatic
+CI/release flags changed.
+
+Work continues from this main commit on `codex/s4-02-memory-resolution` with
+explicit recorded completion from native proof or acknowledged abandonment of
+an unknown outcome, followed by authorized public controls and workflow bindings.

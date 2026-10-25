@@ -33,6 +33,18 @@ common interpreter and report native nodes unavailable. Native SDK and saver
 availability are checked independently: PostgreSQL needs its own saver,
 without requiring SQLite to be installed.
 
+Saver initialization serializes the pinned SDK migrations across connections
+and processes, using the same setup lock as private native memory providers.
+PostgreSQL takes a schema-scoped session lock with short nonblocking probes;
+this permits the SDK's concurrent index creation without retaining a waiting
+snapshot. SQLite uses an adjacent `<checkpoint-database>.setup.sqlite3` lock
+database across SDK commits. A ten-second asynchronous deadline bounds migration
+and lock waiting. Connection establishment retains its existing boundary.
+The lock is released before workflow tasks run; it does not serialize whole
+invocations. The lock database contains no checkpoint or workflow records.
+SDK checkpoint formats and the existing common ownership fences are unchanged.
+See the [native memory and checkpoint setup qualification](s4-02-native-memory-acceptance.md).
+
 Native checkpoints are committed synchronously between tasks. On restart the
 adapter resumes pending native tasks using their stored data and original
 workflow input. Completed sequential tasks and completed child scopes are not

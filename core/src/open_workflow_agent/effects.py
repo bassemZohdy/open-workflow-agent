@@ -555,6 +555,10 @@ class EffectJournal:
                 if self._memory_writes is None:
                     raise ValueError("memory mutation backend is unavailable")
                 self._memory_writes.verify(identity, receipt)
+            if identity.operation.startswith("policy:memory-resolution:v1:"):
+                if self._memory_writes is None:
+                    raise ValueError("memory mutation backend is unavailable")
+                self._memory_writes.verify_resolution(identity, receipt)
             if identity.operation == "policy:a2a-agent-card:v1":
                 from .a2a_admission import verify_a2a_card_receipt
 

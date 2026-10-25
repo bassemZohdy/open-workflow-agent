@@ -44,47 +44,37 @@ S4-02 remains the next ordered ready task, beginning with native memory. Bounded
 Send, the owned wait/end repair and Docker cache ordering have focused evidence.
 Memory, streams, public state updates, replay and time travel remain open.
 
-PR #76 merged the private native memory foundations into main at `56e68b0`;
-the required hosted Docs check passed before merging. These include native
-memory readers and SQLite/optional PostgreSQL provider factories. Bound readers
-retain the first committed value, including absence, in owned common receipts
-and recheck original authority before reuse. The read profile caps observations
-at 64 per invocation and detects inconsistent observations/indexes/receipts.
-The follow-up adds private fenced native put/delete transactions and atomic
-retry markers, reusing pinned SDK SQL and the common ownership fence. Repeating
-an old committed operation cannot overwrite a later writer's value. Source
-`f76fed9` passes 169 focused cases with zero skips on both Windows and frozen
-Linux, including actual stores, rollback, cancellation, quota races and abrupt
-process exit. Core-only request checks pass without SDK installation, and eight
-shared LangGraph SQLite/PostgreSQL isolation/denial checks pass. The earlier
-read/provider cohort remains recorded at `0268ea1`.
-Existing effect/ownership regressions previously passed all 99 cases with
-PostgreSQL enabled. PR #77 merged common write recovery into main at `df8c0d7`
-after its required hosted Docs check passed. It adds prepared/dispatched/completed
-write intents, owned completion receipts, installed-location verification and
-an authorized private writer. A committed native marker can finish an
-interrupted common completion; dispatched writes with missing markers fail as
-uncertain and are never blindly dispatched again. Source `54103b9` passes a
-322-case memory/journal/ownership cohort on Windows and frozen Linux with zero
-skips, including the combined abrupt-process-exit recovery path. PR #78 merged
-record expiry at `b344058` after its hosted Docs check passed. Its typed opt-in policy
-uses database time to set a deadline atomically with the native write; fresh reads omit
-expired records on both stores. Historical observations and retry evidence
-remain available; retries do not renew the deadline. This is logical record
-expiry, not physical purge or workflow-history deletion. Source `810c723` passes
-355 selected memory/journal/ownership cases on each of Windows and frozen Linux
-with zero skips. PR #79 merged namespace capacity/cleanup at `3187cfe` after its
-required hosted Docs check passed. Source `6a0ac8c` adds fixed namespace record and
-serialized-value byte limits plus bounded authorized expiry cleanup. Native
-namespace locks serialize quotas and cleanup with new writes, and common/native
-receipts survive physical record removal. Its 399-case cohort passes on Windows
-and frozen Linux with zero skips and 1,192 unchanged Linux source inputs.
-Source `738b393` fixes concurrent first-use migrations and passes 415 cases with
-zero skips on each platform, including setup wait cancellation, shutdown
-error/timeout handling and process-exit lock recovery. Public bindings, explicit uncertain
-outcome resolution and broader qualification remain open; native memory
-admission stays closed. See the
-[native memory scope](docs/s4-02-native-memory-acceptance.md).
+Private native memory foundations, common write recovery, record expiry,
+namespace capacity/cleanup and provider lifecycle are merged through PRs
+#76–#80 (`56e68b0`, `df8c0d7`, `b344058`, `3187cfe`, `1a0b0a9`). Each required
+hosted Docs check passed before merging; the integration record retains exact
+heads and runs. SQLite is embedded by default; PostgreSQL remains optional.
+
+Bound reads retain the first committed value or absence under original
+authority. Fenced SDK transactions retain native markers, while common
+prepared/dispatched/completed intents govern recovery. A matching native marker
+can finish interrupted common completion; missing proof never permits blind
+redispatch. Each invocation has ceilings of 64 read observations and 64 writes.
+Typed database-clock expiry and namespace record/serialized-value byte budgets
+bound fresh data. Authorized bounded physical cleanup retains recovery proof.
+Cross-worker setup exclusion, cancellation and process-exit lock recovery have
+finite evidence. Historical common payloads and markers are retained.
+
+Source `602449e` adds a private preauthorized resolution control. It atomically
+records completion from matching native proof or acknowledged abandonment with
+an explicitly unknown outcome. Decisions are immutable and never redispatch a
+write. It also repairs concurrent first-use checkpoint migrations. Its
+**523-case** memory/journal/ownership/lifecycle/resolution/native-checkpoint cohort
+passes on both Windows and frozen Linux with zero skips and 1,198 unchanged
+Linux source inputs; eight shared authority checks pass on each platform using
+fresh PostgreSQL databases. Earlier cohorts, failed attempts and focused qualification
+limits remain in the [native memory acceptance record](docs/s4-02-native-memory-acceptance.md).
+This is component evidence, not full repository/release qualification.
+
+Native memory admission stays closed. Next complete versioned public workflow
+bindings including bounded native search, authenticated/authorized resolution
+controls and their full public recovery qualification. Terminal invocations are not reopened, and the private
+resolution method is not an authenticated API or a force-retry operation.
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior
