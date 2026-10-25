@@ -163,6 +163,45 @@ The writer returns no SDK identifier or marker. It is available to trusted
 deployment-side functions; no public catalog entry or native feature declaration
 is enabled. Cross-backend ownership storage is rejected for writes.
 
+## Private record expiry follow-up
+
+`MemoryRecordRetention` is an immutable deployment-side policy with a bounded
+ID/version and an integer TTL of 1 through 31,536,000 seconds. Its exact profile
+is `owa/memory-record-retention/v1`; unknown, incomplete or untyped metadata
+rejects. The optional policy is carried in the private mutation descriptor and
+request digest. Omitting it preserves the previous descriptor and digest.
+No public workflow schema or capability declaration changes.
+
+Provider setup binds the policy to the installed storage identity. Changing
+policy on a live binding rejects before storage setup; opening a fresh runtime
+with a different policy rejects recovery of old write receipts. The private
+writer supplies the installed policy, so record content cannot choose TTL or
+an expiry timestamp. The default remains no expiry for new writes.
+
+For an opted-in put, the native transaction uses database time to update the
+SDK record's existing expiry column after the pinned SDK writes the value.
+The value, deadline and immutable native marker commit together under the
+original ownership fence. If the deadline update fails or affects no row,
+everything rolls back. Matching common or native retries skip the write and
+do not renew its deadline. No SDK TTL sweeper or read refresh is enabled.
+
+Factory get adapters omit expired rows before SDK deserialization/projection.
+SQLite adds the missing expiry predicate to the pinned SDK's prepared get
+query; PostgreSQL enables its existing omit-expired behavior. This also avoids
+loading an expired oversized record into the public projection. Reads use
+database time, independently of workflow input and process clock/timezone.
+
+Expiry governs **fresh get observations**. An already recorded observation
+continues replaying its original value or absence. Native markers and common
+intents/completion receipts remain valid after the record expires. This keeps
+recoverable workflows from silently changing their past results.
+
+This is **logical record expiry**: the physical SDK row, common write payload
+and historical read observations are not erased by this policy. Physical
+cleanup, namespace storage quotas and independent invocation/history retention
+remain separate acceptance work. Raw SDK deployment/admin access is not a
+public workflow interface; no background sweep is started here.
+
 ## Verification scope
 
 The focused tests use actual pinned LangGraph stores (in-memory and optional
@@ -299,14 +338,46 @@ strict typing, relative Markdown links and four inventory/tracking tests pass.
 This is finite private-component qualification, not a full repository/release
 run. S4-02 stays unchecked and no research capability is promoted.
 
+### Record expiry qualification — `810c723`
+
+Source `810c723ba21b104076516449a7d17af4cf9dd070` passes **355 selected cases
+with zero skips on each of Windows and frozen Linux**. This includes the prior
+322-case memory/journal/ownership cohort, 21 new core policy/serialization cases
+and 12 actual SQLite/PostgreSQL expiry cases. Existing mutation fault-injection
+tests target the pinned SDK base class beneath the new get-filter adapter.
+
+The new cases cover strict policy bounds/version metadata, unchanged default
+descriptors/digests, database-clock deadlines, expired fresh reads, unchanged
+replayed observations and retry deadlines, filtering of oversized expired
+records, rollback after deadline SQL, silent suppression of the deadline update,
+and changed-policy rejection before live setup or cached write recovery. All
+provider/model work is deterministic and uses no paid API.
+
+Linux reuses the same immutable dependency image and controls recorded above,
+with matching locks and a fresh `owa_memory_810c723` PostgreSQL database. All
+**1,188 frozen source inputs remain unchanged**, with no startup installation.
+Reports are in `tmp/merge-20261025/810c723/` and
+`memory-record-expiry-qualified-windows.xml`. The core-only selection passes
+36 cases and skips one optional SDK module. Ruff, formatting, strict typing,
+relative Markdown links and four inventory/tracking checks pass.
+Eight shared LangGraph SQLite/PostgreSQL authority isolation/denial checks also
+pass at this source, with 44 unrelated cases deselected; see
+`memory-record-expiry-shared-contract.xml` in the same evidence directory.
+
+This is logical get-expiry qualification, not physical purge, namespace-capacity
+enforcement or full repository/release qualification. Historical common payloads
+and proof remain retained. S4-02 stays unchecked; public native memory admission
+remains closed.
+
 ## Remaining work before enabling the capability
 
 - Define and validate the versioned workflow bindings, logical record/schema and
   retention semantics within the approved metadata extension boundary.
 - Connect the private provider factories and read receipts to those validated
   workflow bindings without making external services mandatory.
-- Add record/namespace retention without discarding proof needed by recoverable
-  invocations. Define and qualify explicit resolution of uncertain dispatched
+- Add namespace storage bounds and bounded physical cleanup without discarding
+  proof needed by recoverable invocations. Logical expiry for new puts/fresh get
+  reads now has finite evidence. Define explicit resolution of uncertain dispatched
   writes. The private authorized writer now connects native transactions to
   common intents, completed receipts, native receipt observation and missing
   evidence rejection; versioned public workflow bindings remain open.

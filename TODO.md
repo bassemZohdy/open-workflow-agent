@@ -220,16 +220,21 @@ treated as a deferred task or as additional feature completion.
   profiles are corrected. The final direct-child stop fixture passes eight
   Linux SQLite/PostgreSQL routing/scope cases without pidfd APIs and four
   Windows PostgreSQL cases. Hosted qualification of that repair remains open.
-  PR #76 merged the private memory foundations into main at `56e68b0`.
-  Active follow-up `54103b9` adds common prepared/dispatched/completed write
+  PR #76 merged the private memory foundations into main at `56e68b0`; PR #77
+  merged common recovery at `df8c0d7`. Source `54103b9` adds prepared/dispatched/completed write
   intents, owned completion receipts and native proof checks, plus an authorized
   private writer. The 322-case reader/write/journal/ownership cohort passes on
   both Windows and frozen Linux with zero skips. Native commit without common
   acknowledgement recovers without rewriting; dispatched writes with no marker
   fail as uncertain and are never blindly redispatched. Read observations,
   common intents and native markers each have a 64-per-invocation ceiling.
-  No public memory capability is enabled. Next add record/namespace retention,
-  versioned public workflow bindings and the remaining resolution/recovery gates.
+  Active expiry follow-up `810c723` passes a 355-case memory/journal/ownership
+  cohort on both Windows and frozen Linux with zero skips. A typed policy uses
+  database time to commit the record deadline with its value and native marker;
+  fresh get reads omit expired records while replay retains past observations.
+  Retries do not renew expiry. This is logical expiry; no public memory
+  capability is enabled. Next add namespace storage bounds and bounded physical
+  cleanup, versioned public bindings and remaining resolution/recovery gates.
   See the [memory scope](docs/s4-02-native-memory-acceptance.md).
   Then continue streams, public state updates, replay and
   time travel. Preserve common authority, ownership, receipts and private
