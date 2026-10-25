@@ -11,6 +11,7 @@ from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.errors import ConfigurationError, ToolError, UnsupportedWorkflowFeature
 from open_workflow_agent.execution_authority import ExecutionAuthority, authority_scope
+from open_workflow_agent.memory_reads import MemoryReadBinding
 from open_workflow_agent.security import static_principal
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow, generate_default_workflow
@@ -93,7 +94,7 @@ async def native_store(request, tmp_path):
             yield store
 
 
-async def runtime(tmp_path, store, *, denied=None, enabled=True, bounds=None):
+async def runtime(tmp_path, store, *, denied=None, enabled=True, bounds=None, binding=None):
     config = configuration(denied=denied)
     config.memory.enabled = enabled
     services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
@@ -101,7 +102,9 @@ async def runtime(tmp_path, store, *, denied=None, enabled=True, bounds=None):
     await engine.initialize(services)
     # These tests own a native store, not a durable checkpoint profile.
     engine.native.database_path = None
-    reader = NativeMemoryReader(services, store, collection="preferences", bounds=bounds)
+    reader = NativeMemoryReader(
+        services, store, collection="preferences", bounds=bounds, binding=binding
+    )
     plan = compile_workflow(generate_default_workflow())
     return services, engine, reader, plan
 
@@ -166,8 +169,9 @@ async def test_actual_store_concurrent_principals_keep_values_private_and_return
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("denied,enabled", [("memory.search", True), (None, False)])
+@pytest.mark.parametrize("bound", [False, True])
 async def test_denied_or_disabled_access_never_calls_the_store(
-    tmp_path, native_store, monkeypatch, denied, enabled
+    tmp_path, native_store, monkeypatch, denied, enabled, bound
 ):
     calls = []
     original = type(native_store).aget
@@ -178,7 +182,11 @@ async def test_denied_or_disabled_access_never_calls_the_store(
 
     monkeypatch.setattr(type(native_store), "aget", get)
     services, engine, reader, plan = await runtime(
-        tmp_path, native_store, denied=denied, enabled=enabled
+        tmp_path,
+        native_store,
+        denied=denied,
+        enabled=enabled,
+        binding=MemoryReadBinding("test-store", "1.0.0", "memory") if bound else None,
     )
 
     async def read(_payload, _context):
@@ -421,3 +429,43 @@ def test_missing_and_finite_values_are_public_json_copies():
 def test_invalid_bounds_reject_before_any_provider_is_used(values):
     with pytest.raises(ValueError, match="native memory"):
         NativeMemoryReadBounds(**values)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("missing", [False, True])
+async def test_bound_reader_keeps_first_value_and_missing_result_in_native_workflow(
+    tmp_path, native_store, missing, monkeypatch
+):
+    if not missing:
+        await native_store.aput(namespace("alice"), "record", {"version": 1})
+    binding = MemoryReadBinding(
+        "test-store", "1.0.0", "sqlite" if hasattr(native_store, "conn") else "memory"
+    )
+    services, engine, reader, plan = await runtime(tmp_path, native_store, binding=binding)
+    calls = 0
+    real_get = type(native_store).aget
+
+    async def counted(self, *args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return await real_get(self, *args, **kwargs)
+
+    monkeypatch.setattr(type(native_store), "aget", counted)
+
+    async def read(_payload, _context):
+        first = await reader.get("record")
+        await native_store.aput(namespace("alice"), "record", {"version": 2})
+        second = await reader.get("record")
+        return {"first": first, "second": second}
+
+    services.catalog.register(AGENT, read)
+    try:
+        result = await invoke(services, engine, plan)
+        expected = None if missing else {"version": 1}
+        assert result.status == "completed", result.error
+        assert result.output == {"first": expected, "second": expected}
+        assert calls == 1
+        services.effect_journal.verify_invocation(result.invocation_id, plan.fingerprint)
+    finally:
+        await engine.shutdown()
+        services.close()

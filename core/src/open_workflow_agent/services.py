@@ -831,6 +831,19 @@ class RuntimeServices:
             self._event_triggers[engine] = store
         return store
 
+    def memory_provider_database_path(self, provider: str, *, create_namespace: bool = True) -> str:
+        """Deployment-side long-term memory storage, separate from checkpoints."""
+        if type(provider) is not str or not re.fullmatch(r"[a-z][a-z0-9_]{0,31}", provider):
+            raise ConfigurationError("memory provider storage binding is invalid")
+        if self.database_root:
+            return str(self.database_root / f"{provider}-memory.sqlite3")
+        if self.datasource:
+            namespace = f"owa_{provider}_memory"
+            if create_namespace:
+                ensure_storage_namespace(self.datasource, namespace)
+            return namespaced_datasource(self.datasource, namespace)
+        return str(Path(self.config.memory.database).with_name(f"{provider}-memory.sqlite3"))
+
     def engine_database_path(self, engine: str, *, create_namespace: bool = True) -> str:
         """Return the native persistence path without exposing engine state publicly."""
 

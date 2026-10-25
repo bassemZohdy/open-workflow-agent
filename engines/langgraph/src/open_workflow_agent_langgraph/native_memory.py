@@ -2,7 +2,8 @@
 
 Common services verify original authority and decide read access. This adapter
 only binds that principal namespace to the pinned SDK and projects finite JSON.
-Workflow admission, durable read receipts and write fencing remain separate work.
+An installed binding adds common durable read observations. Public workflow
+admission and native write fencing remain separate work.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from typing import TYPE_CHECKING, Any, cast
 from langgraph.store.base import BaseStore, Item
 from open_workflow_agent.errors import ConfigurationError, ModelError, ToolError
 from open_workflow_agent.execution_context import current_action_context
+from open_workflow_agent.memory_reads import MemoryReadBinding, MemoryReadObservations
 from open_workflow_agent.model_responses import bounded_model_json
 
 if TYPE_CHECKING:
@@ -77,6 +79,7 @@ class NativeMemoryReader:
         *,
         collection: str,
         bounds: NativeMemoryReadBounds | None = None,
+        binding: MemoryReadBinding | None = None,
     ) -> None:
         if type(collection) is not str or not _COLLECTION.fullmatch(collection):
             raise ValueError("native memory collection must be a bounded identifier")
@@ -84,10 +87,29 @@ class NativeMemoryReader:
             raise ValueError("native memory requires an installed SDK store")
         if bounds is not None and not isinstance(bounds, NativeMemoryReadBounds):
             raise ValueError("native memory requires typed read bounds")
+        if binding is not None and not isinstance(binding, MemoryReadBinding):
+            raise ValueError("native memory requires a typed installed binding")
         self._services = services
         self._store = store
         self._collection = collection
         self._bounds = bounds or NativeMemoryReadBounds()
+        self._binding = binding
+        self._observations = (
+            MemoryReadObservations(services.effect_journal, services.invocations)
+            if binding is not None
+            else None
+        )
+
+    async def _fetch(self, namespace: tuple[str, ...], key: str) -> dict[str, Any] | None:
+        try:
+            item = await self._store.aget(namespace, key, refresh_ttl=False)
+        except TimeoutError:
+            raise
+        except Exception:
+            raise ToolError(
+                "native memory store read failed", details={"reason": "store_failure"}
+            ) from None
+        return _public_value(item, namespace, key, self._bounds)
 
     async def get(self, key: str) -> dict[str, Any] | None:
         if type(key) is not str or not _KEY.fullmatch(key):
@@ -96,7 +118,8 @@ class NativeMemoryReader:
             async with asyncio.timeout(self._bounds.timeout_seconds):
                 if not self._services.memory_enabled:
                     raise ConfigurationError("native memory is disabled by deployment")
-                if current_action_context() is None:
+                context = current_action_context()
+                if context is None:
                     raise ConfigurationError("native memory requires original invocation authority")
                 binding = self._services._memory_namespace()
                 match = _PRINCIPAL_NAMESPACE.fullmatch(binding or "")
@@ -104,16 +127,19 @@ class NativeMemoryReader:
                     raise ConfigurationError("native memory requires original invocation authority")
                 await self._services.authorize_current_action("memory.search", "memory:self")
                 namespace = ("owa_native_memory_v1", match[1], self._collection)
-                try:
-                    # A read must not request the store's default TTL refresh.
-                    item = await self._store.aget(namespace, key, refresh_ttl=False)
-                except TimeoutError:
-                    raise
-                except Exception:
-                    raise ToolError(
-                        "native memory store read failed", details={"reason": "store_failure"}
-                    ) from None
-                return _public_value(item, namespace, key, self._bounds)
+                if self._observations is not None and self._binding is not None:
+                    return await self._observations.read(
+                        context.handle,
+                        context.identity,
+                        binding=self._binding,
+                        namespace=match[0],
+                        collection=self._collection,
+                        key=key,
+                        max_record_bytes=self._bounds.max_record_bytes,
+                        fetch=lambda: self._fetch(namespace, key),
+                        observer=context.observer,
+                    )
+                return await self._fetch(namespace, key)
         except TimeoutError:
             raise ToolError(
                 "native memory read exceeded its deadline", details={"reason": "timeout"}

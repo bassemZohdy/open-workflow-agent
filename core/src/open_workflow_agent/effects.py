@@ -431,8 +431,18 @@ class EffectJournal:
 
     def get(self, identity: EffectIdentity) -> EffectReceipt | None:
         try:
+            payload_column = "payload"
+            if identity.operation.startswith("policy:memory-read:v1:"):
+                size = (
+                    "octet_length(payload)"
+                    if self.connection.is_postgresql
+                    else "length(CAST(payload AS BLOB))"
+                )
+                payload_column = f"CASE WHEN {size}<=4096 THEN payload ELSE NULL END"
             row = self.connection.execute(
-                "SELECT owner, status, payload FROM workflow_effects WHERE identity = ?",
+                "SELECT owner, status,"
+                + payload_column
+                + " FROM workflow_effects WHERE identity = ?",
                 (identity.key,),
             ).fetchone()
             if row is None:
@@ -533,6 +543,10 @@ class EffectJournal:
                 verify_protected_approval_business_receipt(
                     self.connection, self._invocations, identity, receipt
                 )
+            if identity.operation.startswith("policy:memory-read:v1:"):
+                from .memory_reads import verify_memory_read_receipt
+
+                verify_memory_read_receipt(self.connection, self._invocations, identity, receipt)
             if identity.operation == "policy:a2a-agent-card:v1":
                 from .a2a_admission import verify_a2a_card_receipt
 
@@ -726,6 +740,7 @@ class EffectJournal:
                     FROM workflow_effect_invocations WHERE invocation_id = ?""",
                     (current_id,),
                 ).fetchall()
+                memory_reads: set[str] = set()
                 for key, stored_fingerprint, payload in rows:
                     identity = EffectIdentity.from_value(json.loads(payload))
                     if (
@@ -738,6 +753,8 @@ class EffectJournal:
                     receipt = self.get(identity)
                     if receipt is None:
                         raise ValueError("admitted workflow effect receipt is absent")
+                    if identity.operation.startswith("policy:memory-read:v1:"):
+                        memory_reads.add(identity.key)
                     if receipt.child_invocation is not None:
                         if self._invocations is None:
                             raise ValueError("child invocation service is unavailable")
@@ -751,6 +768,11 @@ class EffectJournal:
                                 (*ancestors, current_id),
                             )
                         )
+                from .memory_reads import verify_memory_read_index
+
+                verify_memory_read_index(
+                    self.connection, current_id, current_fingerprint, memory_reads
+                )
         except Exception:
             raise WorkflowExecutionError(
                 "workflow action invocation dependencies could not be reconciled"
