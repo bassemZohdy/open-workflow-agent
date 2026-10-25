@@ -82,10 +82,10 @@ already committed logical write is rejected. Put and delete have distinct slots.
 The original running common invocation, principal binding and lease token must
 match before the SDK worker starts.
 
-The adapter's private `apply_native_mutation` is a trusted, preauthorized
-primitive. It is not registered as a catalog function or agent tool and the
-provider exposes no workflow writer. Public memory write authorization and the
-common intent/completion protocol must be integrated before enabling it.
+The adapter's private `apply_native_mutation` remains a trusted, preauthorized
+primitive. It is not registered as a catalog function or agent tool. A later
+private writer adds common authorization and the intent/completion protocol
+described below; public workflow bindings are still disabled.
 Provider setup creates a separate `owa_memory_mutations_v1` native marker table.
 Each worker-owned SDK connection commits one SDK put/delete and its native marker
 in the same native database transaction. The original pinned SDK batch SQL is
@@ -111,11 +111,57 @@ drains the worker transaction before returning or allowing ownership/connection
 cleanup; a committed write can therefore outlive caller cancellation and is
 recognized on retry.
 
-Native markers are not common effect completion receipts. A missing/deleted
-marker cannot yet be reconciled against a separate common intent or checkpoint
-dependency. The low-level primitive must remain private until that recovery
-protocol, public authorization/bindings, write/namespace retention and remaining
-qualification are complete. No native memory capability is enabled here.
+Native markers are not common effect completion receipts. The follow-up below
+reconciles them with separate common intents and completion dependencies. The
+low-level primitive must remain private; use the coordinator for the combined
+protocol. Public bindings, write/namespace retention and remaining qualification
+are still required. No native memory capability is enabled here.
+
+## Common write recovery follow-up
+
+`MemoryWrites` retains a bounded canonical request, fixed provider location
+identity and common effect index/receipt in the common store. Intent admission,
+dispatch transition and completion each require the live original execution
+lease. Native database work is awaited outside common SQL transactions.
+
+| Common phase | Native evidence | Recovery behavior |
+| --- | --- | --- |
+| Prepared | Absent | Eligible for its first dispatch. |
+| Prepared | Present | Reject orphan or inconsistent evidence. |
+| Dispatched | Matching marker | Complete the common receipt without repeating SDK SQL. |
+| Dispatched | Absent | Report an uncertain outcome; never blindly redispatch. |
+| Completed | Matching marker | Verify and reuse the completed acknowledgement. |
+| Completed | Missing or damaged | Reject before checkpoint replay or another mutation. |
+
+An interrupted dispatched operation with no evidence requires an explicit
+resolution protocol before it can safely proceed; no automatic resolver is
+implemented in this slice. Even a failure before the native transaction may
+remain uncertain once common dispatch was recorded. This conservative profile
+does not claim every pending write can recover automatically.
+
+Common completion updates its phase and effect receipt atomically after native
+proof, and checks ownership again before commit. Its receipt is sent to the
+native action observer only after commit. Local duplicate calls share a weakly
+held per-operation lock; independent recovery still relies on durable phase and
+ownership guards. Native evidence and common indexes/receipts are reconciled in
+both directions. Deleting either a common record or its native proof cannot
+silently manufacture a replacement acknowledgement. Both common intents and
+native markers have a 64-per-invocation ceiling.
+
+Provider setup registers a fixed backend and location digest. Read-only native
+marker lookup initializes no file, schema or SDK state and loads bounded marker
+fields, with finite connection/query waits. Location identity excludes password
+fields; no datasource string or credentials enter the workflow descriptor.
+Changing the installed location rejects recovery of its old intents. Recovery
+requires that original backend to be registered before invocation verification.
+
+The private provider's `writer(collection)` accepts only a record key and finite
+JSON object for put, or a key for delete. It checks original persisted principal
+authority and `memory.add`/`memory.delete` policy before admission or reuse of a
+common intent. Workflow input cannot select namespace, provider or database.
+The writer returns no SDK identifier or marker. It is available to trusted
+deployment-side functions; no public catalog entry or native feature declaration
+is enabled. Cross-backend ownership storage is rejected for writes.
 
 ## Verification scope
 
@@ -223,17 +269,47 @@ setup. It does not qualify common workflow write recovery, public authorization
 or a native memory feature declaration. S4-02 and its related research rows
 remain open; the overall verified task count stays 31 of 37.
 
+### Common write recovery qualification — `54103b9`
+
+Source `54103b92e9ffbb0f9b0a51f36d21337112d53bfc` passes **322 cases with zero
+skips on each of Windows and frozen Linux**. The cohort includes the prior 169
+memory cases, 40 common write-journal cases, 14 actual store/workflow recovery
+cases, and 99 existing effect/ownership regression cases.
+
+The new common cases cover prepared-intent restart, uncertainty after dispatch,
+native commit without acknowledgement, service reopen, corruption/missing
+records, phase/receipt rollback, cancellation, ownership takeover, duplicate
+calls, quota enforcement and observer failure. Actual SQLite/PostgreSQL cases
+cover authorized puts/deletes and repeated calls, policy denial before intent
+or SDK mutation, original-principal isolation despite ambient substitution,
+missing native proof blocking checkpoint resume, and provider reopen recovery.
+The combined process test exits without cleanup after native commit and before
+common completion; a new owner later reconciles the old operation without
+overwriting a newer logical write.
+
+Linux retains the same immutable pinned dependency image and controls recorded
+above, using a fresh `owa_memory_54103b9` PostgreSQL database. All **1,184 frozen
+source inputs remain unchanged** and nothing is installed at startup. Reports
+are under `tmp/merge-20261025/54103b9/`, including `memory-linux-result.json`,
+XML/log/manifest, plus `memory-write-recovery-qualified-windows.xml`.
+
+The core-only selection passes 35 cases; its 20 optional PostgreSQL cases and
+one SDK module skip as expected without those dependencies. Ruff, formatting,
+strict typing, relative Markdown links and four inventory/tracking tests pass.
+This is finite private-component qualification, not a full repository/release
+run. S4-02 stays unchecked and no research capability is promoted.
+
 ## Remaining work before enabling the capability
 
 - Define and validate the versioned workflow bindings, logical record/schema and
   retention semantics within the approved metadata extension boundary.
 - Connect the private provider factories and read receipts to those validated
   workflow bindings without making external services mandatory.
-- Integrate the native transaction primitive with common write intents and
-  completed effect receipts, native receipt observation and missing-marker
-  reconciliation. Complete public write authorization and namespace/write
-  retention. The native fence/marker/quota boundary and common read observations
-  now have finite evidence; full workflow write recovery remains open.
+- Add record/namespace retention without discarding proof needed by recoverable
+  invocations. Define and qualify explicit resolution of uncertain dispatched
+  writes. The private authorized writer now connects native transactions to
+  common intents, completed receipts, native receipt observation and missing
+  evidence rejection; versioned public workflow bindings remain open.
 - Complete native-checkpoint/crash recovery, changed authority/policy,
   concurrent first-use/provider setup and shutdown-failure qualification on the
   required engines/stores/platforms before updating capability metadata.
