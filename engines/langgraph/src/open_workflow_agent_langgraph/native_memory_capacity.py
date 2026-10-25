@@ -95,10 +95,11 @@ async def expired_deletes(
         "expires_at<=clock_timestamp()" if postgresql else "julianday(expires_at)<=julianday('now')"
     )
     order = "expires_at" if postgresql else "julianday(expires_at)"
+    lock = " FOR UPDATE" if postgresql else ""
     await cursor.execute(
         "SELECT CASE WHEN length(key)<=128 THEN key ELSE NULL END AS key "
         f"FROM store WHERE prefix={placeholder} AND expires_at IS NOT NULL AND {expired} "
-        f"ORDER BY {order},key LIMIT {placeholder}",
+        f"ORDER BY {order},key LIMIT {placeholder}{lock}",
         (prefix, limits.cleanup_limit),
     )
     rows = await cursor.fetchall()
@@ -109,3 +110,19 @@ async def expired_deletes(
     ):
         raise mutation_error("namespace_record_invalid")
     return [PutOp(namespace, key, None, index=False, ttl=None) for key in keys]
+
+
+async def verify_cleanup(
+    cursor: Any, prefix: str, operations: list[PutOp], *, postgresql: bool
+) -> None:
+    if not operations:
+        return
+    placeholder = "%s" if postgresql else "?"
+    await cursor.execute(
+        f"SELECT COUNT(*) AS remaining FROM store WHERE prefix={placeholder} "
+        f"AND key IN ({','.join([placeholder] * len(operations))})",
+        (prefix, *(operation.key for operation in operations)),
+    )
+    row = await cursor.fetchone()
+    if (row["remaining"] if postgresql else row[0]) != 0:
+        raise mutation_error("cleanup_incomplete")

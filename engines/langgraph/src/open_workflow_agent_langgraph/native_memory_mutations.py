@@ -32,7 +32,13 @@ from open_workflow_agent.ownership import (
 from open_workflow_agent.persistence import ExecutionHandle, InvocationStore
 from open_workflow_agent.storage import is_postgresql_datasource
 
-from .native_memory_capacity import NAMESPACE_DDL, check_capacity, expired_deletes, guard_namespace
+from .native_memory_capacity import (
+    NAMESPACE_DDL,
+    check_capacity,
+    expired_deletes,
+    guard_namespace,
+    verify_cleanup,
+)
 
 
 async def prepare_mutation_storage(store: Any, *, postgresql: bool) -> None:
@@ -146,6 +152,8 @@ async def _apply_in_transaction(
             await store.abatch(operations)
     finally:
         store._mutation_cursor = None
+    if request.kind == "sweep":
+        await verify_cleanup(cursor, prefix, operations, postgresql=postgresql)
     if request.kind == "put" and request.retention is not None:
         await _set_record_expiry(cursor, namespace, request, postgresql=postgresql)
     if request.kind == "put" and request.namespace_limits is not None:

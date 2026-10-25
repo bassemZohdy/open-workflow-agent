@@ -428,3 +428,44 @@ async def test_lost_namespace_seal_with_existing_data_is_not_recreated(runtime):
         await services.memory_writes.mutate(handle, request)
     assert error.value.details["reason"] == "namespace_unmanaged"
     assert await keys(runtime) == ["a"]
+
+
+@pytest.mark.asyncio
+async def test_silently_suppressed_cleanup_cannot_commit_a_false_completion(runtime):
+    services, provider, _ = runtime
+    for key in "ab":
+        await apply(runtime, key=key)
+    await expire(runtime)
+    name = "suppress_cleanup_" + uuid.uuid4().hex
+    postgresql = provider.binding.backend == "postgresql"
+
+    async def execute(statement):
+        if postgresql:
+            async with provider.store._cursor(pipeline=False) as cursor:
+                await cursor.execute(statement)
+        else:
+            await provider.store.conn.execute(statement)
+            await provider.store.conn.commit()
+
+    if postgresql:
+        await execute(
+            f"CREATE FUNCTION {name}() RETURNS trigger LANGUAGE plpgsql "
+            "AS 'BEGIN RETURN NULL; END;'"
+        )
+        await execute(
+            f"CREATE TRIGGER {name} BEFORE DELETE ON store FOR EACH ROW EXECUTE FUNCTION {name}()"
+        )
+    else:
+        await execute(
+            f"CREATE TRIGGER {name} BEFORE DELETE ON store BEGIN SELECT RAISE(IGNORE); END"
+        )
+    handle, request = mutation(runtime, kind="sweep")
+    try:
+        with pytest.raises(InvocationStateError):
+            await services.memory_writes.mutate(handle, request)
+        assert await keys(runtime) == list("ab")
+        assert services.effect_journal.get(request.identity).status == "pending"
+    finally:
+        await execute(f"DROP TRIGGER {name} ON store" if postgresql else f"DROP TRIGGER {name}")
+        if postgresql:
+            await execute(f"DROP FUNCTION {name}()")
