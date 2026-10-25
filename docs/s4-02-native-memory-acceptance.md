@@ -42,10 +42,18 @@ sanitized errors, asynchronous deadlines, invalid data/limits and the closed
 required-feature gate. The SQLite case enables read-refresh by default and
 checks the underlying store rows, including expiry, remain unchanged.
 
-The Windows actual-SDK selection passes **41 cases**: the new reader tests plus
-the existing native memory/checkpoint admission regressions. Ruff, formatting,
-strict adapter typing and relative Markdown links pass. Linux focused execution
-is the next check. Raw reports are under `tmp/merge-20261025/`.
+The Windows and frozen Linux actual-SDK selections each pass **41 cases with
+zero skips**: the new reader tests plus existing native memory/checkpoint
+admission regressions. Source `2f05979c1c0db9fec3fe31c9e33be99fc49686b7`
+uses an immutable cached SDK dependency image with matching locks, a read-only
+source/root filesystem, no network, a bounded writable temporary directory,
+arbitrary UID, 1 GiB memory and 128-process cgroup ceiling. All **1,172 frozen
+source inputs remain unchanged**; nothing is installed at startup. These are
+test-container controls, not native memory capability claims.
+
+The existing shared original-authority/concurrent-principal contract also
+passes on actual LangGraph/SQLite. Ruff, formatting, strict adapter typing and
+relative Markdown links pass. Raw reports are under `tmp/merge-20261025/`.
 These tests do not establish a public memory API, durable memory operations or
 full native store parity.
 

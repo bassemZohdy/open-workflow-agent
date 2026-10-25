@@ -220,7 +220,8 @@ treated as a deferred task or as additional feature completion.
   profiles are corrected. The final direct-child stop fixture passes eight
   Linux SQLite/PostgreSQL routing/scope cases without pidfd APIs and four
   Windows PostgreSQL cases. Hosted qualification of that repair remains open.
-  Active: a private native memory reader has 41 focused Windows checks; it does
+  Active: a private native memory reader passes 41 checks each on Windows and
+  offline Linux with zero skips; it does
   not enable a workflow capability. Complete provider/workflow bindings and
   durable read/write ownership, quotas, retention and recovery before admission.
   See the [memory scope](docs/s4-02-native-memory-acceptance.md).

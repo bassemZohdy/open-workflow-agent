@@ -47,7 +47,9 @@ Memory, streams, public state updates, replay and time travel remain open.
 After the `f013a2e` main integration, the active S4-02 branch adds a private
 read-only native store component. It uses original common authority and access
 decisions, projects finite JSON and keeps required native memory admission
-closed. The first Windows reader/admission selection passes 41 cases. Provider
+closed. Windows and frozen offline Linux reader/admission selections each pass
+41 cases with zero skips; the shared original-authority contract also passes.
+Provider
 factories, durable read/write receipts, quotas/retention, recovery and public
 workflow bindings remain open. See the
 [native memory scope](docs/s4-02-native-memory-acceptance.md).
