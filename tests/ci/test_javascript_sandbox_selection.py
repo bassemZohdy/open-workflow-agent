@@ -35,7 +35,7 @@ def test_javascript_physical_and_both_native_windows_sqlite_profiles_are_require
         "adk",
         "langgraph",
     }
-    assert "../../tests/contract/test_javascript_sandbox.py" in command(native)
+    assert "../../tests/contract/test_javascript_sandbox_contract.py" in command(native)
     assert "-k sqlite" in command(native)
 
 
@@ -47,7 +47,7 @@ def test_javascript_actual_postgresql_profiles_gate_runtime_images():
         require_node(job)
         assert job["services"]["postgres"]["image"] == "postgres:16"
         assert name in jobs["postgres-runtime"]["needs"]
-        assert "../../tests/contract/test_javascript_sandbox.py" in command(job)
+        assert "../../tests/contract/test_javascript_sandbox_contract.py" in command(job)
         assert "-k postgresql" in command(job)
 
 

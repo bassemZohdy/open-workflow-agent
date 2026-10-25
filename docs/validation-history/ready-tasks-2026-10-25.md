@@ -117,6 +117,15 @@ The benchmark/role selection passes 55 tests with 25 unconfigured PostgreSQL
 skips; actual PostgreSQL credential checks are recorded separately above.
 Fresh source-matched measurements are still required after this correction.
 
+Source `67279ed` fails the root job before tests: the new benchmark mypy command
+imports the optional Psycopg module, but that root environment selects knowledge
+only. Job `121106101973` reports `import-not-found` for `psycopg`; earlier core/CI
+typing passes. The corrected benchmark type gate explicitly selects the existing
+`postgres` extra, retaining PostgreSQL as an optional runtime dependency. This
+is a CI environment correction, not ignored typing or relaxed coverage. The
+remaining `67279ed` jobs retain their own outcomes; this source is not an
+aggregate acceptance checkpoint.
+
 Dependency/SDK changes intentionally change recovery-profile identity. They do
 not grant in-place migration of existing invocations. Retained invocations need
 their original matching runtime/lock profile; this record authorizes no rollout,

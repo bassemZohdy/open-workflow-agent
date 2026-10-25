@@ -38,6 +38,12 @@ def test_report_identifies_the_actual_hosted_or_local_runner(
     assert metadata["runner"]["name"] == expected
 
 
+def test_benchmark_type_gate_selects_its_optional_postgresql_driver():
+    workflow = yaml.load((ROOT / ".github/workflows/ci.yml").read_text(), Loader=yaml.BaseLoader)
+    step = next(s for s in workflow["jobs"]["root"]["steps"] if s.get("name") == "Type check")
+    assert "uv run --locked --extra postgres mypy benchmarks" in step["run"]
+
+
 def _profile(engine: str, backend: str, *, commit: str = "a" * 40) -> dict[str, Any]:
     return {
         "profile": "owa/s4-06-matched-performance/v1",
