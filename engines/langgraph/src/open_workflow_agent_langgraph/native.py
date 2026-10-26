@@ -17,6 +17,7 @@ from open_workflow_agent.errors import (
     WorkflowExecutionError,
 )
 from open_workflow_agent.expressions import validate_expression_data
+from open_workflow_agent.native_streams import NativeStreamLog
 from open_workflow_agent.ownership import (
     NativeWriteFence,
     install_sqlite_native_fence,
@@ -240,8 +241,11 @@ class LangGraphFunctionalAdapter:
         invocation_id: str,
         resume: bool = False,
         _execution_fence: NativeWriteFence | None = None,
+        _stream_observer: NativeStreamLog | None = None,
     ) -> Any:
         """Run each derived task as a native node with private scope checkpoints."""
+        if _stream_observer is not None and _stream_observer.invocation_id != invocation_id:
+            raise InvocationStateError("native observation belongs to another invocation")
         if not self.task_nodes_available:
             return await executor.execute(plan, input_data, metadata=metadata)
         from .graph import LangGraphScopeExecutor
@@ -259,6 +263,7 @@ class LangGraphFunctionalAdapter:
                 timer_wakes=metadata.get("_timer_wakes"),
                 child_wakes=metadata.get("_child_wakes"),
                 child_waits=getattr(executor.services, "child_waits", None),
+                stream_observer=_stream_observer,
             )
             raw_input = await scopes.original_input(input_data) if resume else input_data
             try:

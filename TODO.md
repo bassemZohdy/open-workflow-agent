@@ -268,6 +268,8 @@ treated as a deferred task or as additional feature completion.
   time travel. Preserve common authority, ownership, receipts and private
   checkpoint boundaries. See [acceptance](docs/s4-02-native-channels-acceptance.md)
   and the [integration record](docs/validation-history/main-integration-2026-10-25.md).
+  After PR #83, continue the [private native-stream foundation](docs/s4-02-native-streams-acceptance.md),
+  followed by authorized public transport and its capability/qualification gates.
 
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
   The optional TypeScript package admits official OWS definitions and executes
