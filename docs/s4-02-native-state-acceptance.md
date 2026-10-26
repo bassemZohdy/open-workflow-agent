@@ -90,6 +90,25 @@ This is component qualification, not full repository or release qualification.
 
 ## Remaining state-management work
 
+After PR #86, the private updater prerequisite runs the pinned SDK's
+`aupdate_state` inside one transaction containing its checkpoint, pending writes
+and native proof. It compares the root head before dispatch, rejects changed
+requests and returns verified retained proof on an identical repeat. SQLite
+defers the SDK's individual commits until the fenced outer commit; PostgreSQL
+uses one SDK cursor connection and an exclusive ownership-row lock. Both verify
+ownership again before commit. The lease must exclude live workflow execution.
+No runtime registration, setup call, API route or mutation capability is enabled.
+
+Development checks cover rollback after SDK writes, changed scope/result,
+concurrent compare-and-update, damaged proof/lineage, stale and expired owners,
+repeated cancellation, and process termination before commit. PostgreSQL's
+ordinary shared fence initially allowed two same-base updates; this private
+unit now takes an exclusive lock without changing ordinary native execution's
+fence contract. The first PostgreSQL fixture mistakenly selected a temporary
+SQLite root; fixing fixture selection allowed the real PostgreSQL cases to run.
+Earlier reports remain under `tmp/merge-20261025/state-atomic-dev*.xml`.
+Frozen qualification of this private prerequisite is pending.
+
 Build compare-and-update on exact base references, original-owner management
 authorization, schema/allowed-task attribution and the common owned mutation
 intent/outcome contract. Use the native updater under the shared fence; commit

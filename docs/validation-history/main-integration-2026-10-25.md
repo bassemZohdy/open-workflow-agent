@@ -271,3 +271,20 @@ or complete S4-02/T50. The count stays 31/37 verified, six open, none deferred;
 protections and automation flags are unchanged. Work continues on
 `codex/s4-02-native-state-controls` with bounded state/history reads as the
 prerequisite for exact compare-and-update and safe branch management.
+
+## PR #86 integration — 2026-10-26 Asia/Dubai
+
+[PR #86](https://github.com/bassemZohdy/open-workflow-agent/pull/86) merged at
+`26496464194bdb86d606e30d8b6357062f537f20`, preserving head
+`9cfc97df2516e73f19327d523a53556b19403352`. Its required exact-head check passed
+in [Docs run 40269512911](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40269512911).
+Local main was fast-forwarded and its push confirmed GitHub was up to date.
+
+Runtime `f060349` passes 285 combined state/history/native cases and 20 separate
+actual ADK authority/fencing/rejection cases on each of Windows and frozen
+Docker/Linux, all with zero skips and 1,250 unchanged Linux inputs. SDK-free
+configuration/API/recovery/tracking adds 312 passes with zero skips. Read-only
+views expose bounded projected data and opaque references; they do not authorize
+continuation, mutation or replay. S4-02/T45/T49 remain open. Work continues on
+`codex/s4-02-native-state-updates` with atomic SDK checkpoint/write/proof storage,
+then common management intents, policy admission and recovery reconciliation.
