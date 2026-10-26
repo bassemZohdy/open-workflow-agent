@@ -264,6 +264,14 @@ class MemoryWrites:
         try:
             raw = json.loads(row[2], object_pairs_hook=_unique)
             decision = MemoryWriteResolution.from_descriptor(raw["output"]["resolution"])
+            if (
+                re.fullmatch(
+                    r"call:memory\.(put|delete|sweep):1\.0\.0@[a-z][a-z0-9_-]{0,63}",
+                    request.parent.operation,
+                )
+                and decision.authorization_digest is None
+            ):
+                raise mutation_error("resolution_authority_missing")
             expected = resolution_receipt(request, backend.storage_identity, decision)
             if (
                 tuple(row[:2]) != (expected.owner, expected.status)

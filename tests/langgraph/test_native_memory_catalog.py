@@ -16,11 +16,15 @@ import pytest
 from open_workflow_agent.api import create_app
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import NativeMemoryBindingConfig
-from open_workflow_agent.effects import EffectIdentity
+from open_workflow_agent.effects import EffectIdentity, _receipt_payload
 from open_workflow_agent.errors import OwaError
 from open_workflow_agent.execution_authority import authority_scope
 from open_workflow_agent.execution_authorization import decision_identity
-from open_workflow_agent.memory_resolution import resolution_identity
+from open_workflow_agent.memory_resolution import (
+    MemoryWriteResolution,
+    resolution_identity,
+    resolution_receipt,
+)
 from open_workflow_agent.memory_writes import TABLE as COMMON_MUTATIONS
 from open_workflow_agent.security import AuthorizationRule
 from open_workflow_agent.services import RuntimeServices
@@ -250,6 +254,30 @@ async def test_authenticated_resolution_and_actual_workflow_resume_without_redis
     assert calls == [True]
     handle = services.invocations.get(result.invocation_id)
     mutation = services.memory_writes.requests(handle)[0][0]
+    if committed:
+        selected = resolution_identity(mutation.identity)
+        audit = services.effect_journal.get(selected)
+        retained = services.effect_journal.connection.execute(
+            "SELECT payload FROM workflow_effects WHERE identity=?", (selected.key,)
+        ).fetchone()[0]
+        unprotected = replace(
+            MemoryWriteResolution.from_descriptor(audit.output["resolution"]),
+            authorization_digest=None,
+        )
+        forged = resolution_receipt(mutation, backend.storage_identity, unprotected)
+        services.effect_journal.connection.execute(
+            "UPDATE workflow_effects SET payload=? WHERE identity=?",
+            (json.dumps(_receipt_payload(forged)), selected.key),
+        )
+        services.effect_journal.connection.commit()
+        try:
+            with pytest.raises(OwaError):
+                services.effect_journal.get(mutation.identity)
+        finally:
+            services.effect_journal.connection.execute(
+                "UPDATE workflow_effects SET payload=? WHERE identity=?", (retained, selected.key)
+            )
+            services.effect_journal.connection.commit()
     permission = decision_identity(
         resolution_identity(mutation.identity), "memory.resolve", "memory:self"
     )
