@@ -119,6 +119,13 @@ cases, all with zero skips. All 1,250 frozen Linux inputs remain unchanged.
 Native writes, replay/time travel and full T45/T49 remain open; this finite
 component does not complete S4-02 or qualify a release.
 
+PR #86 is merged at `2649646`. The next private prerequisite groups native SDK
+state-update checkpoints, pending writes and proof in one owned transaction,
+with compare-and-update and repeat detection. Frozen `3bf27d7` passes 99 cases
+on each platform with zero skips and 1,253 unchanged Linux inputs. It is not
+registered or advertised; common management intent/recovery and declared update
+policy remain required in the [state-control record](docs/s4-02-native-state-acceptance.md).
+
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior
 remain missing. S4-04 has a new 13-case actual native outcome comparison with

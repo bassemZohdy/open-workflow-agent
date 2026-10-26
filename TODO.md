@@ -283,6 +283,10 @@ treated as a deferred task or as additional feature completion.
   cases on each platform, plus 312 SDK-free core/API cases, with zero skips
   and 1,250 unchanged Linux inputs. Continue compare-and-update intent/proof,
   native atomic mutation and new-identity replay/time-travel lineage.
+  PR #86 is merged; private atomic SDK checkpoint/write/proof storage is now
+  qualified at `3bf27d7`: 99 cases per platform, zero skips, 1,253 unchanged
+  Linux inputs. It enables no mutation route or capability;
+  management intents/reconciliation and declared update policy remain required.
 
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
   The optional TypeScript package admits official OWS definitions and executes

@@ -90,6 +90,42 @@ This is component qualification, not full repository or release qualification.
 
 ## Remaining state-management work
 
+After PR #86, the private updater prerequisite runs the pinned SDK's
+`aupdate_state` inside one transaction containing its checkpoint, pending writes
+and native proof. It compares the root head before dispatch, rejects changed
+requests and returns verified retained proof on an identical repeat. SQLite
+defers the SDK's individual commits until the fenced outer commit; PostgreSQL
+uses one SDK cursor connection and an exclusive ownership-row lock. Both verify
+ownership again before commit. The lease must exclude live workflow execution.
+No runtime registration, setup call, API route or mutation capability is enabled.
+
+Development checks cover rollback after SDK writes, changed scope/result,
+concurrent compare-and-update, damaged proof/lineage, stale and expired owners,
+repeated cancellation, and process termination before commit. PostgreSQL's
+ordinary shared fence initially allowed two same-base updates; this private
+unit now takes an exclusive lock without changing ordinary native execution's
+fence contract. The first PostgreSQL fixture mistakenly selected a temporary
+SQLite root; fixing fixture selection allowed the real PostgreSQL cases to run.
+Earlier reports remain under `tmp/merge-20261025/state-atomic-dev*.xml`.
+Frozen runtime `3bf27d736510e741425e12e496d7925da6b62bae` selects 30 direct SDK
+transaction cases, 39 configured workflow state/API cases, 20 core state cases,
+eight native fencing cases and two LangGraph admission cases. Ten ADK cells
+are deselected; this unregistered module changes no ADK behavior. The direct SDK
+transaction fixtures do not qualify OWA workflow state mutation or continuation.
+
+| Private updater selection | Windows | Frozen Docker/Linux |
+| --- | --- | --- |
+| Atomic SDK unit plus state-read/fencing/admission regressions | 99 passed, zero skips | 99 passed, zero skips |
+
+Linux uses the same immutable LangGraph dependency image and deployment
+restrictions as the read profile above, with verified unchanged dependency locks
+and a separate fresh PostgreSQL database. All 1,253 source inputs remain
+unchanged. Reports and the input manifest remain under
+`tmp/merge-20261025/3bf27d7/`. The selection finished in 168.67 seconds on
+Windows and 62.02 seconds on Linux. Ruff, formatting, strict typing of 161
+core/LangGraph source files, relative Markdown links and four tracking checks
+pass. This qualifies only the private storage primitive and retained regressions.
+
 Build compare-and-update on exact base references, original-owner management
 authorization, schema/allowed-task attribution and the common owned mutation
 intent/outcome contract. Use the native updater under the shared fence; commit
