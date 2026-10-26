@@ -59,14 +59,6 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
 
     async def initialize(self, services: Any) -> None:
         database_path = services.engine_database_path("langgraph", create_namespace=False)
-        if services.config.memory.native and (
-            not self.native.task_nodes_available
-            or not services.config.execution_authorization.enabled
-        ):
-            raise ConfigurationError(
-                "native memory bindings require native LangGraph "
-                "and original execution authorization"
-            )
         proactor_loop = getattr(asyncio, "ProactorEventLoop", None)
         if (
             native_module.LANGGRAPH_AVAILABLE
@@ -78,6 +70,14 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             raise ConfigurationError(
                 "LangGraph PostgreSQL persistence requires a selector event loop on Windows",
                 details={"reason": "unsupported_event_loop"},
+            )
+        if services.config.memory.native and (
+            not self.native.task_nodes_available
+            or not services.config.execution_authorization.enabled
+        ):
+            raise ConfigurationError(
+                "native memory bindings require native LangGraph "
+                "and original execution authorization"
             )
         self.native.database_path = database_path
         if services.config.memory.native:

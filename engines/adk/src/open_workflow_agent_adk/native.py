@@ -446,6 +446,24 @@ if _DatabaseSessionService is not None:
         _execution_fence: NativeWriteFence | None = None
         _native_write_factory: Callable[[], Any] | None = None
 
+        async def prepare_tables(self) -> None:
+            if self._tables_created:
+                return
+            if self.db_engine.dialect.name != "postgresql":
+                await super().prepare_tables()
+                return
+            # SDK instance locks do not exclude other service instances or
+            # workers racing first-use DDL/schema metadata insertion. Keep the
+            # SDK migrations intact and guard only their setup, not execution.
+            async with asyncio.timeout(10):
+                async with self.db_engine.begin() as guard:
+                    await guard.execute(
+                        import_module("sqlalchemy").text(
+                            "SELECT pg_advisory_xact_lock(1331122500,hashtext(current_schema()))"
+                        )
+                    )
+                    await super().prepare_tables()
+
         async def _write(self, method: str, args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
             if self._native_write_factory is None:
                 return await getattr(super(), method)(*args, **kwargs)
