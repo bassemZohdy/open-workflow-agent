@@ -1,8 +1,4 @@
-"""Private fenced SDK transactions with atomic native mutation markers.
-
-These markers are not common effect receipts. Public workflow admission stays
-closed until common intent/completion reconciliation and retention are wired.
-"""
+"""Fenced SDK transactions with atomic values, vectors and native markers."""
 
 from __future__ import annotations
 
@@ -39,6 +35,7 @@ from .native_memory_capacity import (
     guard_namespace,
     verify_cleanup,
 )
+from .native_memory_embeddings import FrozenMemoryEmbedding, index_config
 
 
 async def prepare_mutation_storage(store: Any, *, postgresql: bool) -> None:
@@ -140,7 +137,7 @@ async def _apply_in_transaction(
                 namespace,
                 request.key,
                 None if request.value_json is None else json.loads(request.value_json),
-                index=False,
+                index=None if request.semantic is not None and request.kind == "put" else False,
                 ttl=None,
             )
         ]
@@ -202,6 +199,7 @@ async def apply_native_mutation(
     *,
     invocations: InvocationStore,
     handle: ExecutionHandle,
+    vector: list[float] | None = None,
 ) -> MemoryMutationMarker:
     """Trusted, preauthorized internal primitive; never register as a tool.
 
@@ -212,6 +210,8 @@ async def apply_native_mutation(
     if not isinstance(request, MemoryMutation) or not isinstance(fence, NativeWriteFence):
         raise mutation_error("request_invalid")
     request.verify_invocation(invocations, handle)
+    if request.semantic is not None and request.kind == "put" and vector is None:
+        raise mutation_error("embedding_missing")
     postgresql = is_postgresql_datasource(database)
     if (
         ("postgresql" if postgresql else "sqlite") != request.binding.backend
@@ -244,7 +244,17 @@ async def apply_native_mutation(
             from psycopg.conninfo import make_conninfo
 
             connection_string = make_conninfo(database, connect_timeout=5)
-        async with AtomicStore.from_conn_string(connection_string) as store:
+        options = {}
+        if request.semantic is not None:
+            text = (
+                request.semantic.text(json.loads(request.value_json))
+                if request.value_json is not None
+                else ""
+            )
+            options["index"] = index_config(
+                request.semantic, FrozenMemoryEmbedding(text, vector or ()), postgresql=postgresql
+            )
+        async with AtomicStore.from_conn_string(connection_string, **options) as store:
             if postgresql:
                 async with store._cursor(pipeline=False) as cursor:
                     async with cursor.connection.transaction():
@@ -279,12 +289,18 @@ async def apply_native_mutation(
                                 "native memory mutation ownership was lost"
                             )
                         return marker
+            if request.semantic is not None:
+                await store.conn.execute("PRAGMA foreign_keys=ON")
+                async with store.conn.execute("PRAGMA foreign_keys") as check:
+                    if (await check.fetchone())[0] != 1:
+                        raise mutation_error("vector_cascade_unavailable")
             await store.setup()
             await install_sqlite_native_fence(
                 store.conn,
                 fence,
                 native_database=database,
-                tables=("store", TABLE, NAMESPACE_TABLE),
+                tables=("store", TABLE, NAMESPACE_TABLE)
+                + (("store_vectors",) if request.semantic is not None else ()),
             )
             async with store.lock:
                 await store.conn.execute("BEGIN IMMEDIATE")

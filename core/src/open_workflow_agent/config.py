@@ -37,6 +37,7 @@ from .security import (
 
 if TYPE_CHECKING:
     from .grpc_client import GrpcBinding
+    from .memory_semantic import MemorySemanticIndex
 
 
 _ENVIRONMENT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -422,6 +423,21 @@ class MemoryBoundsConfig(StrictModel):
         return self
 
 
+class NativeMemorySemanticConfig(StrictModel):
+    profile: Literal["local-minilm-v1"] = "local-minilm-v1"
+    field: str = Field(default="text", pattern=r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
+    max_text_bytes: int = Field(default=4096, ge=1, le=16_384, strict=True)
+    timeout_seconds: float = Field(default=10.0, gt=0, le=30, allow_inf_nan=False, strict=True)
+    artifact_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+
+    def policy(self) -> MemorySemanticIndex:
+        from .memory_semantic import MemorySemanticIndex
+
+        return MemorySemanticIndex(
+            self.field, self.max_text_bytes, self.timeout_seconds, self.artifact_sha256 or ""
+        )
+
+
 class NativeMemoryBindingConfig(StrictModel):
     id: str
     collection: str
@@ -433,6 +449,14 @@ class NativeMemoryBindingConfig(StrictModel):
     max_search_results: int = Field(default=20, ge=1, le=64, strict=True)
     retention_seconds: int | None = Field(default=None, ge=1, le=31_536_000, strict=True)
     read_timeout_seconds: float = Field(default=5, gt=0, le=30, allow_inf_nan=False, strict=True)
+    semantic: NativeMemorySemanticConfig | None = None
+
+    @model_serializer(mode="wrap")
+    def serialized_binding(self, handler: SerializerFunctionWrapHandler) -> Any:
+        value = handler(self)
+        if self.semantic is None:
+            value.pop("semantic", None)
+        return value
 
     @field_validator("id", "collection")
     @classmethod

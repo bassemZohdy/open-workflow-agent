@@ -15,18 +15,22 @@ from open_workflow_agent.memory_capacity import MemoryNamespaceBounds
 from open_workflow_agent.memory_mutations import TABLE, MemoryMutation, MemoryMutationMarker
 from open_workflow_agent.memory_reads import MemoryReadBinding
 from open_workflow_agent.memory_retention import MemoryRecordRetention
+from open_workflow_agent.memory_semantic import MemorySemanticIndex
 from open_workflow_agent.memory_writes import MemoryMutationBackend
 from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.storage import is_postgresql_datasource
 
+from .native_memory_embeddings import NativeMemoryEmbeddings
 from .native_memory_mutations import apply_native_mutation
+from .native_memory_semantic_storage import verify_semantic_storage
 
 
 def mutation_storage_identity(
     database: str,
     retention: MemoryRecordRetention | None = None,
     namespace_limits: MemoryNamespaceBounds | None = None,
+    semantic: MemorySemanticIndex | None = None,
 ) -> str:
     """Bind the installed location without retaining authentication secrets."""
     if is_postgresql_datasource(database):
@@ -49,6 +53,10 @@ def mutation_storage_identity(
         identity = effect_request_digest(
             "owa/memory-storage-capacity/v1",
             {"location": identity, "namespace_limits": namespace_limits.descriptor},
+        )
+    if semantic is not None:
+        identity = effect_request_digest(
+            "owa/memory-storage-semantic/v1", {"location": identity, "index": semantic.descriptor}
         )
     return identity
 
@@ -102,8 +110,14 @@ def mutation_backend(
     binding: MemoryReadBinding,
     retention: MemoryRecordRetention | None = None,
     namespace_limits: MemoryNamespaceBounds | None = None,
+    semantic: MemorySemanticIndex | None = None,
+    embeddings: NativeMemoryEmbeddings | None = None,
 ) -> MemoryMutationBackend:
     def inspect(request: MemoryMutation) -> MemoryMutationMarker | None:
+        if request.semantic != semantic:
+            raise ConfigurationError("native memory semantic index differs from installed policy")
+        if semantic is not None:
+            verify_semantic_storage(database, binding, request.collection, semantic)
         if request.retention != retention:
             raise ConfigurationError("native memory retention differs from the installed policy")
         if request.namespace_limits != namespace_limits:
@@ -111,6 +125,19 @@ def mutation_backend(
         return inspect_native_marker(database, request)
 
     async def apply(request: MemoryMutation, handle: ExecutionHandle) -> MemoryMutationMarker:
+        if request.semantic != semantic:
+            raise ConfigurationError("native memory semantic index differs from installed policy")
+        if semantic is not None:
+            verify_semantic_storage(database, binding, request.collection, semantic)
+        vector = None
+        if request.kind == "put" and semantic is not None:
+            if embeddings is None or request.value_json is None:
+                raise ConfigurationError("native memory semantic model is unavailable")
+            import json
+
+            vector = (
+                await embeddings.aembed_documents([semantic.text(json.loads(request.value_json))])
+            )[0]
         if request.retention != retention:
             raise ConfigurationError("native memory retention differs from the installed policy")
         if request.namespace_limits != namespace_limits:
@@ -123,11 +150,12 @@ def mutation_backend(
             services.execution_ownership.native_fence(handle._execution_lease),
             invocations=services.invocations,
             handle=handle,
+            vector=vector,
         )
 
     return MemoryMutationBackend(
         binding,
-        mutation_storage_identity(database, retention, namespace_limits),
+        mutation_storage_identity(database, retention, namespace_limits, semantic),
         apply,
         inspect,
     )
@@ -145,6 +173,7 @@ class NativeMemoryWriter:
         max_record_bytes: int = 65_536,
         retention: MemoryRecordRetention | None = None,
         namespace_limits: MemoryNamespaceBounds | None = None,
+        semantic: MemorySemanticIndex | None = None,
     ) -> None:
         if (
             type(collection) is not str
@@ -162,6 +191,7 @@ class NativeMemoryWriter:
         self._collection, self._maximum = collection, max_record_bytes
         self._retention = retention
         self._namespace_limits = namespace_limits
+        self._semantic = semantic
 
     async def put(self, key: str, value: dict[str, Any]) -> None:
         await self._write(key, value, kind="put")
@@ -195,6 +225,7 @@ class NativeMemoryWriter:
                 self._maximum,
                 self._retention,
                 self._namespace_limits,
+                self._semantic,
             )
         else:
             if type(value) is not dict:
@@ -209,6 +240,7 @@ class NativeMemoryWriter:
                 max_record_bytes=self._maximum,
                 retention=self._retention,
                 namespace_limits=self._namespace_limits,
+                semantic=self._semantic,
             )
         # Permission covers the fixed principal scope, as for portable memory
         # tools. Common intents bind individual contents, allowing a parent

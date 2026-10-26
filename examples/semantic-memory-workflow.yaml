@@ -1,0 +1,68 @@
+document:
+  dsl: '1.0.3'
+  namespace: examples
+  name: semantic-memory
+  version: '1.0.0'
+  title: Find a related memory using a local model
+  summary: >-
+    Explicit invocations store two notes under the authenticated owner and return
+    the note most related to coffee. Requires the semantic-notes deployment
+    binding, installed offline model artifacts, and the runtime bearer token.
+    Emits no application events and calls no external model API.
+  metadata:
+    owa:
+      nativeExtensions:
+        - name: langgraph.memory
+          version: '1.0.0'
+          required: true
+        - name: langgraph.memory.semantic
+          version: '1.0.0'
+          required: true
+input:
+  schema:
+    format: json
+    document:
+      type: object
+      additionalProperties: false
+output:
+  schema:
+    format: json
+    document:
+      type: object
+      required: [items]
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 1
+          items:
+            type: object
+            required: [key, value, score]
+            properties:
+              key: {type: string}
+              value: {type: object}
+              score: {type: number, minimum: -1, maximum: 1}
+do:
+  - rememberCoffee:
+      call: memory.put:1.0.0@semantic-notes
+      timeout: {after: {seconds: 30}}
+      with:
+        key: espresso
+        value:
+          text: A barista prepares espresso from roasted coffee beans.
+          kind: note
+  - rememberTrain:
+      call: memory.put:1.0.0@semantic-notes
+      timeout: {after: {seconds: 30}}
+      with:
+        key: train
+        value:
+          text: A cargo train crosses the mountains.
+          kind: note
+  - findRelated:
+      call: memory.search:1.1.0@semantic-notes
+      timeout: {after: {seconds: 30}}
+      with:
+        query: coffee drink
+        filter: {kind: note}
+        limit: 1
