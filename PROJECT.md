@@ -40,9 +40,10 @@ process API. Its repair is merged and passes eight Linux store/routing/scope
 cases without that API and four Windows PostgreSQL cases. The old PostgreSQL
 run remains partial; this is not a full green result for the merged source.
 
-S4-02 remains the next ordered ready task, beginning with native memory. Bounded
-Send, the owned wait/end repair and Docker cache ordering have focused evidence.
-Memory, streams, public state updates, replay and time travel remain open.
+S4-02 remains the next ordered ready task. Merged source profiles cover bounded
+channels/routing, native memory, values/updates streams and state/history reads.
+Work now covers state-control recovery and admission; public state mutation,
+replay/time travel and broader component scopes remain open.
 
 Private native memory foundations, common write recovery, record expiry,
 namespace capacity/cleanup and provider lifecycle are merged through PRs
@@ -130,8 +131,11 @@ PR #87 is merged at `a4462d0`. The private common control-journal candidate adds
 original-owner request-bound permission, durable prepared/dispatched/completed
 intents and native-proof reconciliation without duplicate dispatch. Core retains
 only commands and opaque references. Focused common-store and real SDK bridge
-checks pass; frozen qualification is pending. Public workflow update semantics,
-admission, unknown-control resolution and continuation/branching remain open.
+checks pass. Frozen `7572808` passes 174 combined cases per platform and 653
+SDK-free core/API cases with zero skips and 1,257 unchanged Linux inputs.
+Separate ADK authority/fencing/rejection checks pass 20 cases per platform with
+zero skips. Public workflow update semantics, admission, unknown-control
+resolution and continuation/branching remain open.
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior

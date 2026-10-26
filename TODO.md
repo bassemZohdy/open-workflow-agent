@@ -289,7 +289,9 @@ treated as a deferred task or as additional feature completion.
   management intents/reconciliation and declared update policy remain required.
   PR #87 is merged; the private common journal and native proof bridge now cover
   authorized intents and interrupted acknowledgement recovery. Qualification is
-  pending. Keep public policy/schema/task attribution, workflow snapshot/receipt
+  recorded at `7572808`: 174 combined cases per platform and 653 SDK-free
+  core/API cases, zero skips, 1,257 unchanged Linux inputs. Keep public
+  policy/schema/task attribution, workflow snapshot/receipt
   integration, unknown-control resolution and continuation/branch gates open.
 
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
