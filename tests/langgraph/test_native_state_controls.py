@@ -199,14 +199,29 @@ async def test_missing_native_proof_never_reexecutes_a_dispatched_control(contro
 
 
 @pytest.mark.asyncio
-async def test_real_native_proof_or_lineage_removal_prevents_completed_reuse(controls):
+@pytest.mark.parametrize("damage", ["marker", "oversized_parent"])
+async def test_real_native_proof_or_lineage_removal_prevents_completed_reuse(controls, damage):
     _services, coordinator, bridge, handle, change, calls, actor, *_ = controls
     await coordinator.update(handle, change, actor)
     connection = open_storage(bridge.database, "owa_langgraph")
     try:
-        connection.execute(
-            "DELETE FROM owa_state_updates_v1 WHERE identity=?", (change.identity.key,)
-        )
+        if damage == "marker":
+            connection.execute(
+                "DELETE FROM owa_state_updates_v1 WHERE identity=?", (change.identity.key,)
+            )
+        else:
+            result = connection.execute(
+                "SELECT result_checkpoint FROM owa_state_updates_v1 WHERE identity=?",
+                (change.identity.key,),
+            ).fetchone()[0]
+            root = LangGraphScopeExecutor(
+                bridge.plan, None, handle.invocation_id
+            ).checkpoint_config("/do", 1)
+            connection.execute(
+                "UPDATE checkpoints SET parent_checkpoint_id=? "
+                "WHERE thread_id=? AND checkpoint_id=?",
+                ("x" * 100_000, root["configurable"]["thread_id"], result),
+            )
         connection.commit()
     finally:
         connection.close()

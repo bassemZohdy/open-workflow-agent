@@ -137,6 +137,16 @@ Separate ADK authority/fencing/rejection checks pass 20 cases per platform with
 zero skips. Public workflow update semantics, admission, unknown-control
 resolution and continuation/branching remain open.
 
+PR #88 is merged at `2d972b0`. The next candidate compiles declared update
+policy/schema/attribution into the immutable plan and performs read-only
+preflight over actual OWA waiting state and completed-scope evidence. Original
+owner, permission, live ownership and exact current-base checks precede mutation.
+Frozen `8393d1e` passes 278 combined cases per platform and 755 SDK-free
+compiler/core/API cases, with zero skips and 1,262 unchanged Linux inputs.
+Separate ADK checks pass 22 cases per platform with zero skips. Required update
+admission stays closed until public ingress and atomic updated OWA receipt/snapshot
+attestation, resolution and continuation are implemented and verified.
+
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior
 remain missing. S4-04 has a new 13-case actual native outcome comparison with

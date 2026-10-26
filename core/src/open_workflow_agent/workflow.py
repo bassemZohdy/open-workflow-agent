@@ -89,6 +89,7 @@ from .native_extensions import (
     native_channel_config,
     native_extension_requirements,
 )
+from .native_state_policy import NativeStateUpdatePolicy, native_state_update_policy
 from .observability import EventSink, NullEventSink, WorkflowEvent
 from .openapi_client import _OpenApiOutcomeUncertain
 from .ownership import ExecutionLease
@@ -992,6 +993,7 @@ class WorkflowPlan:
     script_resources: tuple[ExecutableScriptBinding, ...] = ()
     native_extensions: tuple[NativeExtensionRequirement, ...] = ()
     native_channels: NativeChannelConfig | None = None
+    native_state_updates: NativeStateUpdatePolicy | None = None
 
     @property
     def source(self) -> dict[str, Any]:
@@ -1201,6 +1203,7 @@ def normalize_workflow(
     root = scope(effective["do"], "/do")
     native_extensions = native_extension_requirements(workflow)
     native_channels = native_channel_config(workflow, native_extensions)
+    state_updates = native_state_update_policy(workflow, native_extensions)
     source_json = json.dumps(workflow, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return WorkflowPlan(
         namespace=str(document["namespace"]),
@@ -1218,6 +1221,7 @@ def normalize_workflow(
         script_resources=script_resources,
         native_extensions=native_extensions,
         native_channels=native_channels,
+        native_state_updates=state_updates,
     )
 
 

@@ -95,3 +95,11 @@ These exact references and views underpin subsequent compare-and-update and
 branch management. State updates, workflow replay, time travel, other scopes,
 full T45/T49 and JavaScript parity retain separate implementation and acceptance
 gates in the [state-control acceptance record](s4-02-native-state-acceptance.md).
+
+The compiler also validates declared update policy metadata for the future
+`langgraph.state.update@1.0.0` profile: allowed root set tasks, an inline schema
+and the deployment authorization policy reference. This capability is not
+advertised; a required update workflow still fails engine admission. Private
+read-only preflight now checks actual OWA suspended state and scope evidence.
+It creates no update or management intent. See the
+[policy and preflight scope](s4-02-native-state-acceptance.md#declared-update-policy-and-owa-preflight-after-pr-88).

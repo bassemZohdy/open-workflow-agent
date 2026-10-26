@@ -305,3 +305,20 @@ capability or automatic storage setup. S4-02/T45/T49 remain open. Work continues
 on `codex/s4-02-state-control-journal` with common authorized intents and recovery
 from real native proof, followed by declared policy/schema/task attribution and
 native continuation/branch gates.
+
+## PR #88 integration — 2026-10-26 Asia/Dubai
+
+[PR #88](https://github.com/bassemZohdy/open-workflow-agent/pull/88) merged at
+`2d972b01b759c6e3389cfb20204228c47de5e141`, preserving head
+`bd612273b3aa5a7b88a0ee94d7bcd4833eefe342`. Its required exact-head check passed
+in [Docs run 40272750899](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40272750899).
+Local main was fast-forwarded and its push confirmed GitHub was up to date.
+
+Private control journal source `7572808` passes 174 combined cases and 20
+separate actual ADK authority/fencing/rejection cases per platform, plus 653
+SDK-free core/API cases, all with zero skips and 1,257 unchanged Linux inputs.
+The common journal recovers real native commits without duplicate SDK calls;
+dispatched controls without proof remain unknown. No mutation route or capability
+is enabled. S4-02/T45/T49 remain open. Work continues on
+`codex/s4-02-state-update-policy` with compiled policy/schema/attribution checks
+and read-only preflight of actual OWA native state and retained scope evidence.
