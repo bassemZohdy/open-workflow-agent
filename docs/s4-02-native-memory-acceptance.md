@@ -727,10 +727,88 @@ coordinators instead of an indiscriminate retry wrapper. This is finite
 component qualification, not a full repository/release or proposed-test result.
 S4-02 remains open and the backlog stays **31/37 verified, six open, none deferred**.
 
+## Semantic workflow profile — 2026-10-26
+
+Frozen runtime `a781bc2bb8491eb923d8414d2ce2aef471bd3314` adds
+`langgraph.memory.semantic@1.0.0` and explicit `memory.search:1.1.0` calls on
+configured indexed bindings. Filtered v1.0 calls, unindexed default serialization
+and capabilities retain their previous contract. See the [local model/index
+contract](native-semantic-memory.md), [bootstrap example](../examples/semantic-memory.yaml)
+and [OWS workflow](../examples/semantic-memory-workflow.yaml). The combined
+qualification below passes on both platforms; S4-02 remains open.
+
+The indexed profile uses the installed MiniLM CPU model, 384 normalized finite
+dimensions and exact cosine search. Actual active snapshot bytes and inference
+library versions identify the model; a revision label alone does not. A bounded
+offline admission probe and artifact fingerprint precede native store opening.
+The resolved policy binds common requests, provider identity, original recovery
+profiles and a durable native collection/index record. Missing/changed/oversized
+metadata and model drift fail closed. Existing unindexed data is not silently
+backfilled; adopting a changed model requires a new binding/empty collection or
+future explicit migration. No workflow field selects a model, vector, namespace
+or provider.
+
+Native SDK SQL inserts the scalar value and precomputed vector in the same owned
+transaction as its marker. Inference runs before that transaction; SDK callbacks
+consume only its frozen vector. Semantic reads likewise precompute outside the
+SDK read transaction and retain query-aware common observations. Both stores
+apply exact namespace, typed scalar filters and expiry before candidate limits,
+then order cosine score with deterministic key ties. PostgreSQL's exact profile
+avoids an approximate-index access path. Cancellation drains the bounded local
+worker before releasing its slot, including repeated cancellation; it does not
+promise to kill native CPU work at the nominal deadline.
+
+Focused tests exposed and repaired two pinned-SDK differences: SQLite uses
+`text_fields` for extraction while PostgreSQL uses `fields`; PostgreSQL's async
+migrator ignores the existing condition that skips its ANN migration for flat
+search. The adapter honors that condition while retaining the original SDK SQL
+and version numbers. A stronger physical cleanup assertion also exposed SQLite
+connections with foreign-key cascades disabled. Indexed atomic writers now
+enable/verify those cascades and fence the vector table. Explicit deletion and
+bounded expiry cleanup remove actual vector rows, not merely visible results.
+
+The stronger configuration-only HTTP example test found that both native memory
+examples lacked `invocations.create` ingress permission. Their owner rules now
+include it. The packaged model successfully executes the complete example via
+application startup and `/v1/invoke`, with SQLite networking disabled and with
+the optional pgvector database. Neither case calls a paid/external model API.
+
+Before freezing, the combined new/common public regression selection passed
+**86 cases**, with two explicit packaged-model cases deselected. It includes
+actual abrupt process exit after scalar/vector commit, recovery under a new
+owner without overwriting a newer value/vector, common retained search after
+later mutation, close/reopen, model drift, unsupported declaration/input,
+missing/oversized metadata, no implicit backfill, both HTTP resolution choices,
+strict filters, expiry and namespace limits, cancellation drain and artifact
+bounds. Core/API/configuration/recovery checks passed **287 cases**, with 91
+expected optional-environment skips. Ruff, formatting, strict mypy, schema/skill
+validation and Markdown links pass. Earlier attempts remain under
+`tmp/merge-20261025/semantic-*.xml`, including the extraction, flat migration,
+worker expectation, physical cascade and example-permission failures.
+
+### Frozen semantic qualification — `a781bc2`
+
+| Selection | Windows | Frozen Docker/Linux |
+| --- | --- | --- |
+| Prior 588 memory/native checkpoint cases plus 50 semantic/model cases | 638 passed, zero skips | 638 passed, zero skips |
+| Real packaged-model configuration-only API example | Not selected | 1 SQLite and 1 pgvector passed, zero skips; SQLite network disabled |
+| Separate principal authority/isolation contract | LangGraph: 8 passed; ADK: 8 passed; zero skips | LangGraph: 8 passed; ADK: 8 passed; zero skips |
+
+The combined runs use separate fresh ordinary PostgreSQL and pgvector databases.
+pgvector is provided by the optional development container image
+`pgvector/pgvector@sha256:7b822b0aac60967beb1ea5e576b8602c94c300a157d187f385ae3e0da199b90a`,
+running PostgreSQL 16.15 and vector extension 0.8.7. The immutable cached
+LangGraph dependency image and matching root/engine locks are unchanged from
+the public profile. All 1,222 Linux source inputs remain unchanged. Frozen
+source, manifests, logs and XML results are retained under
+`tmp/merge-20261025/a781bc2/`. The Windows combined suite takes 710.21 seconds;
+the Linux suite takes 282.30 seconds. This is component evidence, not a full
+repository/release qualification.
+
 ## Remaining S4-02 memory work
 
-- Complete the declared semantic search and embedding/index profile. The public
-  version above provides bounded equality filters, not semantic search.
+- Expand beyond the named fixed local-model/exact-index profile without changing
+  existing versioned meanings or silently reindexing historical data.
   The tracker maps B052/B053 to T51's put/get/search/delete, restart and
   cross-thread contract and B079 to T68's embedded-store profile. Repeatable
   finite Python profile does not establish the full proposed test or JS parity.
