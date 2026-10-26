@@ -313,7 +313,9 @@ treated as a deferred task or as additional feature completion.
   permits private continuation; acknowledged unknown abandonment blocks adopting
   a current native head. Common audit/outcome rollback, immutability, current and
   original permission, actual OWA state and fresh-process checks pass on both
-  stores. Continue public configured ingress and broader continuation/branching;
+  stores. Frozen `0f9312f` passes 384 combined cases and 22 separate ADK cases
+  per platform, plus 827 SDK-free core/API cases, with zero skips and 1,268
+  unchanged Linux inputs. Continue public configured ingress and broader continuation/branching;
   see the [resolution scope](docs/s4-02-native-state-acceptance.md#explicit-state-control-resolution-after-pr-90).
 
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.

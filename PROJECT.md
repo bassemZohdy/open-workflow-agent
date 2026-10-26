@@ -166,7 +166,9 @@ outcome and never establishes a safe head for continuation or another update.
 The resolution audit and control outcome commit together. Original/current
 permission, original owner and a live execution lease remain required. Focused
 common-store and actual OWA/fresh-process checks pass on SQLite/PostgreSQL.
-See the [resolution scope](docs/s4-02-native-state-acceptance.md#explicit-state-control-resolution-after-pr-90).
+Frozen `0f9312f` passes 384 combined cases and 22 separate actual ADK cases per
+platform, plus 827 SDK-free core/API cases, all with zero skips and 1,268 unchanged
+Linux inputs. See the [resolution scope](docs/s4-02-native-state-acceptance.md#explicit-state-control-resolution-after-pr-90).
 Public configured ingress and broader continuation/branch gates remain open.
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault

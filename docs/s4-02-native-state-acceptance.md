@@ -400,3 +400,31 @@ Public configured ingress, capacity/deadline/cancellation handling at that
 boundary, broader continuation, replay/time travel and full S4-02/T45/T49 remain
 open. No task checkbox, research feature, release image or conditional track is
 promoted by private resolution checks.
+
+
+#### Frozen resolution qualification — `0f9312f`
+
+Runtime/tests are frozen at `0f9312f997ac6ea49a629652df0b599efdd22e4d`.
+The combined cohort selects all new common resolution and actual OWA/fresh-process
+resolution cases alongside versioned commands, updated-data continuation,
+preflight, common/native control recovery, state/history reads, atomic SDK
+transactions, native task/scope behavior, authority/fencing and admission.
+Windows and Linux use separate fresh PostgreSQL databases. Immutable dependency
+images and matching lock verification, read-only/non-root Linux execution,
+resource bounds and the absence of startup installs remain as recorded above.
+
+| Selection | Windows | Frozen Docker/Linux |
+| --- | --- | --- |
+| Combined resolution/state/native/authority regression | 384 passed, zero skips | 384 passed, zero skips |
+| Separate actual ADK authority/fencing/rejection | 22 passed, zero skips | 22 passed, zero skips |
+| SDK-free common journal/compiler/authorization/recovery/API | 827 passed, zero skips | Not selected |
+
+All 1,268 frozen Linux source inputs remain unchanged. Reports and the source
+manifest remain under `tmp/merge-20261025/0f9312f/`. The combined selection
+finished in 643.81 seconds on Windows and 306.50 seconds on Linux,
+with 38 other-engine cells deselected. The SDK-free cohort finished in
+273.40 seconds. Lint, formatting, strict typing of 172 core/ADK/LangGraph
+source files, Markdown links and consolidation tracking checks pass. Final
+documentation changes no frozen runtime/test/example inputs. This is private
+component qualification, not public mutation, full repository or release
+qualification; S4-02/T45/T49 remain unchecked.
