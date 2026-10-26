@@ -71,10 +71,17 @@ fresh PostgreSQL databases. Earlier cohorts, failed attempts and focused qualifi
 limits remain in the [native memory acceptance record](docs/s4-02-native-memory-acceptance.md).
 This is component evidence, not full repository/release qualification.
 
-Native memory admission stays closed. Next complete versioned public workflow
-bindings including bounded native search, authenticated/authorized resolution
-controls and their full public recovery qualification. Terminal invocations are not reopened, and the private
-resolution method is not an authenticated API or a force-retry operation.
+Source `c062e9c` connects native memory to opt-in versioned workflow functions,
+bounded scalar-filter search and authenticated original-owner recovery controls.
+Configured bindings enable the exact capability; default installations continue
+to reject it. The [public profile and qualification](docs/s4-02-native-memory-acceptance.md#public-workflow-profile--2026-10-26)
+record the actual stores/platforms and retained failed attempts. The source also
+restores early unsupported-loop rejection and repairs concurrent cold ADK
+PostgreSQL schema setup. Terminal invocations remain immutable; no resolution
+control dispatches native writes. See the [configuration-only guide](docs/native-memory.md).
+Semantic search/indexing, expanded public recovery qualification, native streams,
+state updates, replay and time travel remain open under S4-02. No task or
+research inventory row is promoted by this finite public profile.
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior

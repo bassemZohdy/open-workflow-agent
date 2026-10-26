@@ -334,6 +334,7 @@ ADK and LangGraph are implementation engines, not public application contracts. 
 - [Getting started](docs/getting-started.md) — run a published image and invoke your first agent.
 - [Configuration](docs/configuration.md) — runtime configuration and model-provider reference.
 - [API guide](docs/api.md) — HTTP endpoints and request/response examples.
+- [Native memory](docs/native-memory.md) — opt-in LangGraph source profile, configured catalog calls, filtered search and original-owner recovery controls.
 - [Protocol baselines](docs/protocol-baselines.md) — reviewed protocol versions and the explicit OWS prerelease/schema-snapshot pin.
 - [Workflow admission](docs/workflow-admission.md) — supported definition profile and fail-closed boundaries.
 - [Schema resources](docs/schema-resources.md) — deployment-approved capture and offline validation.

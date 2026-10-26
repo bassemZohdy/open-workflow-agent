@@ -143,6 +143,28 @@ delete_memory {"id": 1} -> {"deleted": true}
 `text` is required for `add_memory`; `metadata` must be an object. `search_memory`
 accepts a limit from 1 through 100, and `delete_memory` requires an integer id.
 
+## Native memory recovery controls
+
+When configured, the opt-in LangGraph [native memory profile](native-memory.md)
+also exposes original-owner controls for a workflow's durable write intents:
+
+```http
+GET /v1/invocations/{invocation_id}/memory-writes
+POST /v1/invocations/{invocation_id}/memory-writes/{operation_id}/resolve
+```
+
+Inspection requires `memory.inspect` and returns bounded common metadata without
+record values, provider paths or SDK IDs. Resolution requires `memory.resolve`
+under original invocation authority, a retained `request_digest` and an
+`Idempotency-Key`. Choose `complete` with matching native proof or
+`abandon_unknown` with `acknowledge_unknown: true` when native proof is absent.
+The immutable decision never repeats SDK writes. Then use normal invocation
+resume. Abandonment faults with outcome `unknown`; it does not establish that
+execution never happened. Terminal invocations can acknowledge an identical
+existing decision but cannot create a first one or reopen execution. Controls
+are absent without native bindings. See the linked profile for exact requests,
+permissions, recovery semantics and current qualification limits.
+
 ## Scheduling
 
 Scheduling uses durable, fenced claims over the configured common SQLite or

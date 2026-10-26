@@ -328,6 +328,32 @@ Mounted knowledge is indexed by the common knowledge service and exposed through
 
 Memory supports `false`, `true`, or `auto` and exposes `add_memory`, `search_memory`, and `delete_memory`. Memory is separate from engine checkpoint/resume state.
 
+An opt-in LangGraph source build can additionally configure `memory.native`
+with at most 16 unique binding IDs and collections. This requires durable
+persistence and enabled original execution authorization. It installs versioned
+`memory.get`, `put`, `search`, `delete` and `sweep` catalog calls and advertises
+`langgraph.memory@1.0.0` only while its installed providers/handlers remain valid.
+An empty list preserves default serialization and capabilities. ADK rejects
+configured native bindings before starting services. See the [native memory
+profile and configuration-only example](native-memory.md); this profile is not
+yet in a published image.
+
+| Binding field | Default | Bound |
+| --- | --- | --- |
+| `id`, `collection` | required | Unique lowercase identifiers, 1–64 characters |
+| `version` | `1.0.0` | Exact supported version |
+| `max_record_bytes` | 65,536 | 1–65,536; also bounds the entire search result |
+| `max_records` | 1,000 | 1–10,000 live records per principal collection |
+| `max_value_bytes` | 16,777,216 | 1–67,108,864 live serialized-value bytes |
+| `cleanup_limit` | 32 | 1–64 expired records per logical sweep |
+| `max_search_results` | 20 | 1–64 results in deterministic key order |
+| `retention_seconds` | absent | Optional integer 1–31,536,000 |
+| `read_timeout_seconds` | 5 | Positive finite seconds, at most 30 |
+
+This version supports bounded scalar equality filters. It does not advertise
+semantic search, accept workflow-selected namespaces/providers, or merge native
+memory with knowledge, agent tool memory, sessions or checkpoint state.
+
 ## `persistence`
 
 SQLite/local:

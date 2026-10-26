@@ -75992,7 +75992,7 @@
         "description": "Add declared native channels/reducers, Command/Send, memory, streams, state updates, replay and time travel.",
         "effort": "L",
         "status": "Pending",
-        "progress_record": "docs/s4-02-native-memory-acceptance.md",
+        "progress_record": "docs/s4-02-native-memory-acceptance.md#public-workflow-profile--2026-10-26",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
       },
       {

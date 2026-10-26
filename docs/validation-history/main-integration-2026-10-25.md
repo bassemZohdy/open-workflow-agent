@@ -169,3 +169,22 @@ CI/release flags changed.
 Work continues from this main commit on `codex/s4-02-memory-resolution` with
 explicit recorded completion from native proof or acknowledged abandonment of
 an unknown outcome, followed by authorized public controls and workflow bindings.
+
+## PR #81 integration — 2026-10-26 Asia/Dubai
+
+[PR #81](https://github.com/bassemZohdy/open-workflow-agent/pull/81) merged at
+`9c1166107e48e35b6fb5e92d8a6504d6145bc9cd`, preserving head
+`dcf7e49336679ec35ddc0572f122455e9204963b`. GitHub records the merge at
+2026-10-25T23:17:36Z (2026-10-26 locally). The required exact-head check passed
+in [Docs run 40244018544](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40244018544).
+
+Runtime source `602449e` passed the 523-case Windows/frozen Linux memory,
+ownership, resolution and native-checkpoint cohort, plus eight shared authority
+checks on each platform with fresh PostgreSQL databases. This merged private
+control and checkpoint migration repair did not enable public memory admission
+or complete S4-02. The backlog remains 31/37 verified, with three ready and
+three conditional tasks. No protections or automatic CI/release flags changed.
+
+Work continues from this main commit on `codex/s4-02-public-memory`, connecting
+versioned workflow calls, filtered search and original-owner recovery controls
+to the merged common evidence and native stores.
