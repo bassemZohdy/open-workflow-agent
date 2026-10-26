@@ -31,6 +31,7 @@ LANGGRAPH_CHANNELS = "langgraph.channels@1.0.0"
 LANGGRAPH_COMMAND = "langgraph.command@1.0.0"
 LANGGRAPH_SEND = "langgraph.send@1.0.0"
 LANGGRAPH_STREAMS = "langgraph.streams@1.0.0"
+LANGGRAPH_STATE_UPDATE = "langgraph.state.update@1.0.0"
 MAX_NATIVE_SEND_BRANCHES = 64
 _CHANNEL_ID = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 _TASK_REFERENCE = re.compile(r"^/do/(0|[1-9][0-9]*)$")
@@ -87,8 +88,10 @@ def native_channel_config(
         raise WorkflowSemanticError("document.metadata.owa.nativeExtensionData must be an object")
     if not payloads:
         return None
-    if set(payloads) != {LANGGRAPH_CHANNELS}:
+    if set(payloads) - {LANGGRAPH_CHANNELS, LANGGRAPH_STATE_UPDATE}:
         raise WorkflowSemanticError("native extension data is not supported")
+    if LANGGRAPH_CHANNELS not in payloads:
+        return None
     declarations = {item.capability_id: item for item in requirements}
     declaration = declarations.get(LANGGRAPH_CHANNELS)
     if declaration is None or not declaration.required:

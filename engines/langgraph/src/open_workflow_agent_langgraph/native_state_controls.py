@@ -59,6 +59,15 @@ def _proof_connection(database: str) -> Iterator[tuple[Any, bool]]:
             connection.rollback()
 
 
+def state_control_storage_identity(database: str, fingerprint: str) -> str:
+    return hashlib.sha256(
+        json.dumps(
+            ["owa/langgraph-state-controls/v1", database, fingerprint],
+            separators=(",", ":"),
+        ).encode()
+    ).hexdigest()
+
+
 class LangGraphStateControls:
     """Installed private callbacks must implement the declared update semantics.
 
@@ -78,12 +87,7 @@ class LangGraphStateControls:
         self.services, self.plan, self.updater = services, plan, updater
         self.database = services.engine_database_path("langgraph", create_namespace=False)
         self.bounds = NativeStateConfig.model_validate((bounds or NativeStateConfig()).model_dump())
-        self.storage_identity = hashlib.sha256(
-            json.dumps(
-                ["owa/langgraph-state-controls/v1", self.database, plan.fingerprint],
-                separators=(",", ":"),
-            ).encode()
-        ).hexdigest()
+        self.storage_identity = state_control_storage_identity(self.database, plan.fingerprint)
 
     def backend(self) -> StateUpdateBackend:
         return StateUpdateBackend(self.storage_identity, self.apply, self.inspect)
@@ -134,7 +138,8 @@ class LangGraphStateControls:
                     NativeStateWrite(request.identity.key, request.request_digest, row[3]), row[4]
                 )
                 parent = connection.execute(
-                    "SELECT parent_checkpoint_id FROM checkpoints WHERE thread_id="
+                    f"SELECT CASE WHEN {size}(parent_checkpoint_id)<=36 "
+                    "THEN parent_checkpoint_id ELSE NULL END FROM checkpoints WHERE thread_id="
                     + placeholder
                     + " AND checkpoint_ns='' AND checkpoint_id="
                     + placeholder,

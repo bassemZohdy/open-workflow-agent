@@ -203,6 +203,52 @@ formatting and strict typing of 168 core/ADK/LangGraph source files pass.
 This is private control storage/recovery qualification, not public mutation,
 full repository or release qualification.
 
+### Declared update policy and OWA preflight after PR #88
+
+Compilation now derives an immutable `NativeStateUpdatePolicy` from exact
+required `langgraph.state.update@1.0.0` metadata and its `nativeExtensionData`.
+The payload contains only `allowedTaskRefs`, `updateSchema` and
+`authorizationPolicyRef`. One to 64 unique direct root set-task references map
+to canonical OWA task references. Schema and policy data have a 65,536-byte
+ceiling. JSON Schema 2020-12 validation uses offline reference closure, including
+local references; external unresolved references and other dialects fail
+compilation. Values must be bounded finite objects matching that schema and the
+exact deployment policy ID. Channel metadata retains its existing contract and
+can coexist with update policy. Legacy source fingerprints remain unchanged.
+
+No engine advertises the mutation capability. Shared engine checks still reject
+the exact and unknown required versions before creating an invocation. This
+stage makes the policy and preflight executable; it does not enable mutation.
+
+The adapter-private preflight requires a waiting original owner and live execution
+lease. It checks current and retained original permission before native reads,
+resolves the archived definition, validates attribution/schema/policy and reads
+the exact current root head. Native record byte bounds precede SDK decoding.
+The existing OWA native state/input/receipt and completed-scope validators inspect
+all retained scope evidence through a cache bounded by scope count and aggregate
+native bytes. Fresh physical definition pins and common receipts are rechecked
+synchronously after native awaits, then owner/lease/storage bindings are checked
+again. The immutable adapter-private result retains a base packet for a future
+comparison inside the native transaction; it is never a public execution plan
+or a core checkpoint store. No intent, checkpoint or model call is created.
+
+Focused fixtures run ordinary OWA set/do/wait tasks through the private adapter
+to obtain real suspended state, including a completed child scope. They explicitly
+prove public engine admission is closed first. Their read-only preflight checks
+cover current/stale bases, schema failures, unexecuted attribution, different
+owners, changed common identity, missing/corrupt child scopes, byte/scope budgets
+and timeout cleanup. Native lineage proof inspection also bounds parent metadata
+before materializing it. The initial PostgreSQL corruption injection used a
+literal percent wildcard where psycopg expects placeholders; it now binds only
+the current invocation's thread. Reports remain under
+`tmp/merge-20261025/state-policy-dev*.xml` and `state-preflight-dev*.xml`.
+Frozen qualification is pending.
+
+Public configured ingress, atomic updated OWA snapshot/receipt attestation,
+interrupted-control resolution and safe continuation remain required before
+advertising updates. Replay, time travel, broader native profiles and full
+S4-02/T45/T49 retain their original unchecked scope.
+
 Replay and time-travel branches require a new business identity and immutable
 lineage, a pinned definition/checkpoint and explicit read-only/re-execution
 effect policy. Bulk updates must retain native semantics and allowed task

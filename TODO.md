@@ -293,6 +293,11 @@ treated as a deferred task or as additional feature completion.
   core/API cases, zero skips, 1,257 unchanged Linux inputs. Keep public
   policy/schema/task attribution, workflow snapshot/receipt
   integration, unknown-control resolution and continuation/branch gates open.
+  PR #88 is merged; compiled declared update policy and read-only OWA native
+  preflight now validate schema/attribution, owner/lease, exact current base and
+  retained completed-scope evidence. Qualification is pending. Update admission
+  remains closed; continue public ingress, atomic OWA snapshot/receipt
+  attestation, unknown-control resolution and continuation/branching.
 
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
   The optional TypeScript package admits official OWS definitions and executes
