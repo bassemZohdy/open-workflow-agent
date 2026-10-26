@@ -440,6 +440,13 @@ class FunctionCatalog:
     def has(self, name: str) -> bool:
         return name in self._functions
 
+    def is_registered(self, name: str, function: CatalogFunction) -> bool:
+        return self._functions.get(name) is function
+
+    def unregister(self, name: str, function: CatalogFunction) -> None:
+        if self.is_registered(name, function):
+            del self._functions[name]
+
     async def call(self, name: str, payload: Any, context: CatalogContext) -> Any:
         function = self._functions.get(name)
         if function is None:

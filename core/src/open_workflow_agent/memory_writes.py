@@ -17,6 +17,7 @@ from .effects import (
     EffectIdentity,
     EffectJournal,
     EffectReceipt,
+    ReceiptDependency,
     _receipt_payload,
     effect_request_digest,
 )
@@ -274,6 +275,18 @@ class MemoryWrites:
                 raise ValueError("resolution evidence changed")
         except (KeyError, TypeError, ValueError):
             raise mutation_error("resolution_changed") from None
+        if decision.authorization_digest is not None:
+            from .execution_authorization import decision_identity
+
+            permission = self.journal.get(
+                decision_identity(identity, "memory.resolve", "memory:self")
+            )
+            if (
+                permission is None
+                or permission.status != "completed"
+                or ReceiptDependency._digest(permission) != decision.authorization_digest
+            ):
+                raise mutation_error("resolution_authority_changed")
         return decision, expected
 
     def verify_resolution(self, identity: EffectIdentity, receipt: EffectReceipt) -> None:
@@ -305,7 +318,15 @@ class MemoryWrites:
         """
         if not isinstance(decision, MemoryWriteResolution):
             raise mutation_error("resolution_invalid")
-        request.verify_invocation(self.invocations, handle)
+        if (
+            re.fullmatch(
+                r"call:memory\.(put|delete|sweep):1\.0\.0@[a-z][a-z0-9_-]{0,63}",
+                request.parent.operation,
+            )
+            and decision.authorization_digest is None
+        ):
+            raise mutation_error("resolution_authority_missing")
+        request.verify_invocation(self.invocations, handle, resolution=True)
         if (
             decision.principal != handle.owner_principal
             or request.binding.backend != self.connection.kind
@@ -319,7 +340,7 @@ class MemoryWrites:
                 invocation_id=handle.invocation_id,
                 workflow_fingerprint=handle.workflow_fingerprint,
             ):
-                request.verify_invocation(self.invocations, handle)
+                request.verify_invocation(self.invocations, handle, resolution=True)
                 known = self.journal.get(request.identity)
                 if known is None:
                     raise mutation_error("intent_missing")
@@ -351,6 +372,52 @@ class MemoryWrites:
 
     def verify(self, identity: EffectIdentity, receipt: EffectReceipt) -> None:
         self._load(identity, receipt)
+
+    def requests(self, handle: ExecutionHandle) -> list[tuple[MemoryMutation, str]]:
+        """Bounded common metadata only; this is not native outcome verification."""
+        if not _table_exists(self.connection):
+            return []
+        rows = self.connection.execute(
+            "SELECT identity,request_digest,phase,"
+            + _bounded_column(self.connection, "request_json", 131_072)
+            + f" FROM {TABLE} WHERE invocation_id=? AND fingerprint=? LIMIT ?",
+            (handle.invocation_id, handle.workflow_fingerprint, MAX_MUTATIONS + 1),
+        ).fetchall()
+        if len(rows) > MAX_MUTATIONS:
+            raise mutation_error("mutation_limit")
+        result = []
+        for key, digest, phase, encoded in rows:
+            if type(encoded) is not str:
+                raise mutation_error("intent_changed")
+            request = MemoryMutation.from_descriptor(json.loads(encoded, object_pairs_hook=_unique))
+            if (
+                request.identity.key != key
+                or request.request_digest != digest
+                or phase
+                not in {"prepared", "dispatched", "completed", "resolved_complete", "abandoned"}
+                or request.parent.invocation_id != handle.invocation_id
+                or request.parent.workflow_fingerprint != handle.workflow_fingerprint
+                or handle.owner_principal is None
+                or request.namespace
+                != "owa/principal-memory/v1:"
+                + hashlib.sha256(handle.owner_principal.encode()).hexdigest()
+                or encoded != bounded_model_json(request.descriptor, limit=131_072)
+            ):
+                raise mutation_error("intent_changed")
+            result.append((request, phase))
+        return result
+
+    def has_dispatched(self, handle: ExecutionHandle, parent: EffectIdentity) -> bool:
+        try:
+            return any(
+                request.parent == parent
+                and phase in {"dispatched", "completed", "resolved_complete"}
+                for request, phase in self.requests(handle)
+            )
+        except Exception:
+            # Corruption cannot establish that a dispatched operation is safe
+            # to classify as an ordinary known failure.
+            return True
 
     def verify_recovery(self, identity: EffectIdentity, receipt: EffectReceipt) -> None:
         request, phase, backend = self._load(identity, receipt)

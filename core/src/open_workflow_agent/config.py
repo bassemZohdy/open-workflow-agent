@@ -422,16 +422,49 @@ class MemoryBoundsConfig(StrictModel):
         return self
 
 
+class NativeMemoryBindingConfig(StrictModel):
+    id: str
+    collection: str
+    version: Literal["1.0.0"] = "1.0.0"
+    max_record_bytes: int = Field(default=65_536, ge=1, le=65_536, strict=True)
+    max_records: int = Field(default=1000, ge=1, le=10_000, strict=True)
+    max_value_bytes: int = Field(default=16_777_216, ge=1, le=67_108_864, strict=True)
+    cleanup_limit: int = Field(default=32, ge=1, le=64, strict=True)
+    max_search_results: int = Field(default=20, ge=1, le=64, strict=True)
+    retention_seconds: int | None = Field(default=None, ge=1, le=31_536_000, strict=True)
+    read_timeout_seconds: float = Field(default=5, gt=0, le=30, allow_inf_nan=False, strict=True)
+
+    @field_validator("id", "collection")
+    @classmethod
+    def identifier(cls, value: str) -> str:
+        if not re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", value):
+            raise ValueError("native memory binding references must be bounded identifiers")
+        return value
+
+
 class MemoryConfig(StrictModel):
     enabled: bool | Literal["auto"] = "auto"
     database: str = "/data/memory.sqlite3"
     bounds: MemoryBoundsConfig | None = None
+    native: list[NativeMemoryBindingConfig] = Field(default_factory=list, max_length=16)
+
+    @model_validator(mode="after")
+    def native_bindings(self) -> MemoryConfig:
+        if self.native and self.enabled is False:
+            raise ValueError("native memory bindings require memory to be enabled")
+        for field in ("id", "collection"):
+            values = [getattr(item, field) for item in self.native]
+            if len(set(values)) != len(values):
+                raise ValueError("native memory binding IDs and collections must be unique")
+        return self
 
     @model_serializer(mode="wrap")
     def serialized_memory(self, handler: SerializerFunctionWrapHandler) -> Any:
         value = handler(self)
         if self.bounds is None:
             value.pop("bounds", None)
+        if not self.native:
+            value.pop("native", None)
         return value
 
 

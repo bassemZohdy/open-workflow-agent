@@ -221,6 +221,7 @@ class RuntimeServices:
         self.sandbox = SandboxManager(sandbox_backend)
         self.protocols.sandbox = self.sandbox
         self.memory_enabled = config.memory.enabled is not False
+        self.native_memory_call_guard: Callable[[str], str | None] | None = None
         memory_tools = (
             ("add_memory", "search_memory", "delete_memory") if self.memory_enabled else ()
         )
@@ -257,6 +258,20 @@ class RuntimeServices:
         self.fork_decisions = ForkDecisionStore(invocation_path)
         self.effect_journal = EffectJournal(invocation_path, invocations=self.invocations)
         self.memory_writes = MemoryWrites(self.effect_journal, self.invocations)
+        if config.memory.native:
+            from .native_memory_receipts import verify_catalog_receipt
+
+            bindings = tuple(item.model_copy(deep=True) for item in config.memory.native)
+            self.effect_journal._native_memory_verifier = lambda identity, receipt: (
+                verify_catalog_receipt(
+                    self.effect_journal,
+                    self.invocations,
+                    self.memory_writes,
+                    bindings,
+                    identity,
+                    receipt,
+                )
+            )
         self.external_action_recovery: HttpExternalActionRecovery | None = (
             HttpExternalActionRecovery(
                 self.effect_journal,
@@ -638,6 +653,10 @@ class RuntimeServices:
         policy = value.setdefault("policy", {})
         if self._bounded_memory and self.config.memory.bounds is not None:
             policy["memory_bounds"] = self.config.memory.bounds.model_dump(mode="json")
+        if self.config.memory.native:
+            policy["native_memory"] = [
+                item.model_dump(mode="json") for item in self.config.memory.native
+            ]
         if self.event_transport is not None:
             policy["event_transport"] = self.event_transport.descriptor()
         if self.role_function_calls:
@@ -747,7 +766,7 @@ class RuntimeServices:
             trusted_catalogs=self.external_catalogs.policies,
             _schema_registry=schema_registry(plan.resources),
             grpc_enabled=self.grpc_enabled,
-            enabled_function_calls=self.role_function_calls,
+            enabled_function_calls=self.workflow_function_calls,
             executable_sources=self.executable_sources,
         )
         for binding in plan.imports:
@@ -1159,6 +1178,12 @@ class RuntimeServices:
             or not 1 <= payload.get("limit", 5) <= 100
         ):
             raise ConfigurationError("search tool input is invalid")
+
+    @property
+    def workflow_function_calls(self) -> frozenset[str]:
+        from .native_memory_contract import references
+
+        return self.role_function_calls | references(self.config.memory.native)
 
     @property
     def role_function_calls(self) -> frozenset[str]:

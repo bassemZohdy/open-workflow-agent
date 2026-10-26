@@ -230,13 +230,16 @@ class MemoryMutation:
             limits,
         )
 
-    def verify_invocation(self, invocations: InvocationStore, handle: ExecutionHandle) -> None:
+    def verify_invocation(
+        self, invocations: InvocationStore, handle: ExecutionHandle, *, resolution: bool = False
+    ) -> None:
         saved = invocations.get(handle.invocation_id)
+        allowed = {"running", "waiting"} if resolution else {"running"}
         if (
             saved is None
             or saved._persisted_payload is None
-            or saved.status != "running"
-            or handle.status != "running"
+            or saved.status not in allowed
+            or handle.status not in allowed
             or handle._execution_lease is None
             or handle.owner_principal is None
             or self.parent.invocation_id != handle.invocation_id

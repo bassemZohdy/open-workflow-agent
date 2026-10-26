@@ -26,6 +26,7 @@ The same layout works for the LangGraph image, Kubernetes ConfigMaps/volumes, an
 | --- | --- |
 | [`agent.yaml`](agent.yaml) + [`workflow.yaml`](workflow.yaml) | Minimal agent invocation with a knowledge-backed workflow (`agent:1.0.0@default`, `search_knowledge`). |
 | [`memory-agent.yaml`](memory-agent.yaml) | Long-term memory tools (`add_memory`/`search_memory`/`delete_memory`) with `memory.enabled: auto`. |
+| [`native-memory.yaml`](native-memory.yaml) + [`native-memory-workflow.yaml`](native-memory-workflow.yaml) | Opt-in LangGraph catalog memory and filtered search; requires a build containing this source profile. See [configuration and recovery](../docs/native-memory.md). |
 | [`tools-agent.yaml`](tools-agent.yaml) | A configured agent tool (bounded protocol clients, deployment-controlled). |
 | [`scheduled-workflow.yaml`](scheduled-workflow.yaml) | Workflow-side `schedule.every` (durable, at-least-once, single-runtime ownership). |
 | [`approval-workflow.yaml`](approval-workflow.yaml) | Durable human-in-the-loop approval composed from `emit` + `listen` (requires `approvals.enabled`). |

@@ -1,0 +1,52 @@
+document:
+  dsl: '1.0.3'
+  namespace: examples
+  name: native-memory
+  version: '1.0.0'
+  title: Store and find a durable preference
+  summary: >-
+    Explicit invocations store a fixed preference under the authenticated owner
+    and return matching records. Requires the notes deployment binding and a
+    bearer token supplied through runtime configuration. Emits no application events.
+  metadata:
+    owa:
+      nativeExtensions:
+        - name: langgraph.memory
+          version: '1.0.0'
+          required: true
+input:
+  schema:
+    format: json
+    document:
+      type: object
+      additionalProperties: false
+output:
+  schema:
+    format: json
+    document:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+      additionalProperties: false
+do:
+  - storePreference:
+      call: memory.put:1.0.0@notes
+      timeout:
+        after:
+          seconds: 30
+      with:
+        key: favorite-color
+        value:
+          kind: preference
+          color: blue
+  - findPreferences:
+      call: memory.search:1.0.0@notes
+      timeout:
+        after:
+          seconds: 10
+      with:
+        filter:
+          kind: preference
+        limit: 10

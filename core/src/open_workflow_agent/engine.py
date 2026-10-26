@@ -243,6 +243,10 @@ class WorkflowEngine:
                 released.set()
 
     async def initialize(self, services: RuntimeServices) -> None:
+        if services.config.memory.native and self.engine_name != "langgraph":
+            raise UnsupportedWorkflowFeature(
+                "configured native memory bindings require the LangGraph engine"
+            )
         self.services = services
         services.workflow_runner = self.run_child
         services._workflow_initial_child_preflight = self._verify_initial_nohistory
@@ -406,6 +410,9 @@ class WorkflowEngine:
             # Plans may be compiled before deployment services are bound;
             # invocation admission repeats this check before any dispatch.
             return
+        from .native_memory_contract import verify_plan
+
+        verify_plan(plan, services.config.memory.native)
         services.verify_grpc_plan(plan)
         bus = services.event_bus
         if getattr(bus, "durable", False) and hasattr(bus, "register_workflow_listener"):
