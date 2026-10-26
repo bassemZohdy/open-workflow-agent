@@ -287,6 +287,10 @@ treated as a deferred task or as additional feature completion.
   qualified at `3bf27d7`: 99 cases per platform, zero skips, 1,253 unchanged
   Linux inputs. It enables no mutation route or capability;
   management intents/reconciliation and declared update policy remain required.
+  PR #87 is merged; the private common journal and native proof bridge now cover
+  authorized intents and interrupted acknowledgement recovery. Qualification is
+  pending. Keep public policy/schema/task attribution, workflow snapshot/receipt
+  integration, unknown-control resolution and continuation/branch gates open.
 
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
   The optional TypeScript package admits official OWS definitions and executes

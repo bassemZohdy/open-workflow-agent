@@ -19,6 +19,7 @@ from .storage import StorageConnection, open_storage
 if TYPE_CHECKING:
     from .external_recovery import ExternalOutcomeDependency
     from .memory_writes import MemoryWrites
+    from .state_updates import StateUpdates
 
 
 @dataclass(frozen=True, slots=True)
@@ -405,6 +406,7 @@ class EffectJournal:
     ) -> None:
         self._invocations = invocations
         self._memory_writes: MemoryWrites | None = None
+        self._state_updates: StateUpdates | None = None
         self._sandbox_job_verifier: Callable[[EffectIdentity, EffectReceipt], None] | None = None
         self._native_memory_verifier: Callable[[EffectIdentity, EffectReceipt], None] | None = None
         self._execution_authorization_seal: OutcomeParticipant | None = None
@@ -436,7 +438,7 @@ class EffectJournal:
         try:
             payload_column = "payload"
             if identity.operation.startswith(
-                ("policy:memory-read:v1:", "policy:memory-mutation:v1:")
+                ("policy:memory-read:v1:", "policy:memory-mutation:v1:", "policy:state-update:v1:")
             ):
                 size = (
                     "octet_length(payload)"
@@ -558,6 +560,10 @@ class EffectJournal:
                 if self._memory_writes is None:
                     raise ValueError("memory mutation backend is unavailable")
                 self._memory_writes.verify(identity, receipt)
+            if identity.operation.startswith("policy:state-update:v1:"):
+                if self._state_updates is None:
+                    raise ValueError("state update backend is unavailable")
+                self._state_updates.verify(identity, receipt)
             if identity.operation.startswith("policy:memory-resolution:v1:"):
                 if self._memory_writes is None:
                     raise ValueError("memory mutation backend is unavailable")
@@ -757,6 +763,7 @@ class EffectJournal:
                 ).fetchall()
                 memory_reads: set[str] = set()
                 memory_writes: set[str] = set()
+                state_updates: set[str] = set()
                 for key, stored_fingerprint, payload in rows:
                     identity = EffectIdentity.from_value(json.loads(payload))
                     if (
@@ -771,6 +778,11 @@ class EffectJournal:
                         raise ValueError("admitted workflow effect receipt is absent")
                     if identity.operation.startswith("policy:memory-read:v1:"):
                         memory_reads.add(identity.key)
+                    if identity.operation.startswith("policy:state-update:v1:"):
+                        state_updates.add(identity.key)
+                        if receipt.status == "pending":
+                            assert self._state_updates is not None
+                            self._state_updates.verify_recovery(identity, receipt)
                     if identity.operation.startswith("policy:memory-mutation:v1:"):
                         memory_writes.add(identity.key)
                         if receipt.status == "pending":
@@ -798,6 +810,11 @@ class EffectJournal:
 
                 verify_memory_write_index(
                     self.connection, current_id, current_fingerprint, memory_writes
+                )
+                from .state_updates import verify_state_update_index
+
+                verify_state_update_index(
+                    self.connection, current_id, current_fingerprint, state_updates
                 )
         except Exception:
             raise WorkflowExecutionError(

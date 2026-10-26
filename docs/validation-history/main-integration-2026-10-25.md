@@ -288,3 +288,20 @@ views expose bounded projected data and opaque references; they do not authorize
 continuation, mutation or replay. S4-02/T45/T49 remain open. Work continues on
 `codex/s4-02-native-state-updates` with atomic SDK checkpoint/write/proof storage,
 then common management intents, policy admission and recovery reconciliation.
+
+## PR #87 integration — 2026-10-26 Asia/Dubai
+
+[PR #87](https://github.com/bassemZohdy/open-workflow-agent/pull/87) merged at
+`a4462d052dd367527123e25d33e3e66b7b215759`, preserving head
+`77910d034fb891bfbe2713074041b1da313cbce8`. Its required exact-head check passed
+in [Docs run 40270673685](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40270673685).
+Local main was fast-forwarded and its push confirmed GitHub was up to date.
+
+Private atomic updater source `3bf27d7` passes 99 SDK/state-read/fencing/admission
+cases per platform on Windows and frozen Docker/Linux with zero skips and 1,253
+unchanged Linux source inputs. Its process-exit fixture proves rollback before
+the native commit. The component enables no API route, advertised mutation
+capability or automatic storage setup. S4-02/T45/T49 remain open. Work continues
+on `codex/s4-02-state-control-journal` with common authorized intents and recovery
+from real native proof, followed by declared policy/schema/task attribution and
+native continuation/branch gates.

@@ -133,6 +133,47 @@ its checkpoint/writes and proof atomically, and reconcile interruption without
 blind redispatch. Do not reinterpret old versioned meanings or weaken native
 receipt/definition validation.
 
+### Common control journal candidate after PR #87
+
+The private common coordinator now records bounded prepared/dispatched/completed
+state-control intents and ordinary common effect receipts. Commands contain
+opaque base references, JSON-only update values, task attribution and policy/
+storage pins; core stores no native checkpoint IDs or checkpoint payloads.
+Control identity stays fixed when attribution or values change, so those changes
+conflict with the original idempotency slot. Both current caller authority and
+retained original authority must allow `state.update` for the original owner.
+Each permission receipt binds the exact request digest; a read-only authorization
+inspection also rejects a self-consistent command rewrite that retains old
+permission. The common and native per-invocation ceilings are both 64 updates.
+
+The adapter bridge uses read-only bounded proof inspection and opaque reference
+translation. It resolves the archived definition and checks native input byte
+bounds before the SDK updater. Common transactions end before native awaits.
+Known native proof completes an interrupted common acknowledgement; a dispatched
+intent without proof fails as unknown and cannot dispatch again. Ordinary effect
+and invocation-index verification checks the control audit and native proof.
+The backend must be explicitly installed; none is installed by default.
+
+Focused checks cover actual SQLite/PostgreSQL commit/recovery, damaged or missing
+audit/lineage, original-owner and policy rejection, prepared interruption,
+repeated requests, cancellation and process termination before or after native
+commit. The latter uses a later ownership generation and no duplicate SDK call.
+Direct SDK graph fixtures prove this storage/recovery boundary; they do not prove
+OWA update policy/schema/attribution, continuation or replay semantics.
+
+Development reports are retained under `tmp/merge-20261025/state-journal-dev*.xml`
+and `state-controls-dev*.xml`. Initial reopen fixtures used an unavailable
+InvocationStore attribute, then supplied a libpq connection string where the
+public datasource API requires a URI. They now retain the original configured
+datasource. The temporary local test artifact was removed. A test attempted to
+patch a slotted connection instance; it now patches the class with an
+instance-specific guard. Frozen qualification remains pending.
+
+Public update admission, explicit policy/schema/allowed attribution, workflow
+snapshot/receipt integration, unknown-control resolution and safe continuation
+still need implementation and qualification. No update route or capability is
+enabled by this candidate, and S4-02/T45/T49 remain unchecked.
+
 Replay and time-travel branches require a new business identity and immutable
 lineage, a pinned definition/checkpoint and explicit read-only/re-execution
 effect policy. Bulk updates must retain native semantics and allowed task

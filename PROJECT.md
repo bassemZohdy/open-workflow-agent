@@ -126,6 +126,13 @@ on each platform with zero skips and 1,253 unchanged Linux inputs. It is not
 registered or advertised; common management intent/recovery and declared update
 policy remain required in the [state-control record](docs/s4-02-native-state-acceptance.md).
 
+PR #87 is merged at `a4462d0`. The private common control-journal candidate adds
+original-owner request-bound permission, durable prepared/dispatched/completed
+intents and native-proof reconciliation without duplicate dispatch. Core retains
+only commands and opaque references. Focused common-store and real SDK bridge
+checks pass; frozen qualification is pending. Public workflow update semantics,
+admission, unknown-control resolution and continuation/branching remain open.
+
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior
 remain missing. S4-04 has a new 13-case actual native outcome comparison with

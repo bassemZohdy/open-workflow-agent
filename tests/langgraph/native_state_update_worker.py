@@ -1,4 +1,4 @@
-"""Exit-test worker paused after real SDK writes and before the outer commit."""
+"""Exit-test worker paused before or after the real SDK transaction commit."""
 
 from __future__ import annotations
 
@@ -23,8 +23,9 @@ async def main() -> None:
 
     async def paused(saver, config):
         result = await update(saver, config)
-        ready.write_text("sdk-written-before-commit")
-        await asyncio.Event().wait()
+        if not value.get("commit_before_ready", False):
+            ready.write_text("sdk-written-before-commit")
+            await asyncio.Event().wait()
         return result
 
     await apply_native_state_update(
@@ -35,6 +36,8 @@ async def main() -> None:
         NativeStateWrite(**value["request"]),
         paused,
     )
+    ready.write_text("sdk-committed-before-common-acknowledgement")
+    await asyncio.Event().wait()
 
 
 with asyncio.Runner(loop_factory=asyncio.SelectorEventLoop) as runner:

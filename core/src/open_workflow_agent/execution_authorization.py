@@ -1954,6 +1954,22 @@ class ExecutionAuthorizationStore:
                 raise InvocationStateConflict("action authorization ownership expired")
         return AuthorizationDecision(selected, receipt, dict(value["audit"]))
 
+    def inspect_decision(
+        self, identity: EffectIdentity, action: str, resource: str, request_digest: str
+    ) -> AuthorizationDecision:
+        """Verify an existing exact request binding without creating a decision."""
+        selected = decision_identity(identity, action, resource)
+        value = _read_decision(self.connection, self.invocations, selected.key)
+        if (
+            value is None
+            or value["business_identity"] != _effect(identity)
+            or value["request_digest"] != request_digest
+            or value["audit"]["action"] != action
+            or value["audit"]["resource"] != resource
+        ):
+            raise _invalid("authorization_decision_changed")
+        return AuthorizationDecision(selected, _decision_receipt(value), dict(value["audit"]))
+
     def seal_intent(
         self,
         identity: EffectIdentity,
