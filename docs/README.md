@@ -9,7 +9,7 @@ passes do not establish delivery or conformance.
 | --- | --- |
 | Setup and deployment settings | [Configuration](configuration.md), [embedded defaults](embedded-bootstrap.md) |
 | Public workflow contract | [Admission](workflow-admission.md), [expressions](workflow-expressions.md), [data flow](workflow-data-flow.md), [control flow](workflow-control-flow.md) |
-| Native execution and persistence | [Task execution](native-task-execution.md), [checkpoint recovery](checkpoint-recovery.md) |
+| Native execution and persistence | [Task execution](native-task-execution.md), [checkpoint recovery](checkpoint-recovery.md), [state/history views](native-state.md), [state-control gates](s4-02-native-state-acceptance.md) |
 | Verified child and lifecycle profiles | [S2-07 acceptance](s2-07-child-workflow-acceptance.md), [S2-08 acceptance](s2-08-lifecycle-acceptance.md) |
 | Continuation and protocol acceptance | [S2-09 policy](s2-09-version-recovery-acceptance.md), [MCP gates](s3-01-mcp-acceptance.md), [A2A gates](s3-02-a2a-acceptance.md) |
 | Unfinished operation and executable work | [S3-03 gates](s3-03-operation-adapters-acceptance.md), [S3-04 gates](s3-04-executable-source-acceptance.md) |

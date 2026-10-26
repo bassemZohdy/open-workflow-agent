@@ -435,6 +435,20 @@ class LangGraphScopeExecutor:
 
     def validate_initial_projection(self, checkpoint: Any, expected_input: Any) -> None:
         """Authenticate only the SDK's unexecuted root initializer projection."""
+        self._validate_initial_projection(checkpoint, expected_input, admission=True)
+
+    def validate_historical_initial_projection(self, checkpoint: Any, expected_input: Any) -> None:
+        """Inspect an old initializer without claiming the invocation is unexecuted.
+
+        All native identity/input/binding/pending-write checks still apply.
+        Later common action evidence is expected when viewing historical state.
+        Execution admission must continue using validate_initial_projection.
+        """
+        self._validate_initial_projection(checkpoint, expected_input, admission=False)
+
+    def _validate_initial_projection(
+        self, checkpoint: Any, expected_input: Any, *, admission: bool
+    ) -> None:
         try:
             raw = checkpoint.checkpoint
             channels = raw["channel_values"]
@@ -516,7 +530,7 @@ class LangGraphScopeExecutor:
                 expected_receipts.add(original_authority.key)
             if bindings["scopes"] or set(self.receipts) != expected_receipts:
                 raise ValueError("initial native dependencies contain task progress")
-            if self.effect_journal is not None:
+            if self.effect_journal is not None and admission:
                 indexed = self.effect_journal.connection.execute(
                     "SELECT payload FROM workflow_effect_invocations WHERE invocation_id=? LIMIT 5",
                     (self.invocation_id,),

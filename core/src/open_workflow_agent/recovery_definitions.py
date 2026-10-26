@@ -994,6 +994,28 @@ class RecoveryDefinitionArchive:
         async with self.owned_profile(handle.engine):
             return self.resolve(handle)
 
+    async def resolve_inspection(self, handle: ExecutionHandle) -> WorkflowPlan:
+        """Read a pinned definition after caller-established object authorization.
+
+        An unqualified deployment may inspect its own retained state; this does
+        not authorize continuation or relax any definition/runtime byte pins.
+        No binding, admission or execution record is created by this method.
+        """
+        async with self.inspection_profile(handle) as plan:
+            return plan
+
+    @asynccontextmanager
+    async def inspection_profile(self, handle: ExecutionHandle) -> AsyncIterator[WorkflowPlan]:
+        """Share fresh pins only across a synchronous, authorized inspection phase."""
+        async with self.owned_profile(handle.engine):
+            try:
+                plan = self._read(handle, allow_unqualified=True)[0]
+            except InvocationStateError:
+                raise
+            except Exception:
+                raise _unavailable("archive_invalid") from None
+            yield plan
+
     def _read(
         self, handle: ExecutionHandle, *, allow_unqualified: bool = False
     ) -> tuple[WorkflowPlan, dict[str, Any]]:

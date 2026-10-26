@@ -1339,6 +1339,25 @@ class ChildWorkflowConfig(StrictModel):
     max_concurrency: int = Field(default=16, ge=1, le=1000)
 
 
+class NativeStateConfig(StrictModel):
+    """Bounded original-owner checkpoint views; not a second checkpoint store."""
+
+    max_history: int = Field(default=128, ge=1, le=1000, strict=True)
+    max_page_size: int = Field(default=20, ge=1, le=100, strict=True)
+    max_native_bytes: int = Field(default=16_777_216, ge=1024, le=67_108_864, strict=True)
+    max_response_bytes: int = Field(default=1_048_576, ge=256, le=16_777_216, strict=True)
+    max_concurrency: int = Field(default=4, ge=1, le=32, strict=True)
+    timeout_seconds: float = Field(default=5, gt=0, le=30, allow_inf_nan=False, strict=True)
+
+    @model_validator(mode="after")
+    def validate_state_capacity(self) -> NativeStateConfig:
+        if self.max_page_size > self.max_history:
+            raise ValueError("native state page exceeds the bounded history window")
+        if self.max_native_bytes * self.max_concurrency > 268_435_456:
+            raise ValueError("native state concurrent decoding budget exceeds 256 MiB")
+        return self
+
+
 class RuntimeConfig(StrictModel):
     agent: AgentConfig = Field(default_factory=AgentConfig)
     model: ModelConfig = Field(default_factory=ModelConfig)
@@ -1362,6 +1381,25 @@ class RuntimeConfig(StrictModel):
     events: EventConfig = Field(default_factory=EventConfig)
     execution_timing: ExecutionTimingConfig = Field(default_factory=ExecutionTimingConfig)
     child_workflows: ChildWorkflowConfig = Field(default_factory=ChildWorkflowConfig)
+    native_state: NativeStateConfig | None = None
+
+    @model_serializer(mode="wrap")
+    def serialized_runtime(self, handler: SerializerFunctionWrapHandler) -> Any:
+        value = handler(self)
+        if self.native_state is None:
+            value.pop("native_state", None)
+        return value
+
+    @model_validator(mode="after")
+    def validate_native_state_security(self) -> RuntimeConfig:
+        if self.native_state is not None and (
+            not self.server.api_security_profile or not self.execution_authorization.enabled
+        ):
+            raise ValueError(
+                "native state views require authenticated API ingress "
+                "and original execution authorization"
+            )
+        return self
 
     @model_validator(mode="after")
     def validate_native_stream_security(self) -> RuntimeConfig:

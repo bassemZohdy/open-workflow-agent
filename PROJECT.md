@@ -109,6 +109,16 @@ adds 46 separately verified PostgreSQL cells, closing its initial skips.
 Other stream modes, full T50, native state updates, replay and time travel remain
 open; no task or research row is completed by this finite source profile.
 
+After PR #85, the [state/history profile](docs/s4-02-native-state-acceptance.md)
+adds original-owner root state/history views using read-only native snapshots
+and opaque references that survive process restart. These references are the
+prerequisite for compare-and-update/branch controls, not authority to execute
+them. Frozen source `f060349` passes 285 combined cases per platform on Windows
+and Docker/Linux, 20 separate ADK cases per platform and 312 SDK-free core/API
+cases, all with zero skips. All 1,250 frozen Linux inputs remain unchanged.
+Native writes, replay/time travel and full T45/T49 remain open; this finite
+component does not complete S4-02 or qualify a release.
+
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior
 remain missing. S4-04 has a new 13-case actual native outcome comparison with

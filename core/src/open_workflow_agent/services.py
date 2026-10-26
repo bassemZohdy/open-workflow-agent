@@ -225,6 +225,9 @@ class RuntimeServices:
         from .memory_semantic import MemorySemanticIndex
 
         self.native_memory_semantic_profiles: dict[str, MemorySemanticIndex] = {}
+        from .native_state import NativeStateReader
+
+        self.native_state_reader: NativeStateReader | None = None
         memory_tools = (
             ("add_memory", "search_memory", "delete_memory") if self.memory_enabled else ()
         )
