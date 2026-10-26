@@ -1,7 +1,7 @@
 # S4-02 native state controls
 
-Status: started after PR #85 (`2f33a3b`). State/history reads are implemented as a
-candidate prerequisite for safe compare-and-update and branching. Native state
+Status: started after PR #85 (`2f33a3b`). State/history reads are qualified as a
+bounded prerequisite for safe compare-and-update and branching. Native state
 updates, workflow replay and time travel remain open. S4-02, T45 and T49 are
 unchecked; no research row is promoted by this component.
 
@@ -49,8 +49,8 @@ Focused state/API cases cover SQLite/PostgreSQL, root/history pagination,
 cross-owner selectors, explicit permission, pre-decoding byte bounds,
 read-only database enforcement, absent storage, history-window bounds,
 initializer admission separation, repeated cancellation, fresh-process reads,
-declared channels and changed-policy denial. Final frozen platform/native/
-authority qualification remains pending.
+declared channels and changed-policy denial. Frozen platform/native/authority
+qualification passes as recorded below.
 
 Startup review also found that state registration needed to wait until configured
 memory providers had opened, and that native-backend availability must be
@@ -59,6 +59,34 @@ initialization keeps the existing unsupported-loop rejection first, verifies
 the selected backend, installs the reader inside guarded startup and removes
 it on failure/shutdown. Capability metadata is emitted only while the matching
 extension is advertised; withdrawing policy does not leave a readable endpoint.
+
+## Frozen qualification — `f060349`
+
+Runtime/tests are frozen at `f060349333908d2da3723cd57f19dbe5581ef3a3`.
+The combined selection includes all 39 actual state/API cases, 20 core state
+contract cases, native task/adapter, corruption, completed-scope/receipt,
+authority/fencing, stream and selected configured-memory regression checks.
+Windows and Docker/Linux use separate fresh PostgreSQL databases. SQLite stays
+the embedded default; the native read path creates no database or namespace.
+
+| Selection | Windows | Frozen Docker/Linux |
+| --- | --- | --- |
+| Combined native state/history and existing contracts | 285 passed, zero skips | 285 passed, zero skips |
+| Separate actual ADK authority/fencing/stream/state rejection | 20 passed, zero skips | 20 passed, zero skips |
+| SDK-free core/configuration/API/recovery/tracking | 312 passed, zero skips | Not selected |
+
+Linux reuses immutable dependency image
+`sha256:591b1bc4959940d8c6d7fa4f5c5b2471ddf2d68570e04415cbc420981f5e9f42`
+after verifying unchanged root/LangGraph locks. ADK uses
+`sha256:741a21400325548a51308cdbd6a5c9055443f7eecc8f950b43042c955d58be3b`
+with matching root/ADK locks. Source and root filesystems are read-only; containers
+run as a non-root user with dropped capabilities and bounded resources. No
+packages are installed at startup. All 1,250 frozen Linux source inputs remain
+unchanged. Manifests, logs and XML remain under
+`tmp/merge-20261025/f060349/`. The combined selection finished in 909.08 seconds
+on Windows and 281.43 seconds on Linux. Both deselect 84 opposite-engine cells;
+the separate ADK selection covers its authority/fencing/rejection boundary.
+This is component qualification, not full repository or release qualification.
 
 ## Remaining state-management work
 

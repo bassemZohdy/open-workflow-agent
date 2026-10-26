@@ -279,8 +279,10 @@ treated as a deferred task or as additional feature completion.
   Broader stream modes, T50, state updates, replay and time travel remain open.
   After PR #85, [state/history reads](docs/s4-02-native-state-acceptance.md)
   provide bounded original-owner native views and stable opaque checkpoint
-  references. Their candidate qualification precedes compare-and-update intent/
-  proof, native atomic mutation and new-identity replay/time-travel lineage.
+  references. Frozen `f060349` passes 285 combined cases and 20 separate ADK
+  cases on each platform, plus 312 SDK-free core/API cases, with zero skips
+  and 1,250 unchanged Linux inputs. Continue compare-and-update intent/proof,
+  native atomic mutation and new-identity replay/time-travel lineage.
 
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
   The optional TypeScript package admits official OWS definitions and executes
