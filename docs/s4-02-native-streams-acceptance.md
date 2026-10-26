@@ -44,11 +44,34 @@ future, other-invocation or prior-process cursor fails explicitly. Registering a
 live subscriber and taking its backlog are one event-loop operation. This is
 observation replay, not workflow replay, durable retention or a resume command.
 
+## Private foundation verification
+
+Runtime source is frozen at `baebb73487e3b3c5dfc7f6ed46f83ddbc40b1898`.
+Before freezing, all seven actual SDK projection cases passed against SQLite
+and PostgreSQL: both observation modes preserve one model dispatch and final
+workflow output, closed/oversized observation cannot fault execution, private
+native fields are absent, and another invocation's observer is rejected before
+execution. The final core transport suite passes 29 cases, including cancelled
+reads and explicit projection failure. Four tracking guards, strict mypy over
+159 source files, Ruff, formatting and Markdown links pass.
+
+The frozen Windows and Docker/Linux selections each pass **106 cases with zero
+skips**, in 215.26 and 70.64 seconds respectively. They include 29 new core
+transport cases, seven actual SDK projection cases, 36 existing native
+task/adapter/resume cases, eight shared fencing cases and 26 authority cases.
+The 34 opposite-engine cases are deliberately deselected. Separate fresh
+PostgreSQL databases keep the platform runs independent. Linux reuses the immutable dependency image
+`sha256:591b1bc4959940d8c6d7fa4f5c5b2471ddf2d68570e04415cbc420981f5e9f42`
+only after checking matching root/engine locks, with read-only root/source,
+non-root execution, dropped capabilities and bounded resources. Evidence is
+retained under `tmp/merge-20261025/baebb73/`. All **1,226 frozen source inputs**
+remain unchanged. This qualifies the private component only; no public native
+streaming, full T50, full-repository or release claim follows from these checks.
+
 ## Remaining implementation and verification
 
-The private buffer and real SDK projection must pass their focused tests plus
-the relevant native/authority contracts before qualification. Public capability
-and `EngineCapabilities.streaming` remain false throughout this foundation.
+Public capability and `EngineCapabilities.streaming` remain false throughout
+this qualified private foundation.
 
 Next, implement the opt-in deployment policy and bounded per-runtime registry,
 original-owner HTTP observation endpoint, explicit capability/admission gate,
