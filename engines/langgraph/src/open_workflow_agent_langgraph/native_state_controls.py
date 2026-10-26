@@ -1,4 +1,4 @@
-"""Private common-control/native-updater binding; no public update route or policy."""
+"""Owned common-control/native-updater binding; ingress and admission own policy."""
 
 from __future__ import annotations
 
@@ -103,66 +103,7 @@ class LangGraphStateControls:
 
     def inspect(self, request: StateUpdateRequest) -> StateUpdateProof | None:
         self._verify(request)
-        root = LangGraphScopeExecutor(self.plan, None, request.invocation_id).checkpoint_config(
-            "/do", 1
-        )
-        thread = root["configurable"]["thread_id"]
-        try:
-            with _proof_connection(self.database) as (connection, postgres):
-                placeholder, size = ("%s", "octet_length") if postgres else ("?", "length")
-                fields = (
-                    ("invocation_id", 256),
-                    ("fingerprint", 256),
-                    ("request_digest", 64),
-                    ("base_checkpoint", 36),
-                    ("result_checkpoint", 36),
-                )
-                row = connection.execute(
-                    "SELECT "
-                    + ",".join(
-                        f"CASE WHEN {size}({name})<={bound} THEN {name} ELSE NULL END"
-                        for name, bound in fields
-                    )
-                    + f" FROM {TABLE} WHERE identity={placeholder}",
-                    (request.identity.key,),
-                ).fetchone()
-                if row is None:
-                    return None
-                if tuple(row[:3]) != (
-                    request.invocation_id,
-                    request.workflow_fingerprint,
-                    request.request_digest,
-                ):
-                    raise state_update_error("native_proof_changed")
-                native = NativeStateWriteProof(
-                    NativeStateWrite(request.identity.key, request.request_digest, row[3]), row[4]
-                )
-                parent = connection.execute(
-                    f"SELECT CASE WHEN {size}(parent_checkpoint_id)<=36 "
-                    "THEN parent_checkpoint_id ELSE NULL END FROM checkpoints WHERE thread_id="
-                    + placeholder
-                    + " AND checkpoint_ns='' AND checkpoint_id="
-                    + placeholder,
-                    (thread, native.result_checkpoint),
-                ).fetchone()
-                if parent is None or parent[0] != native.request.base_checkpoint:
-                    raise state_update_error("native_lineage_changed")
-                if request.projection_digest is not None:
-                    from .native_state_transition import verify_projection_sync
-
-                    verify_projection_sync(
-                        connection,
-                        postgres,
-                        thread,
-                        native.result_checkpoint,
-                        request,
-                        self.bounds.max_native_bytes,
-                    )
-                proof = self._common_proof(request, native)
-                proof.verify(request)
-                return proof
-        except Exception:
-            raise state_update_error("native_proof_unavailable") from None
+        return inspect_native_control(self.database, request, self.bounds)
 
     @staticmethod
     def _common_proof(
@@ -243,3 +184,72 @@ class LangGraphStateControls:
         )
         self._verify(request)
         return self._common_proof(request, native)
+
+
+def inspect_native_control(
+    database: str, request: StateUpdateRequest, bounds: NativeStateConfig
+) -> StateUpdateProof | None:
+    """Read bounded native proof without retaining a workflow plan or native state."""
+    if request.storage_identity != state_control_storage_identity(
+        database, request.workflow_fingerprint
+    ):
+        raise state_update_error("native_binding_changed")
+    thread = LangGraphScopeExecutor.scope_thread_id(
+        request.invocation_id, request.workflow_fingerprint, "/do", 1
+    )
+    try:
+        with _proof_connection(database) as (connection, postgres):
+            placeholder, size = ("%s", "octet_length") if postgres else ("?", "length")
+            fields = (
+                ("invocation_id", 256),
+                ("fingerprint", 256),
+                ("request_digest", 64),
+                ("base_checkpoint", 36),
+                ("result_checkpoint", 36),
+            )
+            row = connection.execute(
+                "SELECT "
+                + ",".join(
+                    f"CASE WHEN {size}({name})<={bound} THEN {name} ELSE NULL END"
+                    for name, bound in fields
+                )
+                + f" FROM {TABLE} WHERE identity={placeholder}",
+                (request.identity.key,),
+            ).fetchone()
+            if row is None:
+                return None
+            if tuple(row[:3]) != (
+                request.invocation_id,
+                request.workflow_fingerprint,
+                request.request_digest,
+            ):
+                raise state_update_error("native_proof_changed")
+            native = NativeStateWriteProof(
+                NativeStateWrite(request.identity.key, request.request_digest, row[3]), row[4]
+            )
+            parent = connection.execute(
+                f"SELECT CASE WHEN {size}(parent_checkpoint_id)<=36 "
+                "THEN parent_checkpoint_id ELSE NULL END FROM checkpoints WHERE thread_id="
+                + placeholder
+                + " AND checkpoint_ns='' AND checkpoint_id="
+                + placeholder,
+                (thread, native.result_checkpoint),
+            ).fetchone()
+            if parent is None or parent[0] != native.request.base_checkpoint:
+                raise state_update_error("native_lineage_changed")
+            if request.projection_digest is not None:
+                from .native_state_transition import verify_projection_sync
+
+                verify_projection_sync(
+                    connection,
+                    postgres,
+                    thread,
+                    native.result_checkpoint,
+                    request,
+                    bounds.max_native_bytes,
+                )
+            proof = LangGraphStateControls._common_proof(request, native)
+            proof.verify(request)
+            return proof
+    except Exception:
+        raise state_update_error("native_proof_unavailable") from None

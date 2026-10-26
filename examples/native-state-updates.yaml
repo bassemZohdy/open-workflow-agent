@@ -1,0 +1,39 @@
+# Opt-in LangGraph source profile; mount both example files under /config.
+model:
+  provider: fake
+  name: fake/default
+workflow:
+  path: /config/native-state-updates-workflow.yaml
+native_state: {}
+native_state_updates:
+  bounds:
+    max_concurrency: 2
+    timeout_seconds: 30
+security:
+  profiles:
+    state-owner:
+      type: bearer
+      principal: state-owner
+      roles: [state-owner]
+      scopes: [native-state]
+      audience: [runtime]
+      token:
+        from_env: OWA_NATIVE_STATE_TOKEN
+server:
+  api_security_profile: state-owner
+execution_authorization:
+  enabled: true
+  id: native-state-update-example
+  version: '1'
+  policy:
+    rules:
+      - actions: [invocations.create]
+        resources: ['workflow:examples/native-state-updates@1.0.0']
+        roles: [state-owner]
+        scopes: [native-state]
+        audience: [runtime]
+      - actions: [state.inspect, state.update, state.resolve, invocations.resume, invocations.cancel]
+        resources: ['*']
+        roles: [state-owner]
+        scopes: [native-state]
+        audience: [runtime]

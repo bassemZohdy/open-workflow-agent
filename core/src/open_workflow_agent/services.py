@@ -228,6 +228,9 @@ class RuntimeServices:
         from .native_state import NativeStateReader
 
         self.native_state_reader: NativeStateReader | None = None
+        from .state_control import NativeStateController
+
+        self.native_state_controller: NativeStateController | None = None
         memory_tools = (
             ("add_memory", "search_memory", "delete_memory") if self.memory_enabled else ()
         )
@@ -665,6 +668,10 @@ class RuntimeServices:
         # deployment-owned policy map, including injected resolvers, rather
         # than a potentially different configuration used at construction.
         policy = value.setdefault("policy", {})
+        if self.config.native_state_updates is not None:
+            policy["native_state_updates"] = self.config.native_state_updates.model_dump(
+                mode="json"
+            )
         if self._bounded_memory and self.config.memory.bounds is not None:
             policy["memory_bounds"] = self.config.memory.bounds.model_dump(mode="json")
         if self.config.memory.native:

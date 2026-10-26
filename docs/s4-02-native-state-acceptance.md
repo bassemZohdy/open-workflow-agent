@@ -1,9 +1,9 @@
 # S4-02 native state controls
 
-Status: started after PR #85 (`2f33a3b`). State/history reads are qualified as a
-bounded prerequisite for safe compare-and-update and branching. Native state
-updates, workflow replay and time travel remain open. S4-02, T45 and T49 are
-unchecked; no research row is promoted by this component.
+Started after PR #85. State/history reads and configured root data updates and
+recovery have finite source qualification. Broader state profiles, workflow
+replay and time travel remain open. S4-02, T45 and T49 remain unchecked; no
+research row is promoted by these component profiles.
 
 ## Read/history contract and verification
 
@@ -428,3 +428,94 @@ source files, Markdown links and consolidation tracking checks pass. Final
 documentation changes no frozen runtime/test/example inputs. This is private
 component qualification, not public mutation, full repository or release
 qualification; S4-02/T45/T49 remain unchecked.
+
+### Configured public state controls after PR #91
+
+The [source guide](native-state-updates.md) and mounted
+[bootstrap](../examples/native-state-updates.yaml)/[OWS](../examples/native-state-updates-workflow.yaml)
+example select the exact opt-in update profile with authenticated ingress and
+original execution authorization. Required unsupported versions still fail
+before API invocation creation. Default configuration serialization omits the
+new optional block; unconfigured/native-unavailable/other engines do not gain
+the capability. Only a valid opened installation advertises its separate
+`nativeStateUpdates` feature. The official schema and internal-plan boundary
+are unchanged.
+
+The public POST endpoint accepts a current opaque base, canonical allowed task
+and finite bounded replacement data. Its idempotency key is bound to invocation
+and profile. Retained commands reject changed requests, rebuild only identical
+prepared preflight, complete interrupted acknowledgement from proof, and never
+blindly redispatch an unknown control. Responses expose only common operation
+IDs, request digests and opaque references. Known control errors include recovery
+selectors. Metadata GET explicitly does not attest a native outcome. Resolution
+retains the verified private semantics; terminal replay acknowledges only an
+identical committed outcome and does not acquire another execution generation.
+
+A non-queued bounded pool governs controls. Deadlines/repeated cancellation drain
+native work before releasing its slot and execution lease. Logical read and
+update packet budgets share a 256 MiB ceiling; SQL/native cleanup can exceed the
+nominal request deadline. Executable workflow bindings are reference-counted,
+bounded while active and released afterward. A trusted plan-free proof reader
+supports restarted and child/tree audit without retaining plans or authorizing
+new SDK writes. The existing native thread identity formula is shared unchanged.
+Configured startup alone prepares native proof storage. Failed startup and
+shutdown unregister the controller; active writes drain through the existing
+fenced SDK worker.
+
+Focused actual SQLite/PostgreSQL API checks cover owner isolation, schema/task/
+base validation, idempotency conflicts and terminal reuse, state reads after
+updates, HTTP continuation, both resolution choices, withdrawn permission/
+configuration and fresh-process update reuse/resume. Deadline and repeated
+cancellation retain a full pool slot until cleanup. A real held SDK transaction
+proves cancellation also retains execution ownership and that a later repeat
+finishes without another native write. Both packaged YAML files run through
+ordinary app startup/invoke/update/read/resume with zero model calls.
+
+Development reports remain under `tmp/merge-20261025/state-control-*.xml`.
+The first API rejection assertion omitted the existing schema-error HTTP 400;
+the runtime contract was preserved. A development selection stopped after lint
+identified missing test imports. The first packaged-example attempt used
+`invocation:*`, which is not a resource pattern in the existing exact-or-`*`
+policy grammar; the example now grants only the listed actions using `*` while
+the independent original-owner checks remain enforced. Earlier failures and
+partial/skipped core selections are retained and do not count as qualification.
+
+The cleanup moves 230 chronological backlog/project lines into the
+[retained component notes](validation-history/s4-02-component-notes.md), preserving
+their evidence and explicit gaps. Four stale remote-tracking references and 16
+fully merged local S4-02 development branches were removed. Their commits remain
+reachable from main. Required PostgreSQL components and acceptance evidence remain. Task counts
+stay 31/37 verified, six open, none deferred. Broader memory/stream/native profiles,
+replay/time travel and full S4-02/T45/T49 remain open; no research row or release
+image is promoted by this source profile.
+
+
+#### Frozen public-control qualification — `db437d8`
+
+Runtime/tests/examples are frozen at `db437d8dbc8f3f3c11bc6bb9e9ca561fcd488640`.
+The combined cohort selects all 22 actual configured HTTP/lifecycle/restart/
+cancellation/example cases and all 14 new configuration/input cases alongside
+common resolution/attestation, actual OWA continuation, private preflight,
+state/history reads, native atomic controls/tasks/scopes, authority/fencing and
+admission. Windows and Linux use separate fresh PostgreSQL databases. Existing
+immutable dependency images have matching locks; Linux retains read-only
+source/root filesystems, non-root execution, dropped capabilities and resource
+bounds. No packages are installed at startup.
+
+| Selection | Windows | Frozen Docker/Linux |
+| --- | --- | --- |
+| Combined public controls/state/native/authority regression | 420 passed, zero skips | 420 passed, zero skips |
+| Separate actual ADK authority/fencing/rejection | 22 passed, zero skips | 22 passed, zero skips |
+| SDK-free common journal/compiler/authorization/recovery/API/configuration | 841 passed, zero skips | Not selected |
+
+All 1,278 frozen Linux source inputs remain unchanged. Manifests, logs and XML
+remain under `tmp/merge-20261025/db437d8/`. The combined selection finished in
+815.47 seconds on Windows and 385.93 seconds on Linux, with 38 other-engine cells
+deselected. The SDK-free cohort finished in 281.31 seconds. Formatting, lint,
+strict typing of 175 core/ADK/LangGraph files, Markdown links and tracking checks
+pass. Final documentation changes no frozen runtime/test/example inputs.
+
+This qualifies the configured root set-data update and explicit recovery source
+profile, including public continuation and mounted configuration-only examples.
+It is not full repository/release qualification, a published image, broad
+replay/time travel or completion of S4-02/T45/T49.

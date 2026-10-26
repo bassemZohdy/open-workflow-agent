@@ -1,4 +1,4 @@
-"""Private atomic SDK updater primitive; no public mutation capability is installed.
+"""Private atomic SDK updater primitive under the installed control boundary.
 
 Callers must authorize and freeze a validated update before entering this boundary.
 The lease must exclude workflow execution; it cannot be shared with a live runner.

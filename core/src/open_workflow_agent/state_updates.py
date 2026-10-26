@@ -282,7 +282,8 @@ class StateUpdates:
     """Common control audit only; no native state or plan is persisted here.
 
     Unknown dispatched operations cannot be sent again. All database transactions
-    end before awaiting the native updater. No public capability installs this yet.
+    end before awaiting the native updater. Only explicitly configured management
+    boundaries install this coordinator.
     """
 
     def __init__(
@@ -290,6 +291,8 @@ class StateUpdates:
         journal: EffectJournal,
         invocations: InvocationStore,
         authorizations: ExecutionAuthorizationStore,
+        *,
+        backend_resolver: Callable[[StateUpdateRequest], StateUpdateBackend] | None = None,
     ) -> None:
         if (
             journal._invocations is not invocations
@@ -301,6 +304,7 @@ class StateUpdates:
         self.journal, self.invocations, self.authorizations = journal, invocations, authorizations
         self.connection = journal.connection
         self._backends: dict[str, StateUpdateBackend] = {}
+        self._backend_resolver = backend_resolver
         self._locks: WeakValueDictionary[str, asyncio.Lock] = WeakValueDictionary()
         journal._state_updates = self
 
@@ -313,6 +317,13 @@ class StateUpdates:
 
     def _backend(self, request: StateUpdateRequest) -> StateUpdateBackend:
         backend = self._backends.get(request.storage_identity)
+        if backend is None and self._backend_resolver is not None:
+            backend = self._backend_resolver(request)
+            if (
+                not isinstance(backend, StateUpdateBackend)
+                or backend.storage_identity != request.storage_identity
+            ):
+                raise state_update_error("native_binding_changed")
         if backend is None:
             raise state_update_error("backend_missing")
         return backend
@@ -427,6 +438,46 @@ class StateUpdates:
 
     def verify(self, identity: EffectIdentity, receipt: EffectReceipt) -> None:
         self._load(identity, receipt)
+
+    def requests(self, handle: ExecutionHandle) -> list[tuple[StateUpdateRequest, str]]:
+        """Bounded common metadata; listing does not attest a native outcome."""
+        if not _exists(self.connection):
+            return []
+        rows = self.connection.execute(
+            "SELECT "
+            + ",".join(
+                _bounded_column(self.connection, column, bound)
+                for column, bound in (
+                    ("identity", 64),
+                    ("request_digest", 64),
+                    ("phase", 32),
+                    ("request_json", 131_072),
+                )
+            )
+            + f" FROM {TABLE} WHERE invocation_id=? AND fingerprint=? LIMIT ?",
+            (handle.invocation_id, handle.workflow_fingerprint, MAX_UPDATES + 1),
+        ).fetchall()
+        if len(rows) > MAX_UPDATES:
+            raise state_update_error("update_limit")
+        result = []
+        for key, digest, phase, encoded in rows:
+            if type(encoded) is not str:
+                raise state_update_error("intent_changed")
+            request = StateUpdateRequest.from_descriptor(
+                json.loads(encoded, object_pairs_hook=_unique)
+            )
+            if (
+                request.identity.key != key
+                or request.request_digest != digest
+                or request.invocation_id != handle.invocation_id
+                or request.workflow_fingerprint != handle.workflow_fingerprint
+                or encoded != _json(request.descriptor)
+                or phase
+                not in {"prepared", "dispatched", "completed", "resolved_complete", "abandoned"}
+            ):
+                raise state_update_error("intent_changed")
+            result.append((request, phase))
+        return result
 
     def _resolution(
         self, request: StateUpdateRequest

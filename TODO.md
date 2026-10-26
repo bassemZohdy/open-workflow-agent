@@ -215,108 +215,31 @@ treated as a deferred task or as additional feature completion.
   See [acceptance](docs/s4-01-native-extension-acceptance.md#exact-source-qualification-d72781f) and [the source-matched results](docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f).
 
 - [ ] **S4-02** (L) — Add declared native channels/reducers, Command/Send, memory, streams, state updates, replay and time travel.
-  Bounded channels/reducers, Command and Send are implemented with focused
-  native/store recovery evidence. The owned wait/end transition and native test
-  profiles are corrected. The final direct-child stop fixture passes eight
-  Linux SQLite/PostgreSQL routing/scope cases without pidfd APIs and four
-  Windows PostgreSQL cases. Hosted qualification of that repair remains open.
-  PR #76 merged the private memory foundations into main at `56e68b0`; PR #77
-  merged common recovery at `df8c0d7`. Source `54103b9` adds prepared/dispatched/completed write
-  intents, owned completion receipts and native proof checks, plus an authorized
-  private writer. The 322-case reader/write/journal/ownership cohort passes on
-  both Windows and frozen Linux with zero skips. Native commit without common
-  acknowledgement recovers without rewriting; dispatched writes with no marker
-  fail as uncertain and are never blindly redispatched. Read observations,
-  common intents and native markers each have a 64-per-invocation ceiling.
-  PR #78 merged expiry at `b344058`. Source `810c723` passes a 355-case memory/journal/ownership
-  cohort on both Windows and frozen Linux with zero skips. A typed policy uses
-  database time to commit the record deadline with its value and native marker;
-  fresh get reads omit expired records while replay retains past observations.
-  Retries do not renew expiry. PR #79 merged capacity/cleanup at `3187cfe`.
-  Capacity/cleanup source `6a0ac8c` passes 399 cases
-  on each platform with zero skips. Fixed namespace record/serialized-value byte
-  budgets and authorized bounded physical expiry cleanup retain recovery proof.
-  PR #80 merged provider lifecycle at `1a0b0a9`. Source `738b393` passes 415 cases
-  per platform with zero
-  skips, adding concurrent first-use migration exclusion and setup/shutdown
-  cancellation, timeout and process-exit witnesses.
-  Resolution/checkpoint source `602449e` passes 523 cases per platform with zero skips. A
-  private preauthorized control atomically records completion from matching
-  native proof or explicit unknown-outcome abandonment; neither redispatches
-  the write. Audit, phase and outcome survive process exit and reject corruption.
-  It preserves long accepted task contexts and serializes native checkpoint
-  first-use migrations. Eight shared authority cases pass on each platform
-  with fresh PostgreSQL databases.
-  Source `c062e9c` adds opt-in configured get/put/search/delete/sweep calls,
-  scalar-filter search and original-owner authenticated resolution with actual
-  workflow resume. Default admission remains closed; configured native bindings
-  enable the exact required version. It also repairs early platform rejection
-  and concurrent cold ADK PostgreSQL schema setup. The [public qualification](docs/s4-02-native-memory-acceptance.md#public-workflow-profile--2026-10-26)
-  retains failed attempts and the final named acceptance limits. Semantic
-  profile `a781bc2` adds declared local MiniLM/exact-index binding, versioned
-  semantic queries, actual artifact identity and atomic value/vector recovery.
-  Both stores pass focused restart, process-exit/newer-write, original-owner
-  resolution, expiry/filter/namespace and physical vector cleanup checks. Its
-  combined cohort passes 638 cases with zero skips on each of Windows and
-  frozen Linux; 1,222 Linux source inputs remain unchanged. See
-  the [semantic qualification](docs/s4-02-native-memory-acceptance.md#semantic-workflow-profile--2026-10-26).
-  Continue broader T51/T68/public recovery/model migration gates,
-  native streams, public state updates, replay and time travel. T51/T68 and
-  S4-02 remain unchecked; the three product-dependent tasks stay conditional.
-  See the [memory scope](docs/s4-02-native-memory-acceptance.md).
-  Then continue streams, public state updates, replay and
-  time travel. Preserve common authority, ownership, receipts and private
-  checkpoint boundaries. See [acceptance](docs/s4-02-native-channels-acceptance.md)
+  Verified finite components cover declared channels/routing, configured native
+  filtered/semantic memory, public values/updates streams and state/history
+  reads. Private state mutation, attestation and explicit recovery decisions
+  are merged through PR #91 (`0157f1d`). Frozen `0f9312f` passes 384 combined
+  cases and 22 separate ADK cases per platform, plus 827 SDK-free cases, with
+  zero skips and 1,268 unchanged Linux inputs.
+  The configured original-owner public update/recovery profile now covers
+  bounded capacity/deadlines, cancellation draining, restart-safe proof inspection
+  and HTTP continuation. See the [profile guide](docs/native-state-updates.md)
+  and its source-matched qualification in the state acceptance record.
+  Frozen `db437d8` passes 420 combined cases and 22 separate ADK cases per
+  platform, plus 841 SDK-free cases, with zero skips and 1,278 unchanged Linux
+  inputs. The 22 actual HTTP/lifecycle/example cases include both stores.
+  Continue broader native profiles and replay/time-travel branches.
+  Replay/time travel require a new business identity, immutable lineage and an
+  explicit effect policy. Broader memory T51/T68, stream modes/T50, native scope,
+  T45/T49 and full S4-02 acceptance remain open. Hosted qualification of the
+  direct-child routing/scope process-stop repair also remains open.
+  Preserve common authority, ownership, receipts and private checkpoints.
+  See [channels](docs/s4-02-native-channels-acceptance.md),
+  [memory](docs/s4-02-native-memory-acceptance.md),
+  [streams](docs/s4-02-native-streams-acceptance.md),
+  [state controls](docs/s4-02-native-state-acceptance.md),
+  [retained component history](docs/validation-history/s4-02-component-notes.md)
   and the [integration record](docs/validation-history/main-integration-2026-10-25.md).
-  After PR #83, continue the [private native-stream foundation](docs/s4-02-native-streams-acceptance.md),
-  whose `baebb73` selection passes 106 cases on each platform with zero skips,
-  followed by authorized public transport and its capability/qualification gates.
-  The follow-on public values/updates profile and Windows native-write loop
-  repair are [qualified at a597134](docs/s4-02-native-streams-acceptance.md#replacement-public-qualification--a597134):
-  318 combined cases and 18 separate ADK cases pass per platform with zero skips,
-  with 1,237 unchanged Linux source inputs. The SDK-free 242-pass baseline adds
-  46 separately verified PostgreSQL cells, closing its initial skips.
-  Broader stream modes, T50, state updates, replay and time travel remain open.
-  After PR #85, [state/history reads](docs/s4-02-native-state-acceptance.md)
-  provide bounded original-owner native views and stable opaque checkpoint
-  references. Frozen `f060349` passes 285 combined cases and 20 separate ADK
-  cases on each platform, plus 312 SDK-free core/API cases, with zero skips
-  and 1,250 unchanged Linux inputs. Continue compare-and-update intent/proof,
-  native atomic mutation and new-identity replay/time-travel lineage.
-  PR #86 is merged; private atomic SDK checkpoint/write/proof storage is now
-  qualified at `3bf27d7`: 99 cases per platform, zero skips, 1,253 unchanged
-  Linux inputs. It enables no mutation route or capability;
-  management intents/reconciliation and declared update policy remain required.
-  PR #87 is merged; the private common journal and native proof bridge now cover
-  authorized intents and interrupted acknowledgement recovery. Qualification is
-  recorded at `7572808`: 174 combined cases per platform and 653 SDK-free
-  core/API cases, zero skips, 1,257 unchanged Linux inputs. Keep public
-  policy/schema/task attribution, workflow snapshot/receipt
-  integration, unknown-control resolution and continuation/branch gates open.
-  PR #88 is merged; compiled declared update policy and read-only OWA native
-  preflight now validate schema/attribution, owner/lease, exact current base and
-  retained completed-scope evidence. Frozen `8393d1e` passes 278 combined cases
-  per platform and 755 SDK-free compiler/core/API cases with zero skips and
-  1,262 unchanged Linux inputs. Update admission
-  remains closed; continue public ingress, atomic OWA snapshot/receipt
-  attestation, unknown-control resolution and continuation/branching.
-  PR #89 is merged. The next private component binds exact base/result digests
-  and ordered control identities to SDK-updated OWA data and common receipts.
-  Focused SQLite/PostgreSQL continuation and fresh-process recovery checks pass;
-  previous visits, routes, counters and native channels remain intact. Frozen
-  `1a546e6` passes 428 combined cases and 22 separate ADK cases on each platform,
-  plus 763 SDK-free cases, with zero skips and 1,266 unchanged Linux inputs. Public
-  ingress, unknown-control resolution and full continuation/branch acceptance
-  remain required. See the [attestation scope](docs/s4-02-native-state-acceptance.md#attested-owa-data-updates-after-pr-89).
-  PR #90 is merged. Private explicit resolution now records request-bound
-  original-owner decisions without native redispatch. Proof-backed completion
-  permits private continuation; acknowledged unknown abandonment blocks adopting
-  a current native head. Common audit/outcome rollback, immutability, current and
-  original permission, actual OWA state and fresh-process checks pass on both
-  stores. Frozen `0f9312f` passes 384 combined cases and 22 separate ADK cases
-  per platform, plus 827 SDK-free core/API cases, with zero skips and 1,268
-  unchanged Linux inputs. Continue public configured ingress and broader continuation/branching;
-  see the [resolution scope](docs/s4-02-native-state-acceptance.md#explicit-state-control-resolution-after-pr-90).
 
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
   The optional TypeScript package admits official OWS definitions and executes

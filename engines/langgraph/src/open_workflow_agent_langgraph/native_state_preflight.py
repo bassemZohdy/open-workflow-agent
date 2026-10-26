@@ -179,7 +179,7 @@ async def _prepare_native_state_update(
     """Validate policy and all retained OWA scopes without creating a control intent.
 
     The resulting adapter-private base must be compared again inside the owned
-    native write transaction. No public mutation capability installs this yet.
+    native write transaction. Only explicitly configured controllers install it.
     """
     _owner(services, handle, authority)
     plan = await services.recovery_definitions.resolve_inspection(handle)

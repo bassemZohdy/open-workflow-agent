@@ -470,6 +470,12 @@ def create_app(
             if STATE_READ_CAPABILITY in value["nativeExtensions"]:
                 value["features"]["nativeState"] = native_state_capabilities()
         value["features"]["scheduling"]["on"] = runtime_services.event_store is not None
+        if runtime_services.native_state_controller is not None:
+            from .native_state_policy import CAPABILITY as STATE_UPDATE_CAPABILITY
+            from .state_control_api import state_control_capabilities
+
+            if STATE_UPDATE_CAPABILITY in value["nativeExtensions"]:
+                value["features"]["nativeStateUpdates"] = state_control_capabilities()
         value.setdefault("features", {})["events"] = event_capabilities(runtime_services.event_bus)
         value.setdefault("features", {})["approvals"] = runtime_services.approvals.capabilities()
         value.setdefault("features", {})["catalogs"] = (
@@ -782,7 +788,7 @@ def create_app(
             "invocations.create", f"workflow:{plan.namespace}/{plan.name}@{plan.version}"
         )
         if any(
-            item.name in {"langgraph.streams", "langgraph.state.read"}
+            item.name in {"langgraph.streams", "langgraph.state.read", "langgraph.state.update"}
             for item in plan.native_extensions
         ):
             await runtime_engine.compile(plan)
@@ -872,6 +878,11 @@ def create_app(
     from .native_state_api import mount_native_state
 
     mount_native_state(
+        app, runtime_services, runtime_engine, _authorize_request, authorized_invocation
+    )
+    from .state_control_api import mount_state_controls
+
+    mount_state_controls(
         app, runtime_services, runtime_engine, _authorize_request, authorized_invocation
     )
 
