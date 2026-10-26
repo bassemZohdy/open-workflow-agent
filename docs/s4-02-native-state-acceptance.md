@@ -133,6 +133,76 @@ its checkpoint/writes and proof atomically, and reconcile interruption without
 blind redispatch. Do not reinterpret old versioned meanings or weaken native
 receipt/definition validation.
 
+### Private common control journal after PR #87
+
+The private common coordinator now records bounded prepared/dispatched/completed
+state-control intents and ordinary common effect receipts. Commands contain
+opaque base references, JSON-only update values, task attribution and policy/
+storage pins; core stores no native checkpoint IDs or checkpoint payloads.
+Control identity stays fixed when attribution or values change, so those changes
+conflict with the original idempotency slot. Both current caller authority and
+retained original authority must allow `state.update` for the original owner.
+Each permission receipt binds the exact request digest; a read-only authorization
+inspection also rejects a self-consistent command rewrite that retains old
+permission. The common and native per-invocation ceilings are both 64 updates.
+
+The adapter bridge uses read-only inspection with bounded proof-record columns and opaque reference
+translation. It resolves the archived definition and checks native input byte
+bounds before the SDK updater. Common transactions end before native awaits.
+Known native proof completes an interrupted common acknowledgement; a dispatched
+intent without proof fails as unknown and cannot dispatch again. Ordinary effect
+and invocation-index verification checks the control audit and native proof.
+The backend must be explicitly installed; none is installed by default.
+
+Focused checks cover actual SQLite/PostgreSQL commit/recovery, damaged or missing
+audit/lineage, original-owner and policy rejection, prepared interruption,
+repeated requests, cancellation and process termination before or after native
+commit. The latter uses a later ownership generation and no duplicate SDK call.
+Direct SDK graph fixtures prove this storage/recovery boundary; they do not prove
+OWA update policy/schema/attribution, continuation or replay semantics.
+
+Development reports are retained under `tmp/merge-20261025/state-journal-dev*.xml`
+and `state-controls-dev*.xml`. Initial reopen fixtures used an unavailable
+InvocationStore attribute, then supplied a libpq connection string where the
+public datasource API requires a URI. They now retain the original configured
+datasource. The temporary local test artifact was removed. A test attempted to
+patch a slotted connection instance; it now patches the class with an
+instance-specific guard. Frozen qualification is recorded below.
+
+Public update admission, explicit policy/schema/allowed attribution, complete
+workflow snapshot/receipt validation and integration, lineage-metadata byte
+bounds, unknown-control resolution and safe continuation
+still need implementation and qualification. No update route or capability is
+enabled by this component, and S4-02/T45/T49 remain unchecked.
+
+#### Frozen control-journal qualification — `7572808`
+
+Runtime/tests are frozen at `7572808c72d2a6acf95a07f6a47e893187e16d38`.
+The combined cohort selects the common state-control cases, actual SDK control
+bridge/process-exit cases and private atomic updater cases together with state
+reads, native fencing, execution-authority isolation and admission regressions.
+Windows and Linux use separate fresh PostgreSQL databases. Linux uses the same
+immutable LangGraph/ADK dependency images and read-only/non-root/resource
+restrictions recorded above; dependency locks are verified before reuse.
+
+| Selection | Windows | Frozen Docker/Linux |
+| --- | --- | --- |
+| Combined controls/state/authority/native regression | 174 passed, zero skips | 174 passed, zero skips |
+| Separate actual ADK authority/fencing/rejection | 20 passed, zero skips | 20 passed, zero skips |
+| SDK-free common journal/authorization/memory/recovery/API/configuration | 653 passed, zero skips | Not selected |
+
+All 1,257 frozen Linux source inputs remain unchanged. Reports remain under
+`tmp/merge-20261025/7572808/`. The first SDK-free command
+stopped during collection because it selected `tests/core/test_api.py`; the
+correct API selection is `tests/e2e/test_api.py`. The corrected run uses another
+fresh database and `core-journal-final.*` reports. The original zero-case report
+is retained and does not count as acceptance. The combined selection finished
+in 311.42 seconds on Windows and 114.55 seconds on Linux, with 36 other-engine
+cells deselected. The SDK-free selection finished in 197.84 seconds. Ruff,
+formatting and strict typing of 168 core/ADK/LangGraph source files pass.
+This is private control storage/recovery qualification, not public mutation,
+full repository or release qualification.
+
 Replay and time-travel branches require a new business identity and immutable
 lineage, a pinned definition/checkpoint and explicit read-only/re-execution
 effect policy. Bulk updates must retain native semantics and allowed task
