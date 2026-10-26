@@ -217,10 +217,9 @@ treated as a deferred task or as additional feature completion.
 - [ ] **S4-02** (L) — Add declared native channels/reducers, Command/Send, memory, streams, state updates, replay and time travel.
   Verified finite components cover declared channels/routing, configured native
   filtered/semantic memory, public values/updates streams and state/history
-  reads. Private state mutation, attestation and explicit recovery decisions
-  are merged through PR #91 (`0157f1d`). Frozen `0f9312f` passes 384 combined
-  cases and 22 separate ADK cases per platform, plus 827 SDK-free cases, with
-  zero skips and 1,268 unchanged Linux inputs.
+  reads. Configured public root mutation, attestation and explicit recovery
+  decisions are merged through PR #92 (`6ec11f1`); earlier private component
+  evidence is retained in the integration and component history records.
   The configured original-owner public update/recovery profile now covers
   bounded capacity/deadlines, cancellation draining, restart-safe proof inspection
   and HTTP continuation. See the [profile guide](docs/native-state-updates.md)
@@ -228,6 +227,11 @@ treated as a deferred task or as additional feature completion.
   Frozen `db437d8` passes 420 combined cases and 22 separate ADK cases per
   platform, plus 841 SDK-free cases, with zero skips and 1,278 unchanged Linux
   inputs. The 22 actual HTTP/lifecycle/example cases include both stores.
+  Replay/branch policy and selected-checkpoint preflight now have focused checks:
+  exact declarations, explicit effect acknowledgement, historical root/scope
+  closure and original/current authority. No child run or effects are created.
+  Native fork execution, durable lineage and public admission remain open;
+  see [lineage acceptance](docs/s4-02-native-lineage-acceptance.md).
   Continue broader native profiles and replay/time-travel branches.
   Replay/time travel require a new business identity, immutable lineage and an
   explicit effect policy. Broader memory T51/T68, stream modes/T50, native scope,

@@ -373,3 +373,20 @@ permits private continuation; acknowledged uncertainty blocks adopting a native
 head. S4-02/T45/T49 remain open. Work continues on
 `codex/s4-02-state-update-ingress` with configured public updates/recovery,
 capacity/deadline/cancellation controls and restart-safe proof registration.
+
+## PR #92 integration — 2026-10-27 Asia/Dubai
+
+[PR #92](https://github.com/bassemZohdy/open-workflow-agent/pull/92) merged at
+`6ec11f169c8957333212445011de3f565c4b80e6`, preserving head
+`70be5637a4915530411bf0d6f6cf3018676ce3f6`. Its required exact-head check passed
+in [Docs run 40363063551](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40363063551).
+Local main was fast-forwarded and its push confirmed GitHub was up to date.
+
+Public root state-control source `db437d8` passes 420 combined cases and 22
+separate actual ADK cases per platform, plus 841 SDK-free cases, all with zero
+skips and 1,278 unchanged Linux inputs. Bounded configured updates/recovery,
+stateless restart proof inspection, cancellation draining and HTTP continuation
+are qualified source profiles; no published image or full S4-02 acceptance is
+claimed. Chronological task notes were consolidated without deleting scope or
+verification history. Work continues on `codex/s4-02-state-replay-policy` with
+immutable policy/commands and selected-checkpoint preflight before native forks.

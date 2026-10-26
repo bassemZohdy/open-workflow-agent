@@ -89,6 +89,7 @@ from .native_extensions import (
     native_channel_config,
     native_extension_requirements,
 )
+from .native_lineage_policy import NativeLineagePolicy, native_lineage_policies
 from .native_state_policy import NativeStateUpdatePolicy, native_state_update_policy
 from .observability import EventSink, NullEventSink, WorkflowEvent
 from .openapi_client import _OpenApiOutcomeUncertain
@@ -994,6 +995,8 @@ class WorkflowPlan:
     native_extensions: tuple[NativeExtensionRequirement, ...] = ()
     native_channels: NativeChannelConfig | None = None
     native_state_updates: NativeStateUpdatePolicy | None = None
+    native_state_replay: NativeLineagePolicy | None = None
+    native_state_branch: NativeLineagePolicy | None = None
 
     @property
     def source(self) -> dict[str, Any]:
@@ -1204,6 +1207,9 @@ def normalize_workflow(
     native_extensions = native_extension_requirements(workflow)
     native_channels = native_channel_config(workflow, native_extensions)
     state_updates = native_state_update_policy(workflow, native_extensions)
+    replay_policy, branch_policy = native_lineage_policies(
+        workflow, native_extensions, state_updates
+    )
     source_json = json.dumps(workflow, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return WorkflowPlan(
         namespace=str(document["namespace"]),
@@ -1222,6 +1228,8 @@ def normalize_workflow(
         native_extensions=native_extensions,
         native_channels=native_channels,
         native_state_updates=state_updates,
+        native_state_replay=replay_policy,
+        native_state_branch=branch_policy,
     )
 
 

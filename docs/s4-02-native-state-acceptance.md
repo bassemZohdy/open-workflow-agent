@@ -519,3 +519,11 @@ This qualifies the configured root set-data update and explicit recovery source
 profile, including public continuation and mounted configuration-only examples.
 It is not full repository/release qualification, a published image, broad
 replay/time travel or completion of S4-02/T45/T49.
+
+
+### Selected-checkpoint lineage preparation — 2026-10-27
+
+The next staged component is recorded in the [lineage acceptance record](s4-02-native-lineage-acceptance.md).
+It derives policies and validates a selected historical root and its referenced
+completed scopes without creating a child invocation or dispatching effects.
+Actual replay/branch execution and public capability admission remain open.

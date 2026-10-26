@@ -788,7 +788,14 @@ def create_app(
             "invocations.create", f"workflow:{plan.namespace}/{plan.name}@{plan.version}"
         )
         if any(
-            item.name in {"langgraph.streams", "langgraph.state.read", "langgraph.state.update"}
+            item.name
+            in {
+                "langgraph.streams",
+                "langgraph.state.read",
+                "langgraph.state.update",
+                "langgraph.state.replay",
+                "langgraph.state.branch",
+            }
             for item in plan.native_extensions
         ):
             await runtime_engine.compile(plan)

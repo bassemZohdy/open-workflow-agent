@@ -34,6 +34,11 @@ async def preflight(request, tmp_path):
     config = configuration()
     config.observability.native_streams = None
     config.execution_authorization.policy.rules[0].actions.extend(["state.update", "state.resolve"])
+    lineage = isinstance(request.param, tuple) and request.param[1] == "lineage"
+    if lineage:
+        config.execution_authorization.policy.rules[0].actions.extend(
+            ["state.replay", "state.branch"]
+        )
     if backend == "postgresql":
         datasource = os.getenv("OWA_TEST_POSTGRES_URL")
         if not datasource:
@@ -69,6 +74,15 @@ async def preflight(request, tmp_path):
             },
         }
     }
+    if lineage:
+        owa = source["document"]["metadata"]["owa"]
+        effect = request.param[2] if len(request.param) > 2 else "read_only"
+        for mode, field in (("replay", "replayEffectPolicy"), ("branch", "branchEffectPolicy")):
+            owa["nativeExtensions"].append({"name": "langgraph.state." + mode, "version": "1.0.0"})
+            owa["nativeExtensionData"]["langgraph.state." + mode + "@1.0.0"] = {
+                "authorizationPolicyRef": config.execution_authorization.id,
+                field: effect,
+            }
     if channels:
         owa = source["document"]["metadata"]["owa"]
         owa["nativeExtensions"].append({"name": "langgraph.channels", "version": "1.0.0"})
