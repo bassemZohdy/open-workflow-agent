@@ -30,6 +30,7 @@ from open_workflow_agent.native_memory_contract import (
 )
 from open_workflow_agent.native_memory_contract import references as memory_references
 from open_workflow_agent.native_state import CAPABILITY as STATE_READ_CAPABILITY
+from open_workflow_agent.native_state_policy import CAPABILITY as STATE_UPDATE_CAPABILITY
 from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.storage import is_postgresql_datasource
 from open_workflow_agent.timers import TimerSuspension
@@ -46,6 +47,7 @@ from .native import LANGGRAPH_AVAILABLE, NATIVE_SCOPE_STEP_LIMIT, LangGraphFunct
 if TYPE_CHECKING:
     from .native_memory_catalog import NativeMemoryCatalog
     from .native_state import LangGraphStateReader
+    from .state_control import LangGraphStateController
 
 
 class LangGraphWorkflowEngine(PortableWorkflowEngine):
@@ -63,6 +65,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         self.native = LangGraphFunctionalAdapter()
         self.native_memory: NativeMemoryCatalog | None = None
         self.state_reader: LangGraphStateReader | None = None
+        self.state_controller: LangGraphStateController | None = None
 
     async def initialize(self, services: Any) -> None:
         database_path = services.engine_database_path("langgraph", create_namespace=False)
@@ -112,6 +115,16 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             await installed.open()
             self.native_memory = installed
         try:
+            if services.config.native_state_updates is not None:
+                if not self.native.task_nodes_available:
+                    raise ConfigurationError(
+                        "native state updates require durable native LangGraph"
+                    )
+                from .state_control import LangGraphStateController
+
+                self.state_controller = LangGraphStateController(services, self)
+                await self.state_controller.open()
+                services.native_state_controller = self.state_controller
             if services.config.native_state is not None:
                 from .native_state import LangGraphStateReader
 
@@ -128,6 +141,9 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             try:
                 await super().shutdown()
             finally:
+                if self.state_controller is not None:
+                    await self.state_controller.close()
+                    self.state_controller = None
                 if services.native_state_reader is self.state_reader:
                     services.native_state_reader = None
                 self.state_reader = None
@@ -140,6 +156,9 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         try:
             await super().shutdown()
         finally:
+            if self.state_controller is not None:
+                await self.state_controller.close()
+                self.state_controller = None
             if self.state_reader is not None:
                 if self.services.native_state_reader is self.state_reader:
                     self.services.native_state_reader = None
@@ -238,6 +257,8 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
 
     def _verify_workflow_capabilities(self, plan: WorkflowPlan) -> None:
         super()._verify_workflow_capabilities(plan)
+        if plan.native_state_updates is not None and self.state_controller is not None:
+            self.state_controller.bind(plan)
         if not any(
             item.required and item.capability_id == LANGGRAPH_SEND
             for item in plan.native_extensions
@@ -281,6 +302,11 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             if self.native.task_nodes_available:
                 extensions += (STATE_READ_CAPABILITY,)
         streams = False
+        if services is not None and services.config.native_state_updates is not None:
+            if self.state_controller is None:
+                raise ConfigurationError("native state update installation is unavailable")
+            self.state_controller.verify(services.config.native_state_updates)
+            extensions += (STATE_UPDATE_CAPABILITY,)
         if services is not None and services.config.observability.native_streams is not None:
             if (
                 services.native_streams is None
@@ -452,6 +478,8 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 self._abandon_active(handle)
 
     async def _verify_resume_state(self, handle: ExecutionHandle, plan: WorkflowPlan) -> Any:
+        if self.state_controller is not None and plan.native_state_updates is not None:
+            self.state_controller.bind(plan)
         workflow_input = await super()._verify_resume_state(handle, plan)
         if LANGGRAPH_AVAILABLE and not self.native.task_nodes_available:
             raise InvocationStateError(

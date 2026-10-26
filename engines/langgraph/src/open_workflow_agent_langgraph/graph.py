@@ -364,22 +364,31 @@ class LangGraphScopeExecutor:
         return dispatch_with_native_send
 
     def checkpoint_config(self, reference: str, occurrence: int) -> dict[str, Any]:
+        return {
+            "configurable": {
+                "thread_id": self.scope_thread_id(
+                    self.invocation_id, self.plan.fingerprint, reference, occurrence
+                ),
+                "checkpoint_ns": "",
+            },
+            "recursion_limit": NATIVE_SCOPE_STEP_LIMIT,
+        }
+
+    @staticmethod
+    def scope_thread_id(
+        invocation_id: str, fingerprint: str, reference: str, occurrence: int
+    ) -> str:
         identity = json.dumps(
             [
                 "owa/native-scopes/v1",
-                self.invocation_id,
-                self.plan.fingerprint,
+                invocation_id,
+                fingerprint,
                 reference,
                 occurrence,
             ]
         )
         key = hashlib.sha256(identity.encode()).hexdigest()
-        return {
-            "configurable": {"thread_id": "owa-scope-v1:" + key, "checkpoint_ns": ""},
-            # The SDK default of 25 would incorrectly reject ordinary admitted
-            # workflow cycles. This is a native execution guard, not a DSL limit.
-            "recursion_limit": NATIVE_SCOPE_STEP_LIMIT,
-        }
+        return "owa-scope-v1:" + key
 
     async def original_input(self, expected_input: Any) -> Any:
         try:

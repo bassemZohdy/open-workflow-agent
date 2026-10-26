@@ -45,131 +45,28 @@ channels/routing, native memory, values/updates streams and state/history reads.
 Work now covers state-control recovery and admission; public state mutation,
 replay/time travel and broader component scopes remain open.
 
-Private native memory foundations, common write recovery, record expiry,
-namespace capacity/cleanup and provider lifecycle are merged through PRs
-#76–#80 (`56e68b0`, `df8c0d7`, `b344058`, `3187cfe`, `1a0b0a9`). Each required
-hosted Docs check passed before merging; the integration record retains exact
-heads and runs. SQLite is embedded by default; PostgreSQL remains optional.
+Current S4-02 component evidence is organized by feature rather than by candidate:
 
-Bound reads retain the first committed value or absence under original
-authority. Fenced SDK transactions retain native markers, while common
-prepared/dispatched/completed intents govern recovery. A matching native marker
-can finish interrupted common completion; missing proof never permits blind
-redispatch. Each invocation has ceilings of 64 read observations and 64 writes.
-Typed database-clock expiry and namespace record/serialized-value byte budgets
-bound fresh data. Authorized bounded physical cleanup retains recovery proof.
-Cross-worker setup exclusion, cancellation and process-exit lock recovery have
-finite evidence. Historical common payloads and markers are retained.
+| Component | Verified scope and evidence |
+| --- | --- |
+| Channels/routing | Bounded native channels/reducers, Command/Send; [acceptance](docs/s4-02-native-channels-acceptance.md) retains hosted repair gaps. |
+| Native memory | Configured filtered/semantic memory, owned recovery, expiry/capacity and lifecycle; [acceptance](docs/s4-02-native-memory-acceptance.md) retains broader T51/T68 gates. |
+| Streams | Public original-owner values/updates observation; [acceptance](docs/s4-02-native-streams-acceptance.md) retains broader modes/T50. |
+| State/history | Bounded original-owner projected views and opaque references; [guide](docs/native-state.md) and [acceptance](docs/s4-02-native-state-acceptance.md). |
+| State controls | Atomic updates, attestation and recovery merged through PR #91 (`0157f1d`); [configured public source profile](docs/native-state-updates.md) now has focused API/restart/cancellation checks. |
 
-Source `602449e` adds a private preauthorized resolution control. It atomically
-records completion from matching native proof or acknowledged abandonment with
-an explicitly unknown outcome. Decisions are immutable and never redispatch a
-write. It also repairs concurrent first-use checkpoint migrations. Its
-**523-case** memory/journal/ownership/lifecycle/resolution/native-checkpoint cohort
-passes on both Windows and frozen Linux with zero skips and 1,198 unchanged
-Linux source inputs; eight shared authority checks pass on each platform using
-fresh PostgreSQL databases. Earlier cohorts, failed attempts and focused qualification
-limits remain in the [native memory acceptance record](docs/s4-02-native-memory-acceptance.md).
-This is component evidence, not full repository/release qualification.
-
-Source `c062e9c` connects native memory to opt-in versioned workflow functions,
-bounded scalar-filter search and authenticated original-owner recovery controls.
-Configured bindings enable the exact capability; default installations continue
-to reject it. The [public profile and qualification](docs/s4-02-native-memory-acceptance.md#public-workflow-profile--2026-10-26)
-record the actual stores/platforms and retained failed attempts. The source also
-restores early unsupported-loop rejection and repairs concurrent cold ADK
-PostgreSQL schema setup. Terminal invocations remain immutable; no resolution
-control dispatches native writes. See the [configuration-only guide](docs/native-memory.md).
-Source `a781bc2` adds a separate declared local-model/index
-profile and `memory.search:1.1.0` while retaining filtered search's v1.0 contract.
-It fingerprints installed model/inference artifacts, commits native vectors with
-the value and marker, and retains common observations and resolution authority.
-Actual process-exit recovery, model drift rejection, physical vector cleanup
-and both HTTP resolution choices pass focused checks on SQLite/pgvector. The
-packaged configuration-only API example passes with the real local model,
-including SQLite with networking disabled. The combined suite passes 638 cases
-with zero skips on each of Windows and frozen Linux, with 1,222 unchanged Linux
-source inputs. Its frozen qualification is tracked
-in the [semantic acceptance section](docs/s4-02-native-memory-acceptance.md#semantic-workflow-profile--2026-10-26).
-Broader T51/T68, online reindexing, other model/index profiles, native streams,
-state updates, replay and time travel remain open under S4-02. No task or
-research inventory row is promoted by this finite component profile.
-
-PR #84 merges the private bounded native-stream observation transport and
-projection from the pinned SDK. See the [native-stream scope](docs/s4-02-native-streams-acceptance.md).
-Its frozen `baebb73` private component selection passes 106 cases on each of
-Windows and Docker/Linux with zero skips and 1,226 unchanged Linux inputs.
-The follow-on [public source profile](docs/s4-02-native-streams-acceptance.md#replacement-public-qualification--a597134)
-at `a597134` adds opt-in original-owner SSE, explicit required admission and
-bounded process-local retention. It repairs Windows worker-thread loop selection
-for fenced native writes while preserving early unsupported-loop rejection.
-The combined 318-case stream/native/ownership/write-recovery selection and 18
-separate ADK authority/fencing/rejection cases pass on each platform with zero
-skips; 1,237 frozen Linux inputs remain unchanged. The 242-pass SDK-free baseline
-adds 46 separately verified PostgreSQL cells, closing its initial skips.
-Other stream modes, full T50, native state updates, replay and time travel remain
-open; no task or research row is completed by this finite source profile.
-
-After PR #85, the [state/history profile](docs/s4-02-native-state-acceptance.md)
-adds original-owner root state/history views using read-only native snapshots
-and opaque references that survive process restart. These references are the
-prerequisite for compare-and-update/branch controls, not authority to execute
-them. Frozen source `f060349` passes 285 combined cases per platform on Windows
-and Docker/Linux, 20 separate ADK cases per platform and 312 SDK-free core/API
-cases, all with zero skips. All 1,250 frozen Linux inputs remain unchanged.
-Native writes, replay/time travel and full T45/T49 remain open; this finite
-component does not complete S4-02 or qualify a release.
-
-PR #86 is merged at `2649646`. The next private prerequisite groups native SDK
-state-update checkpoints, pending writes and proof in one owned transaction,
-with compare-and-update and repeat detection. Frozen `3bf27d7` passes 99 cases
-on each platform with zero skips and 1,253 unchanged Linux inputs. It is not
-registered or advertised; common management intent/recovery and declared update
-policy remain required in the [state-control record](docs/s4-02-native-state-acceptance.md).
-
-PR #87 is merged at `a4462d0`. The private common control-journal candidate adds
-original-owner request-bound permission, durable prepared/dispatched/completed
-intents and native-proof reconciliation without duplicate dispatch. Core retains
-only commands and opaque references. Focused common-store and real SDK bridge
-checks pass. Frozen `7572808` passes 174 combined cases per platform and 653
-SDK-free core/API cases with zero skips and 1,257 unchanged Linux inputs.
-Separate ADK authority/fencing/rejection checks pass 20 cases per platform with
-zero skips. Public workflow update semantics, admission, unknown-control
-resolution and continuation/branching remain open.
-
-PR #88 is merged at `2d972b0`. The next candidate compiles declared update
-policy/schema/attribution into the immutable plan and performs read-only
-preflight over actual OWA waiting state and completed-scope evidence. Original
-owner, permission, live ownership and exact current-base checks precede mutation.
-Frozen `8393d1e` passes 278 combined cases per platform and 755 SDK-free
-compiler/core/API cases, with zero skips and 1,262 unchanged Linux inputs.
-Separate ADK checks pass 22 cases per platform with zero skips. Required update
-admission stays closed until public ingress and atomic updated OWA receipt/snapshot
-attestation, resolution and continuation are implemented and verified.
-
-PR #89 is merged at `f931945`. The next private component applies declared data
-replacement through the pinned native SDK. Versioned common commands bind exact
-base and resulting projection digests; root receipt bindings retain ordered
-control identities. Atomic native verification preserves earlier task history,
-routes, counters and channels. Private continuation uses the changed value without
-repeating earlier tasks. Fresh-process prepared-command recovery, interrupted
-acknowledgement and completed-proof inspection pass on SQLite and PostgreSQL.
-Frozen `1a546e6` passes 428 combined cases and 22 separate actual ADK cases
-on each platform, plus 763 SDK-free core/API cases, with zero skips and 1,266
-unchanged Linux inputs. Public ingress, unknown-control resolution and full
-continuation/branch acceptance remain open. See the [attestation record](docs/s4-02-native-state-acceptance.md#attested-owa-data-updates-after-pr-89).
-
-PR #90 is merged at `1e83e14`. The next private component adds explicit,
-request-bound `state.resolve` decisions for dispatched state controls. Matching
-native proof permits completion; acknowledged abandonment records an unknown
-outcome and never establishes a safe head for continuation or another update.
-The resolution audit and control outcome commit together. Original/current
-permission, original owner and a live execution lease remain required. Focused
-common-store and actual OWA/fresh-process checks pass on SQLite/PostgreSQL.
-Frozen `0f9312f` passes 384 combined cases and 22 separate actual ADK cases per
-platform, plus 827 SDK-free core/API cases, all with zero skips and 1,268 unchanged
-Linux inputs. See the [resolution scope](docs/s4-02-native-state-acceptance.md#explicit-state-control-resolution-after-pr-90).
-Public configured ingress and broader continuation/branch gates remain open.
+Latest state-control source `0f9312f` passes 384 combined cases and 22 separate
+ADK cases on each of Windows and frozen Docker/Linux, plus 827 SDK-free core/API
+cases, all with zero skips and 1,268 unchanged Linux inputs. The exact-source
+records distinguish component evidence from full repository/release qualification.
+The [retained chronological notes](docs/validation-history/s4-02-component-notes.md)
+preserve earlier candidates and counts; the [integration record](docs/validation-history/main-integration-2026-10-25.md)
+records merged heads and required checks. No task or research inventory row is
+promoted by these finite components. Public updates/recovery, broader profiles,
+replay and time travel remain open under S4-02. The public update candidate adds
+explicit bootstrap/admission, bounded HTTP work, SDK cancellation draining,
+stateless restart proof inspection and configuration-only examples. Its acceptance
+record distinguishes the focused public profile from broader state-management work.
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior

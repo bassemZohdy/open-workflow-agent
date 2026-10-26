@@ -1358,6 +1358,31 @@ class NativeStateConfig(StrictModel):
         return self
 
 
+class NativeStateUpdateConfig(StrictModel):
+    """Opt-in state management with bounded native work and installed bindings."""
+
+    bounds: NativeStateConfig = Field(
+        default_factory=lambda: NativeStateConfig(max_concurrency=2, timeout_seconds=30)
+    )
+    max_workflow_bindings: int = Field(default=64, ge=1, le=256, strict=True)
+
+    def verify_view_budget(self, views: NativeStateConfig) -> None:
+        if (
+            views.max_native_bytes * views.max_concurrency
+            + self.bounds.max_native_bytes * self.bounds.max_concurrency * 4
+            > 268_435_456
+        ):
+            raise ValueError("combined native state decoding and update budget exceeds 256 MiB")
+
+    @model_validator(mode="after")
+    def validate_update_capacity(self) -> NativeStateUpdateConfig:
+        if self.bounds.max_response_bytes < 1024:
+            raise ValueError("native state update responses require at least 1024 bytes")
+        if self.bounds.max_native_bytes * self.bounds.max_concurrency * 4 > 268_435_456:
+            raise ValueError("native state update packet budget exceeds 256 MiB")
+        return self
+
+
 class RuntimeConfig(StrictModel):
     agent: AgentConfig = Field(default_factory=AgentConfig)
     model: ModelConfig = Field(default_factory=ModelConfig)
@@ -1382,16 +1407,23 @@ class RuntimeConfig(StrictModel):
     execution_timing: ExecutionTimingConfig = Field(default_factory=ExecutionTimingConfig)
     child_workflows: ChildWorkflowConfig = Field(default_factory=ChildWorkflowConfig)
     native_state: NativeStateConfig | None = None
+    native_state_updates: NativeStateUpdateConfig | None = None
 
     @model_serializer(mode="wrap")
     def serialized_runtime(self, handler: SerializerFunctionWrapHandler) -> Any:
         value = handler(self)
         if self.native_state is None:
             value.pop("native_state", None)
+        if self.native_state_updates is None:
+            value.pop("native_state_updates", None)
         return value
 
     @model_validator(mode="after")
     def validate_native_state_security(self) -> RuntimeConfig:
+        if self.native_state_updates is not None and self.native_state is None:
+            raise ValueError("native state updates require configured native state views")
+        if self.native_state_updates is not None and self.native_state is not None:
+            self.native_state_updates.verify_view_budget(self.native_state)
         if self.native_state is not None and (
             not self.server.api_security_profile or not self.execution_authorization.enabled
         ):

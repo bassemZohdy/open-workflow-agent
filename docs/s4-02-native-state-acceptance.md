@@ -428,3 +428,62 @@ source files, Markdown links and consolidation tracking checks pass. Final
 documentation changes no frozen runtime/test/example inputs. This is private
 component qualification, not public mutation, full repository or release
 qualification; S4-02/T45/T49 remain unchecked.
+
+### Configured public state controls after PR #91
+
+The [source guide](native-state-updates.md) and mounted
+[bootstrap](../examples/native-state-updates.yaml)/[OWS](../examples/native-state-updates-workflow.yaml)
+example select the exact opt-in update profile with authenticated ingress and
+original execution authorization. Required unsupported versions still fail
+before API invocation creation. Default configuration serialization omits the
+new optional block; unconfigured/native-unavailable/other engines do not gain
+the capability. Only a valid opened installation advertises its separate
+`nativeStateUpdates` feature. The official schema and internal-plan boundary
+are unchanged.
+
+The public POST endpoint accepts a current opaque base, canonical allowed task
+and finite bounded replacement data. Its idempotency key is bound to invocation
+and profile. Retained commands reject changed requests, rebuild only identical
+prepared preflight, complete interrupted acknowledgement from proof, and never
+blindly redispatch an unknown control. Responses expose only common operation
+IDs, request digests and opaque references. Known control errors include recovery
+selectors. Metadata GET explicitly does not attest a native outcome. Resolution
+retains the verified private semantics; terminal replay acknowledges only an
+identical committed outcome and does not acquire another execution generation.
+
+A non-queued bounded pool governs controls. Deadlines/repeated cancellation drain
+native work before releasing its slot and execution lease. Logical read and
+update packet budgets share a 256 MiB ceiling; SQL/native cleanup can exceed the
+nominal request deadline. Executable workflow bindings are reference-counted,
+bounded while active and released afterward. A trusted plan-free proof reader
+supports restarted and child/tree audit without retaining plans or authorizing
+new SDK writes. The existing native thread identity formula is shared unchanged.
+Configured startup alone prepares native proof storage. Failed startup and
+shutdown unregister the controller; active writes drain through the existing
+fenced SDK worker.
+
+Focused actual SQLite/PostgreSQL API checks cover owner isolation, schema/task/
+base validation, idempotency conflicts and terminal reuse, state reads after
+updates, HTTP continuation, both resolution choices, withdrawn permission/
+configuration and fresh-process update reuse/resume. Deadline and repeated
+cancellation retain a full pool slot until cleanup. A real held SDK transaction
+proves cancellation also retains execution ownership and that a later repeat
+finishes without another native write. Both packaged YAML files run through
+ordinary app startup/invoke/update/read/resume with zero model calls.
+
+Development reports remain under `tmp/merge-20261025/state-control-*.xml`.
+The first API rejection assertion omitted the existing schema-error HTTP 400;
+the runtime contract was preserved. A development selection stopped after lint
+identified missing test imports. The first packaged-example attempt used
+`invocation:*`, which is not a resource pattern in the existing exact-or-`*`
+policy grammar; the example now grants only the listed actions using `*` while
+the independent original-owner checks remain enforced. Earlier failures and
+partial/skipped core selections are retained and do not count as qualification.
+
+The cleanup moves 230 chronological backlog/project lines into the
+[retained component notes](validation-history/s4-02-component-notes.md), preserving
+their evidence and explicit gaps. Stale remote-tracking references were pruned;
+the required PostgreSQL components and acceptance evidence remain. Task counts
+stay 31/37 verified, six open, none deferred. Broader memory/stream/native profiles,
+replay/time travel and full S4-02/T45/T49 remain open; no research row or release
+image is promoted by this source profile.

@@ -8,6 +8,7 @@ from dataclasses import dataclass, replace
 from importlib import import_module
 from typing import Any, cast
 
+from open_workflow_agent.config import NativeStateConfig
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.state_updates import (
     StateUpdateProof,
@@ -108,9 +109,15 @@ def verify_projection_sync(
 class AttestedStateControls(LangGraphStateControls):
     """Stage immutable preflight results; only an installed coordinator dispatches them."""
 
-    def __init__(self, services: RuntimeServices, plan: WorkflowPlan) -> None:
+    def __init__(
+        self,
+        services: RuntimeServices,
+        plan: WorkflowPlan,
+        *,
+        bounds: NativeStateConfig | None = None,
+    ) -> None:
         self.proposals: dict[str, NativeStateTransition] = {}
-        super().__init__(services, plan, self._update_owned)
+        super().__init__(services, plan, self._update_owned, bounds=bounds)
 
     def stage(self, preflight: NativeStatePreflight) -> NativeStateTransition:
         self._verify(preflight.request)

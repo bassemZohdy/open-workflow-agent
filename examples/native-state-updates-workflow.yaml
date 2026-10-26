@@ -1,0 +1,36 @@
+document:
+  dsl: '1.0.3'
+  namespace: examples
+  name: native-state-updates
+  version: '1.0.0'
+  title: Update declared waiting workflow data
+  metadata:
+    owa:
+      nativeExtensions:
+        - name: langgraph.state.read
+          version: '1.0.0'
+          required: true
+        - name: langgraph.state.update
+          version: '1.0.0'
+          required: true
+      nativeExtensionData:
+        langgraph.state.update@1.0.0:
+          allowedTaskRefs: ['/do/0']
+          authorizationPolicyRef: native-state-update-example
+          updateSchema:
+            type: object
+            properties:
+              value:
+                type: integer
+            required: [value]
+            additionalProperties: false
+do:
+  - first:
+      set:
+        value: 1
+  - pause:
+      wait:
+        seconds: 300
+  - last:
+      set:
+        value: '${ .value + 1 }'

@@ -356,3 +356,20 @@ to versioned common/native evidence. Private continuation and fresh-process
 recovery pass; public mutation admission stays closed. S4-02/T45/T49 remain open.
 Work continues on `codex/s4-02-state-control-resolution` with authorized immutable
 completion/unknown-outcome decisions, followed by public configured ingress.
+
+## PR #91 integration — 2026-10-26 Asia/Dubai
+
+[PR #91](https://github.com/bassemZohdy/open-workflow-agent/pull/91) merged at
+`0157f1dc60e1f6c0d0502950523a8c34ba8cf4c0`, preserving head
+`eff9ec1e539c62574127a725de7ff96d24f9de1b`. Its required exact-head check passed
+in [Docs run 40347590988](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40347590988).
+Local main was fast-forwarded and its push confirmed GitHub was up to date.
+
+Private resolution source `0f9312f` passes 384 combined cases and 22 separate
+actual ADK cases per platform, plus 827 SDK-free cases, all with zero skips and
+1,268 unchanged Linux inputs. Authorized decisions atomically retain an audit
+and the control outcome without native redispatch. Proof-backed completion
+permits private continuation; acknowledged uncertainty blocks adopting a native
+head. S4-02/T45/T49 remain open. Work continues on
+`codex/s4-02-state-update-ingress` with configured public updates/recovery,
+capacity/deadline/cancellation controls and restart-safe proof registration.
