@@ -212,3 +212,25 @@ verified, six open, none deferred; no protections or automation flags changed.
 Work continues from this main commit on `codex/s4-02-semantic-search` with the
 declared local-model/index contract, native vector transactions and versioned
 semantic queries under the same original authority and common recovery proof.
+
+## PR #83 integration — 2026-10-26 Asia/Dubai
+
+[PR #83](https://github.com/bassemZohdy/open-workflow-agent/pull/83) merged at
+`872d424efc966303561cc10fef8ce17603451964`, preserving head
+`b60551d829d079996c582fd885abd06967991593`. The required exact-head check passed
+in [Docs run 40258852861](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40258852861).
+Local main was fast-forwarded and its push confirmed GitHub was up to date.
+
+Runtime `a781bc2` passes 638 combined memory/native-checkpoint cases on each of
+Windows and frozen Docker/Linux with zero skips and 1,222 unchanged Linux
+source inputs. Separate fresh-database authority checks pass eight actual
+LangGraph and eight actual ADK cases on each platform. The real packaged-model
+HTTP example passes on SQLite with networking disabled and on pgvector, with
+no external model calls. Core/API checks add 287 passes and 91 expected optional
+environment skips. Earlier failed attempts remain in the acceptance record.
+
+This enables only the declared fixed local-model/exact-index semantic profile;
+broader memory gates and S4-02 remain open. Counts remain 31/37 verified, six
+open and none deferred. No protections, automation flags or published images
+changed. Work continues on `codex/s4-02-native-streams` with private bounded
+observation transport and safe projection from the actual pinned SDK stream.

@@ -94,6 +94,13 @@ Broader T51/T68, online reindexing, other model/index profiles, native streams,
 state updates, replay and time travel remain open under S4-02. No task or
 research inventory row is promoted by this finite component profile.
 
+After PR #83, the next S4-02 work is a private bounded native-stream observation
+transport and projection from the pinned SDK. Public streaming stays disabled;
+ownership, transport, restart and capability admission gates remain open. See
+the [native-stream scope](docs/s4-02-native-streams-acceptance.md).
+Its frozen `baebb73` private component selection passes 106 cases on each of
+Windows and Docker/Linux with zero skips and 1,226 unchanged Linux inputs.
+
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior
 remain missing. S4-04 has a new 13-case actual native outcome comparison with

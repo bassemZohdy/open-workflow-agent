@@ -35,6 +35,7 @@ from open_workflow_agent.native_extensions import (
     NATIVE_CHANNEL_VARIABLE,
     NativeChannelConfig,
 )
+from open_workflow_agent.native_streams import NativeStreamLog, NativeStreamMode
 from open_workflow_agent.timers import TimerSuspension
 from open_workflow_agent.timing import root_clock_identity
 from open_workflow_agent.workflow import (
@@ -251,6 +252,7 @@ class LangGraphScopeExecutor:
         timer_wakes: dict[str, dict[str, Any]] | None = None,
         child_wakes: dict[str, dict[str, Any]] | None = None,
         child_waits: Any = None,
+        stream_observer: NativeStreamLog | None = None,
     ) -> None:
         self.plan = plan
         self.saver = saver
@@ -260,6 +262,7 @@ class LangGraphScopeExecutor:
         self.timer_wakes = timer_wakes
         self.child_wakes = child_wakes
         self.child_waits = child_waits
+        self.stream_observer = stream_observer
         if child_wakes is not None:
             validate_expression_data(child_wakes)
             if not isinstance(child_wakes, dict) or any(
@@ -1379,7 +1382,7 @@ class LangGraphScopeExecutor:
                         previous_resumes,
                     )
         try:
-            result = await graph.ainvoke(native_input, config=config, durability="sync")
+            result = await self._invoke_scope_graph(graph, native_input, config, scope)
         except Exception as exc:
             # A catch receives the last successful child task output, as it does
             # in the common interpreter. Failed-node partial mutations are local.
@@ -1402,3 +1405,57 @@ class LangGraphScopeExecutor:
         self._read(cast(_GraphState, result), state, prefix)
         self._record_completed_scope(cast(_GraphState, result), prefix, occurrence)
         state.scope_exit = False
+
+    async def _invoke_scope_graph(
+        self, graph: Any, native_input: Any, config: Any, scope: ScopePlan
+    ) -> Any:
+        if self.stream_observer is None:
+            return await graph.ainvoke(native_input, config=config, durability="sync")
+        # SDK streaming remains the executing driver; no second invocation or
+        # competing reader may dispatch nodes to manufacture observations.
+        result: Any = None
+        async for mode, payload in graph.astream(
+            native_input,
+            config=config,
+            durability="sync",
+            stream_mode=["values", "updates"],
+            version="v1",
+        ):
+            if mode == "values":
+                result = payload
+            self._observe_scope_event(mode, payload, scope)
+        return result
+
+    def _observe_scope_event(self, mode: NativeStreamMode, payload: Any, scope: ScopePlan) -> None:
+        observer = self.stream_observer
+        if observer is None:
+            return
+        try:
+            if mode == "values":
+                data = _decode_snapshot(payload["snapshot"])["data"]
+                reference = None
+            elif mode == "updates":
+                if isinstance(payload, dict) and set(payload) == {"__interrupt__"}:
+                    return
+                if not isinstance(payload, dict) or len(payload) != 1:
+                    raise ValueError("unsupported native update projection")
+                node, native = next(iter(payload.items()))
+                task = next((task for task in scope.tasks if _node_name(task) == node), None)
+                if task is None:
+                    raise ValueError("unsupported native node projection")
+                data = _decode_snapshot(native["snapshot"])["data"]
+                reference = task.reference
+            else:
+                raise ValueError("unsupported native stream mode")
+        except (KeyError, TypeError, ValueError, OwaError):
+            observer.fail("projection_failure")
+            return
+        try:
+            # Only task data and public OWS references cross this boundary.
+            # Receipts, routing, counters, variables, context, checkpoint/thread
+            # IDs, native interrupts and the internal plan remain private.
+            observer.append(mode, data, scope=scope.reference, task_reference=reference)
+        except (ValueError, OwaError):
+            observer.fail("frame_limit")
+        except RuntimeError:
+            pass  # A closed observation never stops or cancels execution.
