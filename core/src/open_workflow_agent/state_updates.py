@@ -29,6 +29,7 @@ from .persistence import ExecutionHandle, InvocationStore, _verify_identity
 from .storage import StorageConnection
 
 PROFILE = "owa/state-update/v1"
+ATTESTED_PROFILE = "owa/state-update/v2"
 PREFIX = "policy:state-update:v1:"
 OWNER = "state-update:v1"
 TABLE = "state_update_intents_v1"
@@ -70,8 +71,28 @@ class StateUpdateRequest:
     values_json: str
     policy_digest: str
     storage_identity: str
+    base_digest: str | None = None
+    projection_digest: str | None = None
+    previous_controls: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
+        if (self.base_digest is None) != (self.projection_digest is None) or any(
+            value is not None and (type(value) is not str or not _HEX.fullmatch(value))
+            for value in (self.base_digest, self.projection_digest)
+        ):
+            raise state_update_error("attestation_invalid")
+        if (
+            type(self.previous_controls) is not tuple
+            or len(self.previous_controls) > 63
+            or self.request_id in self.previous_controls
+            or any(
+                type(value) is not str or not _HEX.fullmatch(value)
+                for value in self.previous_controls
+            )
+            or len(set(self.previous_controls)) != len(self.previous_controls)
+            or (self.projection_digest is None and self.previous_controls)
+        ):
+            raise state_update_error("control_lineage_invalid")
         if any(
             type(value) is not str or not _HEX.fullmatch(value)
             for value in (
@@ -121,21 +142,52 @@ class StateUpdateRequest:
 
     @property
     def descriptor(self) -> dict[str, Any]:
-        return {"profile": PROFILE, **asdict(self)}
+        value = asdict(self)
+        if self.projection_digest is None:
+            value.pop("base_digest")
+            value.pop("projection_digest")
+            value.pop("previous_controls")
+        else:
+            value["previous_controls"] = list(self.previous_controls)
+        return {"profile": self.profile, **value}
+
+    @property
+    def profile(self) -> str:
+        return PROFILE if self.projection_digest is None else ATTESTED_PROFILE
 
     @classmethod
     def from_descriptor(cls, value: Any) -> StateUpdateRequest:
+        if not isinstance(value, dict) or type(value.get("profile")) is not str:
+            raise state_update_error("request_invalid")
+        legacy = set(cls.__dataclass_fields__) - {
+            "base_digest",
+            "projection_digest",
+            "previous_controls",
+        }
         if (
             type(value) is not dict
-            or value.get("profile") != PROFILE
-            or set(value) != {"profile", *cls.__dataclass_fields__}
+            or (value.get("profile") == PROFILE and set(value) != {"profile", *legacy})
+            or (
+                value.get("profile") == ATTESTED_PROFILE
+                and (
+                    set(value) != {"profile", *cls.__dataclass_fields__}
+                    or value.get("base_digest") is None
+                    or value.get("projection_digest") is None
+                )
+            )
+            or value.get("profile") not in {PROFILE, ATTESTED_PROFILE}
         ):
             raise state_update_error("request_invalid")
-        return cls(**{key: item for key, item in value.items() if key != "profile"})
+        fields = {key: item for key, item in value.items() if key != "profile"}
+        if value["profile"] == ATTESTED_PROFILE:
+            if type(fields["previous_controls"]) is not list:
+                raise state_update_error("control_lineage_invalid")
+            fields["previous_controls"] = tuple(fields["previous_controls"])
+        return cls(**fields)
 
     @property
     def request_digest(self) -> str:
-        return effect_request_digest(PROFILE, self.descriptor)
+        return effect_request_digest(self.profile, self.descriptor)
 
     @property
     def values(self) -> dict[str, Any]:
@@ -213,7 +265,7 @@ def _receipt(request: StateUpdateRequest, proof: StateUpdateProof | None) -> Eff
         request.request_digest,
         OWNER,
         status="pending" if proof is None else "completed",
-        output=None if proof is None else {"profile": PROFILE, **asdict(proof)},
+        output=None if proof is None else {"profile": request.profile, **asdict(proof)},
     )
 
 
@@ -353,6 +405,50 @@ class StateUpdates:
 
     def verify(self, identity: EffectIdentity, receipt: EffectReceipt) -> None:
         self._load(identity, receipt)
+
+    def completed_request(self, identity: EffectIdentity) -> StateUpdateRequest:
+        receipt = self.journal.get(identity)
+        if receipt is None or receipt.status != "completed":
+            raise state_update_error("control_acknowledgement_required")
+        request, phase = self._load(identity, receipt)
+        if phase != "completed" or request.projection_digest is None:
+            raise state_update_error("control_attestation_required")
+        return request
+
+    def attested_ids(
+        self, invocation_id: str, fingerprint: str, *, prepared_request_id: str | None = None
+    ) -> set[str]:
+        """All version-two control occurrences, including unresolved dispatches."""
+        if not _exists(self.connection):
+            return set()
+        rows = self.connection.execute(
+            "SELECT identity,"
+            + _bounded_column(self.connection, "request_json", 131_072)
+            + f" FROM {TABLE} WHERE invocation_id=? LIMIT ?",
+            (invocation_id, MAX_UPDATES + 1),
+        ).fetchall()
+        if len(rows) > MAX_UPDATES:
+            raise state_update_error("update_limit")
+        result = set()
+        for key, encoded in rows:
+            request = StateUpdateRequest.from_descriptor(
+                json.loads(encoded, object_pairs_hook=_unique)
+            )
+            if request.identity.key != key or request.workflow_fingerprint != fingerprint:
+                raise state_update_error("identity_missing")
+            if request.projection_digest is not None:
+                if request.request_id == prepared_request_id:
+                    receipt = self.journal.get(request.identity)
+                    if receipt is None:
+                        raise state_update_error("intent_missing")
+                    _, phase = self._load(request.identity, receipt)
+                    if phase == "prepared":
+                        # Only the same not-yet-dispatched command may rebuild
+                        # its original preflight after process restart.
+                        continue
+                self.completed_request(request.identity)
+                result.add(request.request_id)
+        return result
 
     def verify_recovery(self, identity: EffectIdentity, receipt: EffectReceipt) -> None:
         request, phase = self._load(identity, receipt)

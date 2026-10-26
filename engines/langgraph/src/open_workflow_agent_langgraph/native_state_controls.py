@@ -147,6 +147,17 @@ class LangGraphStateControls:
                 ).fetchone()
                 if parent is None or parent[0] != native.request.base_checkpoint:
                     raise state_update_error("native_lineage_changed")
+                if request.projection_digest is not None:
+                    from .native_state_transition import verify_projection_sync
+
+                    verify_projection_sync(
+                        connection,
+                        postgres,
+                        thread,
+                        native.result_checkpoint,
+                        request,
+                        self.bounds.max_native_bytes,
+                    )
                 proof = self._common_proof(request, native)
                 proof.verify(request)
                 return proof
@@ -190,7 +201,37 @@ class LangGraphStateControls:
             await guard_checkpoint(saver, thread, base, self.bounds.max_native_bytes, postgres)
 
         async def update(saver: Any, config: dict[str, Any]) -> dict[str, Any]:
-            return await self.updater(saver, config, request)
+            if request.projection_digest is not None:
+                import hashlib
+
+                from .graph import _json_identity
+
+                await guard_checkpoint(saver, thread, base, self.bounds.max_native_bytes, postgres)
+                original = await saver.aget_tuple(config)
+                if (
+                    original is None
+                    or hashlib.sha256(
+                        _json_identity(original.checkpoint["channel_values"]).encode()
+                    ).hexdigest()
+                    != request.base_digest
+                ):
+                    raise state_update_error("native_base_changed")
+            result = await self.updater(saver, config, request)
+            if request.projection_digest is not None:
+                from .native_state_transition import projection_digest
+
+                result_key = result["configurable"]["checkpoint_id"]
+                await guard_checkpoint(
+                    saver, thread, result_key, self.bounds.max_native_bytes, postgres
+                )
+                written = await saver.aget_tuple(result)
+                if (
+                    written is None
+                    or projection_digest(written.checkpoint["channel_values"])
+                    != request.projection_digest
+                ):
+                    raise state_update_error("native_attestation_changed")
+            return result
 
         native = await apply_native_state_update(
             self.database,

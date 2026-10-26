@@ -103,3 +103,9 @@ advertised; a required update workflow still fails engine admission. Private
 read-only preflight now checks actual OWA suspended state and scope evidence.
 It creates no update or management intent. See the
 [policy and preflight scope](s4-02-native-state-acceptance.md#declared-update-policy-and-owa-preflight-after-pr-88).
+
+A private SDK update component now binds replacement data to the exact base,
+resulting OWA projection and ordered common control history. Focused continuation
+and fresh-process recovery checks preserve earlier task visits and native
+channels. Public mutation remains unavailable. See the
+[attestation scope and remaining gates](s4-02-native-state-acceptance.md#attested-owa-data-updates-after-pr-89).

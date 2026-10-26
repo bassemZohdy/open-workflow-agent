@@ -147,6 +147,16 @@ Separate ADK checks pass 22 cases per platform with zero skips. Required update
 admission stays closed until public ingress and atomic updated OWA receipt/snapshot
 attestation, resolution and continuation are implemented and verified.
 
+PR #89 is merged at `f931945`. The next private component applies declared data
+replacement through the pinned native SDK. Versioned common commands bind exact
+base and resulting projection digests; root receipt bindings retain ordered
+control identities. Atomic native verification preserves earlier task history,
+routes, counters and channels. Private continuation uses the changed value without
+repeating earlier tasks. Fresh-process prepared-command recovery, interrupted
+acknowledgement and completed-proof inspection pass on SQLite and PostgreSQL.
+Public ingress, unknown-control resolution and full continuation/branch acceptance
+remain open. See the [attestation record](docs/s4-02-native-state-acceptance.md#attested-owa-data-updates-after-pr-89).
+
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior
 remain missing. S4-04 has a new 13-case actual native outcome comparison with

@@ -292,6 +292,7 @@ class LangGraphScopeExecutor:
                 raise InvocationStateError("native timer wake map is inconsistent")
         self.effect_journal = effect_journal
         self.receipts: dict[str, ReceiptDependency] = {}
+        self.state_controls: tuple[str, ...] = ()
         self.completed_scopes: dict[tuple[str, int], str] = {}
         self._required_scopes: dict[tuple[str, int], str] = {}
         self._resume_interrupts: dict[tuple[str, int, str], tuple[Any, list[Any]]] = {}
@@ -389,6 +390,7 @@ class LangGraphScopeExecutor:
                 raise ValueError("checkpoint is absent")
             channels = checkpoint.checkpoint["channel_values"]
             value, _ = self._validate_native(channels, "/do", 1)
+            self.verify_current_controls(channels)
             stored_input = value["variables"]["workflow"]["input"]
             validate_expression_data(stored_input)
             if json.dumps(stored_input, sort_keys=True, allow_nan=False) != json.dumps(
@@ -866,6 +868,8 @@ class LangGraphScopeExecutor:
         ]
         if "native_channels" in native:
             value.insert(3, native["native_channels"])
+        if bindings.get("version") == 3:
+            value.append(bindings["controls"])
         return hashlib.sha256(_json_identity(value).encode()).hexdigest()
 
     def _validate_receipts(
@@ -874,13 +878,19 @@ class LangGraphScopeExecutor:
         bindings = _native_json(native["receipt_bindings"])
         if (
             not isinstance(bindings, dict)
-            or set(bindings) != {"version", "state_digest", "receipts", "scopes"}
+            or set(bindings)
+            != (
+                {"version", "state_digest", "receipts", "scopes"}
+                | ({"controls"} if bindings.get("version") == 3 else set())
+            )
             or type(bindings["version"]) is not int
-            or bindings["version"] != 2
+            or bindings["version"] not in {2, 3}
             or bindings["state_digest"] != self._state_digest(native)
             or not isinstance(bindings["receipts"], list)
         ):
             raise ValueError("native receipt bindings disagree with saved state")
+        if bindings["version"] == 3:
+            self._validate_state_controls(bindings["controls"], reference, occurrence)
         seen: set[str] = set()
         for value in bindings["receipts"]:
             dependency = ReceiptDependency.from_value(value)
@@ -938,6 +948,66 @@ class LangGraphScopeExecutor:
                 raise ValueError("native completed scope dependencies disagree")
             self._required_scopes[key] = digest
             self.completed_scopes[key] = digest
+
+    def _validate_state_controls(self, controls: Any, reference: str, occurrence: int) -> None:
+        from open_workflow_agent.state_updates import PREFIX
+
+        if (
+            reference != "/do"
+            or occurrence != 1
+            or not isinstance(controls, list)
+            or not 1 <= len(controls) <= 64
+            or any(
+                type(value) is not str or not re.fullmatch(r"[a-f0-9]{64}", value)
+                for value in controls
+            )
+            or len(set(controls)) != len(controls)
+            or self.effect_journal is None
+            or self.effect_journal._state_updates is None
+            or self.plan.native_state_updates is None
+        ):
+            raise ValueError("native state control lineage is unavailable")
+        coordinator = self.effect_journal._state_updates
+        for index, control in enumerate(controls):
+            identity = EffectIdentity(
+                self.invocation_id, self.plan.fingerprint, "/do", (("/do", 1),), PREFIX + control
+            )
+            request = coordinator.completed_request(identity)
+            if (
+                request.previous_controls != tuple(controls[:index])
+                or request.policy_digest != self.plan.native_state_updates.digest
+            ):
+                raise ValueError("native state control lineage changed")
+            self.plan.native_state_updates.validate(
+                request.task_reference,
+                request.values,
+                coordinator.authorizations.config_provider().id,
+            )
+        self.state_controls = tuple(controls)
+
+    def verify_current_controls(
+        self, native: dict[str, Any], *, prepared_request_id: str | None = None
+    ) -> None:
+        bindings = _native_json(native["receipt_bindings"])
+        controls = bindings.get("controls", []) if bindings.get("version") == 3 else []
+        coordinator = (
+            self.effect_journal._state_updates if self.effect_journal is not None else None
+        )
+        if coordinator is None and self.effect_journal is not None:
+            from open_workflow_agent.state_updates import verify_state_update_index
+
+            verify_state_update_index(
+                self.effect_journal.connection, self.invocation_id, self.plan.fingerprint, set()
+            )
+        expected = (
+            coordinator.attested_ids(
+                self.invocation_id, self.plan.fingerprint, prepared_request_id=prepared_request_id
+            )
+            if coordinator
+            else set()
+        )
+        if set(controls) != expected:
+            raise InvocationStateError("native state control history is missing or changed")
 
     def _validate_native(
         self, native: Any, reference: str, occurrence: int
@@ -1130,6 +1200,10 @@ class LangGraphScopeExecutor:
             ],
         }
         native["receipt_bindings"] = json.dumps(bindings, allow_nan=False)
+        if reference == "/do" and self.state_controls:
+            bindings["version"] = 3
+            bindings["controls"] = list(self.state_controls)
+            native["receipt_bindings"] = json.dumps(bindings, allow_nan=False)
         digest_native = dict(native)
         if self.native_channels is not None:
             digest_native["native_channels"] = projected_channels

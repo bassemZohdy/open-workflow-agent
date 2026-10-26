@@ -300,6 +300,12 @@ treated as a deferred task or as additional feature completion.
   1,262 unchanged Linux inputs. Update admission
   remains closed; continue public ingress, atomic OWA snapshot/receipt
   attestation, unknown-control resolution and continuation/branching.
+  PR #89 is merged. The next private component binds exact base/result digests
+  and ordered control identities to SDK-updated OWA data and common receipts.
+  Focused SQLite/PostgreSQL continuation and fresh-process recovery checks pass;
+  previous visits, routes, counters and native channels remain intact. Public
+  ingress, unknown-control resolution and full continuation/branch acceptance
+  remain required. See the [attestation scope](docs/s4-02-native-state-acceptance.md#attested-owa-data-updates-after-pr-89).
 
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
   The optional TypeScript package admits official OWS definitions and executes
