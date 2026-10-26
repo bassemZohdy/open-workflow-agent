@@ -295,7 +295,9 @@ treated as a deferred task or as additional feature completion.
   integration, unknown-control resolution and continuation/branch gates open.
   PR #88 is merged; compiled declared update policy and read-only OWA native
   preflight now validate schema/attribution, owner/lease, exact current base and
-  retained completed-scope evidence. Qualification is pending. Update admission
+  retained completed-scope evidence. Frozen `8393d1e` passes 278 combined cases
+  per platform and 755 SDK-free compiler/core/API cases with zero skips and
+  1,262 unchanged Linux inputs. Update admission
   remains closed; continue public ingress, atomic OWA snapshot/receipt
   attestation, unknown-control resolution and continuation/branching.
 
