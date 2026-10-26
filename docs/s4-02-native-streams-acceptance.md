@@ -111,6 +111,37 @@ case selected a sufficient budget; the fresh worker exposed the Proactor error;
 and the example initially used an unsupported prefix resource pattern. Those
 fixtures/example are corrected without weakening authorization or replay rules.
 
+### Frozen public qualification — `e766fab`
+
+Runtime and tests are frozen at
+`e766fab59f71b32a472a5ac44d00054163188b2e`. The combined stream, ownership,
+journal, native checkpoint and write-recovery selections are running on
+Windows and read-only Docker/Linux with separate fresh ordinary PostgreSQL and
+pgvector databases. Linux reuses the private profile's locked dependency image;
+the vector service remains an optional test component. No package is installed
+at container startup. Manifests, logs and XML are retained under
+`tmp/merge-20261025/e766fab/`.
+
+| Selection | Windows | Frozen Docker/Linux |
+| --- | --- | --- |
+| Combined stream/ownership/native-write/checkpoint regression | Intentionally stopped after the confirmed Linux failure; partial log retained | 317 passed, one startup-order failure, zero skips |
+| Separate actual ADK authority/fencing/native-stream rejection | 18 passed, zero skips | 18 passed, zero skips |
+| SDK-free core/API/configuration/recovery/tracking | 242 passed, 46 expected optional-environment skips | Not selected |
+
+The first Windows ADK helper selected a nonexistent `sqlite` extra and ran no
+tests; its terminal output is retained as `adk-contract-windows-attempt1.log`.
+The corrected helper selects ADK's own `native`/`postgres` extras and a fresh
+database. It does not install LangGraph dependencies into the ADK environment.
+
+The combined Linux run revealed that the new stream configuration check preceded
+the established unsupported-Windows-loop preflight. Its minimal startup probe
+therefore failed with missing configuration instead of the intended early
+`unsupported_event_loop` error. Windows' slower duplicate selection was stopped
+only after this specific failure was verified; it is not counted as success.
+The guard order is restored, preserving rejection before service setup. All
+seven actual adapter/startup cases pass the focused correction check. Final
+qualification must use the replacement frozen commit and new databases.
+
 ## Remaining implementation and verification
 
 The qualified private source above advertises no public stream capability.
