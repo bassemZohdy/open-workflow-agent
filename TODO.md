@@ -221,10 +221,13 @@ treated as a deferred task or as additional feature completion.
   are merged through PR #91 (`0157f1d`). Frozen `0f9312f` passes 384 combined
   cases and 22 separate ADK cases per platform, plus 827 SDK-free cases, with
   zero skips and 1,268 unchanged Linux inputs.
-  The configured original-owner public update/recovery candidate now covers
+  The configured original-owner public update/recovery profile now covers
   bounded capacity/deadlines, cancellation draining, restart-safe proof inspection
   and HTTP continuation. See the [profile guide](docs/native-state-updates.md)
   and its source-matched qualification in the state acceptance record.
+  Frozen `db437d8` passes 420 combined cases and 22 separate ADK cases per
+  platform, plus 841 SDK-free cases, with zero skips and 1,278 unchanged Linux
+  inputs. The 22 actual HTTP/lifecycle/example cases include both stores.
   Continue broader native profiles and replay/time-travel branches.
   Replay/time travel require a new business identity, immutable lineage and an
   explicit effect policy. Broader memory T51/T68, stream modes/T50, native scope,

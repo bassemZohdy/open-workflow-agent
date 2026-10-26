@@ -55,15 +55,15 @@ Current S4-02 component evidence is organized by feature rather than by candidat
 | State/history | Bounded original-owner projected views and opaque references; [guide](docs/native-state.md) and [acceptance](docs/s4-02-native-state-acceptance.md). |
 | State controls | Atomic updates, attestation and recovery merged through PR #91 (`0157f1d`); [configured public source profile](docs/native-state-updates.md) now has focused API/restart/cancellation checks. |
 
-Latest state-control source `0f9312f` passes 384 combined cases and 22 separate
-ADK cases on each of Windows and frozen Docker/Linux, plus 827 SDK-free core/API
-cases, all with zero skips and 1,268 unchanged Linux inputs. The exact-source
-records distinguish component evidence from full repository/release qualification.
+Latest public state-control source `db437d8` passes 420 combined cases and 22
+separate ADK cases on each of Windows and frozen Docker/Linux, plus 841 SDK-free
+core/API cases, all with zero skips and 1,278 unchanged Linux inputs. This
+qualifies the configured root update/recovery source profile and public
+continuation; full repository/release qualification remains separate.
 The [retained chronological notes](docs/validation-history/s4-02-component-notes.md)
 preserve earlier candidates and counts; the [integration record](docs/validation-history/main-integration-2026-10-25.md)
 records merged heads and required checks. No task or research inventory row is
-promoted by these finite components. Public updates/recovery, broader profiles,
-replay and time travel remain open under S4-02. The public update candidate adds
+promoted by these finite components. Broader profiles, replay and time travel remain open under S4-02. The public source profile adds
 explicit bootstrap/admission, bounded HTTP work, SDK cancellation draining,
 stateless restart proof inspection and configuration-only examples. Its acceptance
 record distinguishes the focused public profile from broader state-management work.

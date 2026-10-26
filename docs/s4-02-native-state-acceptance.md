@@ -1,9 +1,9 @@
 # S4-02 native state controls
 
-Status: started after PR #85 (`2f33a3b`). State/history reads are qualified as a
-bounded prerequisite for safe compare-and-update and branching. Native state
-updates, workflow replay and time travel remain open. S4-02, T45 and T49 are
-unchecked; no research row is promoted by this component.
+Started after PR #85. State/history reads and configured root data updates and
+recovery have finite source qualification. Broader state profiles, workflow
+replay and time travel remain open. S4-02, T45 and T49 remain unchecked; no
+research row is promoted by these component profiles.
 
 ## Read/history contract and verification
 
@@ -482,8 +482,40 @@ partial/skipped core selections are retained and do not count as qualification.
 
 The cleanup moves 230 chronological backlog/project lines into the
 [retained component notes](validation-history/s4-02-component-notes.md), preserving
-their evidence and explicit gaps. Stale remote-tracking references were pruned;
-the required PostgreSQL components and acceptance evidence remain. Task counts
+their evidence and explicit gaps. Four stale remote-tracking references and 16
+fully merged local S4-02 development branches were removed. Their commits remain
+reachable from main. Required PostgreSQL components and acceptance evidence remain. Task counts
 stay 31/37 verified, six open, none deferred. Broader memory/stream/native profiles,
 replay/time travel and full S4-02/T45/T49 remain open; no research row or release
 image is promoted by this source profile.
+
+
+#### Frozen public-control qualification — `db437d8`
+
+Runtime/tests/examples are frozen at `db437d8dbc8f3f3c11bc6bb9e9ca561fcd488640`.
+The combined cohort selects all 22 actual configured HTTP/lifecycle/restart/
+cancellation/example cases and all 14 new configuration/input cases alongside
+common resolution/attestation, actual OWA continuation, private preflight,
+state/history reads, native atomic controls/tasks/scopes, authority/fencing and
+admission. Windows and Linux use separate fresh PostgreSQL databases. Existing
+immutable dependency images have matching locks; Linux retains read-only
+source/root filesystems, non-root execution, dropped capabilities and resource
+bounds. No packages are installed at startup.
+
+| Selection | Windows | Frozen Docker/Linux |
+| --- | --- | --- |
+| Combined public controls/state/native/authority regression | 420 passed, zero skips | 420 passed, zero skips |
+| Separate actual ADK authority/fencing/rejection | 22 passed, zero skips | 22 passed, zero skips |
+| SDK-free common journal/compiler/authorization/recovery/API/configuration | 841 passed, zero skips | Not selected |
+
+All 1,278 frozen Linux source inputs remain unchanged. Manifests, logs and XML
+remain under `tmp/merge-20261025/db437d8/`. The combined selection finished in
+815.47 seconds on Windows and 385.93 seconds on Linux, with 38 other-engine cells
+deselected. The SDK-free cohort finished in 281.31 seconds. Formatting, lint,
+strict typing of 175 core/ADK/LangGraph files, Markdown links and tracking checks
+pass. Final documentation changes no frozen runtime/test/example inputs.
+
+This qualifies the configured root set-data update and explicit recovery source
+profile, including public continuation and mounted configuration-only examples.
+It is not full repository/release qualification, a published image, broad
+replay/time travel or completion of S4-02/T45/T49.
