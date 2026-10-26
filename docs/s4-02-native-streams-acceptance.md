@@ -1,7 +1,7 @@
 # S4-02 native stream observations
 
-Status: the private foundation is merged through PR #84 (`73778d6`). An opt-in
-public values/updates candidate is undergoing qualification. This record owns the stream work;
+Status: the private foundation is merged through PR #84 (`73778d6`). The opt-in
+public values/updates profile is qualified at `a597134` below. This record owns the stream work;
 [memory qualification](s4-02-native-memory-acceptance.md) and [channels/Send](s4-02-native-channels-acceptance.md)
 retain their separate evidence. S4-02 and T50 remain open.
 
@@ -102,7 +102,8 @@ original-principal isolation, explicit permission, changed-policy denial,
 bounded replay/filtering, waiting/resume, network cancellation, subscriber
 pressure, abrupt process exit and configuration-only startup. Strict typing,
 Ruff and the earlier core buffer/registry/transport checks pass. Final frozen
-native, common ownership/recovery and ADK compatibility checks are pending.
+native, common ownership/recovery and ADK compatibility checks pass at the
+replacement source below.
 
 Failed attempts are retained under `tmp/merge-20261025/stream-api-*.xml`:
 the test policy initially omitted `model.complete`; a four-event retention
@@ -115,7 +116,7 @@ fixtures/example are corrected without weakening authorization or replay rules.
 
 Runtime and tests are frozen at
 `e766fab59f71b32a472a5ac44d00054163188b2e`. The combined stream, ownership,
-journal, native checkpoint and write-recovery selections are running on
+journal, native checkpoint and write-recovery selections ran on
 Windows and read-only Docker/Linux with separate fresh ordinary PostgreSQL and
 pgvector databases. Linux reuses the private profile's locked dependency image;
 the vector service remains an optional test component. No package is installed
@@ -126,7 +127,7 @@ at container startup. Manifests, logs and XML are retained under
 | --- | --- | --- |
 | Combined stream/ownership/native-write/checkpoint regression | Intentionally stopped after the confirmed Linux failure; partial log retained | 317 passed, one startup-order failure, zero skips |
 | Separate actual ADK authority/fencing/native-stream rejection | 18 passed, zero skips | 18 passed, zero skips |
-| SDK-free core/API/configuration/recovery/tracking | 242 passed, 46 expected optional-environment skips | Not selected |
+| SDK-free core/API/configuration/recovery/tracking | 242 passed; 46 PostgreSQL cells initially skipped | Not selected |
 
 The first Windows ADK helper selected a nonexistent `sqlite` extra and ran no
 tests; its terminal output is retained as `adk-contract-windows-attempt1.log`.
@@ -142,13 +143,36 @@ The guard order is restored, preserving rejection before service setup. All
 seven actual adapter/startup cases pass the focused correction check. Final
 qualification must use the replacement frozen commit and new databases.
 
+### Replacement public qualification — `a597134`
+
+The guard-only replacement runtime is frozen at
+`a59713444e70bffd07d7681a4dc3feb8d2e6d8f2`. Its **318-case combined selection
+passes on both platforms with zero skips**: 564.50 seconds on Windows and 218.96
+seconds on frozen Linux. All **1,237 Linux source inputs remain unchanged**.
+The separate 18-case actual ADK selection passes on both platforms with zero
+skips. All use fresh databases.
+The initial `e766fab` evidence above remains retained. Common runtime, ADK,
+tests and example inputs are byte-identical between the two commits; the
+SDK-free 242-pass/46-optional-skip result is retained for those unchanged inputs.
+New source manifests and reports are under `tmp/merge-20261025/a597134/`.
+The 46 omitted SDK-free PostgreSQL cells were selected directly from the original
+XML and rerun against a fresh PostgreSQL database at `a597134`: **46 passed,
+zero skips**, in 22.46 seconds. The baseline and supplemental selections cover
+288 distinct core/API/configuration/recovery/tracking cells; they are separate
+runs, not a single full-repository qualification.
+
+| Replacement selection | Windows | Frozen Docker/Linux |
+| --- | --- | --- |
+| Stream/API, ownership/journal, native checkpoint and memory write/recovery | 318 passed, zero skips | 318 passed, zero skips |
+| Actual ADK authority/fencing/required-stream rejection | 18 passed, zero skips | 18 passed, zero skips |
+| Supplemental common PostgreSQL cells omitted from baseline | 46 passed, zero skips | Not selected |
+
 ## Remaining implementation and verification
 
 The qualified private source above advertises no public stream capability.
-The candidate opts in only to the named values/updates source profile.
+The qualified public source opts in only to the named values/updates profile.
 
-Finish frozen qualification before claiming the public candidate verified.
-Then continue other stream modes and the remaining full T50 criteria with
+Continue other stream modes and the remaining full T50 criteria with
 explicit access/redaction contracts. The portable lifecycle and A2A streams
 retain their separate behavior; source qualification does not publish an image.
 
