@@ -220,6 +220,7 @@ async def _prepare_native_state_update(
         if "__start__" in native:
             raise state_update_error("native_base_unexecuted")
         driver._validate_native(native, "/do", 1)
+        driver.verify_current_controls(native, prepared_request_id=request_id)
         await driver._validate_saved_scopes()
         # Recheck common evidence with fresh physical definition pins after all
         # native awaits. Cached native packets all came from one read snapshot.

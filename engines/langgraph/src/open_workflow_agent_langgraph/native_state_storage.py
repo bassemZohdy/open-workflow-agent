@@ -127,28 +127,55 @@ async def checkpoint_index(
     return result, len(rows) > bounds.max_history
 
 
-async def guard_checkpoint(saver: Any, thread: str, key: str, budget: int, postgres: bool) -> int:
-    """Bound every serialized SDK value and pending-write array before its codec runs."""
+def _guard_queries(thread: str, key: str, postgres: bool) -> list[tuple[str, tuple[Any, ...]]]:
+    parameters = (thread, key)
     if postgres:
-        headers = await _rows(
-            saver,
+        header = (
             "SELECT octet_length(checkpoint::text) AS checkpoint_bytes, "
             "octet_length(metadata::text) AS metadata_bytes, "
             "CASE WHEN checkpoint->>'v'='4' AND jsonb_typeof(checkpoint->'v')='number' "
             "THEN 1 ELSE 0 END AS supported_version "
             "FROM checkpoints WHERE thread_id=? AND checkpoint_ns='' AND checkpoint_id=?",
-            (thread, key),
-            True,
+            parameters,
         )
     else:
-        headers = await _rows(
-            saver,
+        header = (
             "SELECT length(checkpoint), length(CAST(metadata AS BLOB)), "
             "CASE WHEN length(type)<=32 THEN type ELSE NULL END FROM checkpoints "
             "WHERE thread_id=? AND checkpoint_ns='' AND checkpoint_id=?",
-            (thread, key),
-            False,
+            parameters,
         )
+    queries: list[tuple[str, tuple[Any, ...]]] = [header]
+    if postgres:
+        queries.append(
+            (
+                "SELECT CASE WHEN length(bl.type)<=32 THEN bl.type ELSE NULL END, "
+                "COALESCE(octet_length(bl.blob),0) FROM checkpoints c, "
+                "jsonb_each_text(c.checkpoint->'channel_versions') ch JOIN checkpoint_blobs bl "
+                "ON bl.channel=ch.key AND bl.version=ch.value WHERE c.thread_id=? "
+                "AND c.checkpoint_ns='' AND c.checkpoint_id=? AND bl.thread_id=c.thread_id "
+                "AND bl.checkpoint_ns=c.checkpoint_ns LIMIT ?",
+                (*parameters, _ROWS + 1),
+            )
+        )
+    queries.append(
+        (
+            "SELECT CASE WHEN length(type)<=32 THEN type ELSE NULL END, "
+            + (
+                "octet_length(blob)+octet_length(task_id)+octet_length(task_path)"
+                "+octet_length(channel) FROM checkpoint_writes "
+                if postgres
+                else "length(value)+length(CAST(task_id AS BLOB))+length(CAST(task_path AS BLOB))"
+                "+length(CAST(channel AS BLOB)) FROM writes "
+            )
+            + "WHERE thread_id=? AND checkpoint_ns='' AND checkpoint_id=? LIMIT ?",
+            (*parameters, _ROWS + 1),
+        )
+    )
+    return queries
+
+
+def _guard_header(headers: list[Any], budget: int, postgres: bool) -> int:
     if len(headers) != 1:
         raise ValueError("checkpoint disappeared")
     header = _values(headers[0])
@@ -159,45 +186,44 @@ async def guard_checkpoint(saver: Any, thread: str, key: str, budget: int, postg
     size = sum(value or 0 for value in header[:2])
     if type(size) is not int or not 0 < size <= budget:
         raise ValueError("checkpoint exceeds decoding budget")
-    if postgres:
-        blobs = await _rows(
-            saver,
-            "SELECT CASE WHEN length(bl.type)<=32 THEN bl.type ELSE NULL END, "
-            "COALESCE(octet_length(bl.blob),0) FROM checkpoints c, "
-            "jsonb_each_text(c.checkpoint->'channel_versions') ch JOIN checkpoint_blobs bl "
-            "ON bl.channel=ch.key AND bl.version=ch.value WHERE c.thread_id=? "
-            "AND c.checkpoint_ns='' AND c.checkpoint_id=? AND bl.thread_id=c.thread_id "
-            "AND bl.checkpoint_ns=c.checkpoint_ns LIMIT ?",
-            (thread, key, _ROWS + 1),
-            True,
-        )
-        pending = await _rows(
-            saver,
-            "SELECT CASE WHEN length(type)<=32 THEN type ELSE NULL END, "
-            "octet_length(blob)+octet_length(task_id)+octet_length(task_path)"
-            "+octet_length(channel) FROM checkpoint_writes "
-            "WHERE thread_id=? AND checkpoint_ns='' AND checkpoint_id=? LIMIT ?",
-            (thread, key, _ROWS + 1),
-            True,
-        )
-    else:
-        blobs = []
-        pending = await _rows(
-            saver,
-            "SELECT CASE WHEN length(type)<=32 THEN type ELSE NULL END, "
-            "length(value)+length(CAST(task_id AS BLOB))+length(CAST(task_path AS BLOB))"
-            "+length(CAST(channel AS BLOB)) "
-            "FROM writes WHERE thread_id=? AND checkpoint_ns='' AND checkpoint_id=? LIMIT ?",
-            (thread, key, _ROWS + 1),
-            False,
-        )
-    if len(blobs) > _ROWS or len(pending) > _ROWS:
+    return size
+
+
+def _guard_array(size: int, rows: list[Any], budget: int) -> int:
+    if len(rows) > _ROWS:
         raise ValueError("native checkpoint array exceeds its bound")
-    for row in [*blobs, *pending]:
+    for row in rows:
         kind, amount = _values(row)
         if kind not in _TYPES or type(amount) is not int or amount < 0:
             raise ValueError("native checkpoint encoding is unsupported")
         size += amount
         if size > budget:
             raise ValueError("checkpoint exceeds decoding budget")
+    return size
+
+
+async def guard_checkpoint(saver: Any, thread: str, key: str, budget: int, postgres: bool) -> int:
+    """Bound every serialized SDK value and pending-write array before its codec runs."""
+    queries = _guard_queries(thread, key, postgres)
+    size = _guard_header(await _rows(saver, *queries[0], postgres), budget, postgres)
+    for query, parameters in queries[1:]:
+        size = _guard_array(size, await _rows(saver, query, parameters, postgres), budget)
+    return size
+
+
+def guard_checkpoint_sync(
+    connection: Any, thread: str, key: str, budget: int, postgres: bool
+) -> int:
+    queries = _guard_queries(thread, key, postgres)
+
+    def rows(query: str, parameters: tuple[Any, ...]) -> list[Any]:
+        cursor = connection.execute(query.replace("?", "%s") if postgres else query, parameters)
+        try:
+            return list(cursor.fetchall())
+        finally:
+            cursor.close()
+
+    size = _guard_header(rows(*queries[0]), budget, postgres)
+    for query, parameters in queries[1:]:
+        size = _guard_array(size, rows(query, parameters), budget)
     return size

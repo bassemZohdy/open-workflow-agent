@@ -322,3 +322,20 @@ dispatched controls without proof remain unknown. No mutation route or capabilit
 is enabled. S4-02/T45/T49 remain open. Work continues on
 `codex/s4-02-state-update-policy` with compiled policy/schema/attribution checks
 and read-only preflight of actual OWA native state and retained scope evidence.
+
+## PR #89 integration — 2026-10-26 Asia/Dubai
+
+[PR #89](https://github.com/bassemZohdy/open-workflow-agent/pull/89) merged at
+`f931945a96b84fb3ed0f3172d8d86095ef65489b`, preserving head
+`6bb63fe827cf53759d31d004663f24c4b04dfe2b`. Its required exact-head check passed
+in [Docs run 40275938589](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40275938589).
+Local main was fast-forwarded and its push confirmed GitHub was up to date.
+
+Private policy/preflight source `8393d1e` passes 278 combined cases and 22
+separate actual ADK cases per platform, plus 755 SDK-free compiler/core/API cases,
+all with zero skips and 1,262 unchanged Linux inputs. The compiler validates
+bounded schema/task/policy declarations; read-only preflight checks actual
+suspended OWA state, common receipts and completed scope evidence. Required
+mutation admission stays closed. S4-02/T45/T49 remain open. Work continues on
+`codex/s4-02-state-update-attestation` with atomic SDK data replacement, versioned
+common/native attestation and private continuation/recovery checks.

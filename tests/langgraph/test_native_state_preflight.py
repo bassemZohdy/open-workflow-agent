@@ -29,16 +29,18 @@ from open_workflow_agent_langgraph.native_state_preflight import prepare_native_
 
 @pytest.fixture(params=["sqlite", "postgresql"])
 async def preflight(request, tmp_path):
+    backend = request.param[0] if isinstance(request.param, tuple) else request.param
+    channels = isinstance(request.param, tuple) and request.param[1] == "channels"
     config = configuration()
     config.observability.native_streams = None
     config.execution_authorization.policy.rules[0].actions.append("state.update")
-    if request.param == "postgresql":
+    if backend == "postgresql":
         datasource = os.getenv("OWA_TEST_POSTGRES_URL")
         if not datasource:
             pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
         config.persistence.datasource = datasource
     services = RuntimeServices(
-        config, model=FakeModel(), database_root=None if request.param == "postgresql" else tmp_path
+        config, model=FakeModel(), database_root=None if backend == "postgresql" else tmp_path
     )
     engine = LangGraphWorkflowEngine()
     await engine.initialize(services)
@@ -46,9 +48,9 @@ async def preflight(request, tmp_path):
     source = generate_default_workflow()
     source["do"] = [
         {"first": {"set": {"value": 1}}},
-        {"nested": {"do": [{"inner": {"set": {"nested": True}}}]}},
+        {"nested": {"do": [{"inner": {"set": {"nested": True, "value": "${ .value }"}}}]}},
         {"pause": {"wait": {"seconds": 300}}},
-        {"last": {"set": {"value": 2}}},
+        {"last": {"set": {"value": "${ .value + 1 }"}}},
     ]
     source["document"]["metadata"] = {
         "owa": {
@@ -67,6 +69,20 @@ async def preflight(request, tmp_path):
             },
         }
     }
+    if channels:
+        owa = source["document"]["metadata"]["owa"]
+        owa["nativeExtensions"].append({"name": "langgraph.channels", "version": "1.0.0"})
+        owa["nativeExtensionData"]["langgraph.channels@1.0.0"] = {
+            "channels": [
+                {
+                    "id": "items",
+                    "reducer": "last_value",
+                    "initial": None,
+                    "writes": [{"task": "/do/0"}],
+                }
+            ],
+            "reads": [],
+        }
     plan = compile_workflow(source)
     actor = authority(services, "alice")
     handle = services.invocations.create(
@@ -106,7 +122,7 @@ async def preflight(request, tmp_path):
                 )
         services.invocations.update(handle, status="waiting")
         saver_type = (
-            native.AsyncPostgresSaver if request.param == "postgresql" else native.AsyncSqliteSaver
+            native.AsyncPostgresSaver if backend == "postgresql" else native.AsyncSqliteSaver
         )
         root = LangGraphScopeExecutor(plan, None, handle.invocation_id).checkpoint_config("/do", 1)
         path = services.engine_database_path("langgraph", create_namespace=False)
@@ -119,7 +135,8 @@ async def preflight(request, tmp_path):
         )
         yield services, engine, handle, actor, reference, checkpoint, saver_type, plan
     finally:
-        services.execution_ownership.release(lease)
+        if handle._execution_lease is not None:
+            services.execution_ownership.release(handle._execution_lease)
         await engine.shutdown()
         services.close()
 

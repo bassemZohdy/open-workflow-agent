@@ -280,3 +280,76 @@ lineage, a pinned definition/checkpoint and explicit read-only/re-execution
 effect policy. Bulk updates must retain native semantics and allowed task
 attribution. Existing business history must remain unchanged. These gates are
 part of the original S4-02 scope, not deferred tasks or claimed completions.
+
+### Attested OWA data updates after PR #89
+
+This private adapter component changes only OWA snapshot data through the pinned
+SDK's `aupdate_state`, attributed to the declared, previously visited root set
+task. It preserves variables, context, task history, outputs, counters, route and
+native channel values. No OWA task, model or tool executes inside the owned
+native transaction. Existing child-scope and common effect evidence remain
+required. Public engine admission still rejects required update workflows.
+
+New common commands use `owa/state-update/v2`, adding SHA-256 digests of the
+exact base native packet and resulting OWA projection, plus ordered previous
+control IDs. Native root receipt bindings use version 3 and retain those IDs in
+the state digest. Existing v1 commands and v2 native bindings retain their
+persisted meaning. Core stores commands, digests and opaque references; native
+checkpoint bytes and SDK identifiers remain adapter-owned. Before committing,
+the fenced native transaction verifies the current base and written projection.
+Common completion and subsequent proof reuse recheck the stored projection.
+
+Current-head validation requires the complete acknowledged control history;
+an old v2 root cannot replace the current root after an attested update, even
+when the coordinator is no longer installed. Earlier historical v2 checkpoints
+remain readable. An identical prepared command may rebuild its original
+preflight after a process restart. A dispatched command with matching native
+proof completes acknowledgement without a staged proposal or SDK redispatch.
+Unproven dispatch remains unknown. Staging is capped at 64 proposals and the
+smaller of 64 MiB or four times the native-byte budget; successful proof
+inspection releases the staged packet.
+
+Focused actual OWA SQLite/PostgreSQL checks cover replacement data, preserved
+history and native channels (including PostgreSQL blob reconstruction), ordered
+successive controls, corruption rejection, transaction rollback on mismatched
+output, prepared recovery and interrupted acknowledgement. Private continuation
+uses value 7 to produce 8 without repeating earlier visits. Separate fresh
+processes rebuild prepared controls, reconcile committed controls and inspect
+completed proofs with zero model calls. These are private component checks;
+public configured ingress, unknown-control resolution, broader continuation,
+replay/time travel and full S4-02/T45/T49 remain open.
+
+Development reports remain in `tmp/merge-20261025/state-attestation-*.xml`.
+The retained process-harness failures exposed Windows Selector-loop subprocess
+limitations and configuration serialization of inactive Linux sandbox defaults,
+then omission of security-profile discriminators when excluding all defaults.
+The harness now launches its process outside the event loop and omits only the
+unused sandbox configuration. Runtime loop policy, validators and authority
+requirements were not weakened. The corrected six fresh-process cases pass.
+
+
+#### Frozen attestation qualification — `1a546e6`
+
+Runtime/tests are frozen at `1a546e6edc0214e003989700a85cad16085c3812`.
+The combined cohort selects versioned commands, actual OWA updates/continuation,
+preflight, control recovery, state/history API, native transactions/tasks/scopes,
+corruption and receipt/fork consistency, authority/fencing and admission checks.
+Windows and Linux use separate fresh PostgreSQL databases. Dependency locks
+match the immutable LangGraph/ADK images recorded above; Linux runs with read-only
+source/root filesystems, a non-root user, dropped capabilities and resource bounds.
+No packages are installed at startup.
+
+| Selection | Windows | Frozen Docker/Linux |
+| --- | --- | --- |
+| Combined attestation/state/native/authority regression | 428 passed, zero skips | 428 passed, zero skips |
+| Separate actual ADK authority/fencing/rejection | 22 passed, zero skips | 22 passed, zero skips |
+| SDK-free common journal/compiler/authorization/recovery/API | 763 passed, zero skips | Not selected |
+
+All 1,266 frozen Linux source inputs remain unchanged. Manifests, logs and XML
+remain under `tmp/merge-20261025/1a546e6/`. The combined selection finished in
+1145.03 seconds on Windows and 446.54 seconds on Linux, with 90 other-engine
+cells deselected on each platform. The SDK-free cohort finished in 248.64 seconds.
+Lint, formatting, strict typing of 171 core/ADK/LangGraph source files, Markdown
+links and consolidation tracking checks pass. This is private component
+qualification; it enables no public mutation route, capability, task checkbox,
+release image or conditional product track.
