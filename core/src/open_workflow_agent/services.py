@@ -257,6 +257,13 @@ class RuntimeServices:
             MetricsEventSink(self.events, self.metrics),
             history=self.lifecycle_history,
         )
+        from .native_stream_registry import NativeStreamRegistry
+
+        self.native_streams = (
+            NativeStreamRegistry(config.observability.native_streams)
+            if config.observability.native_streams is not None
+            else None
+        )
         self.execution_ownership = ExecutionOwnershipStore(invocation_path)
         self.fork_decisions = ForkDecisionStore(invocation_path)
         self.effect_journal = EffectJournal(invocation_path, invocations=self.invocations)
@@ -1257,6 +1264,8 @@ class RuntimeServices:
             raise ConfigurationError("protocol authorization is not deployment-bound")
 
     def close(self) -> None:
+        if self.native_streams is not None:
+            self.native_streams.close()
         if self._approval_expiry_dispatcher is not None:
             self._approval_expiry_dispatcher.close()
         self.knowledge.close()

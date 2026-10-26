@@ -56,6 +56,7 @@ class NativeStreamSubscription:
             maxsize=log.limits.queue_size
         )
         self._closed = False
+        self._finished_reason: str | None = None
 
     def _end(self, reason: str) -> None:
         if self._closed:
@@ -67,14 +68,21 @@ class NativeStreamSubscription:
         self._queue.put_nowait(reason)
 
     async def receive(self, *, timeout: float) -> NativeStreamFrame:
+        if self._finished_reason is not None and self._queue.empty():
+            raise EOFError(self._finished_reason)
         if self._closed and self._queue.empty():
             raise EOFError("native observation subscription is closed")
         item = await asyncio.wait_for(self._queue.get(), timeout)
         if item in ("overflow", "frame_limit", "projection_failure"):
             raise BufferError(f"native observation is unavailable: {item}")
         if not isinstance(item, NativeStreamFrame):
-            raise EOFError("native observation subscription is closed")
+            raise EOFError(self._finished_reason or "closed")
         return item
+
+    def _finish(self, reason: str) -> None:
+        self._finished_reason = reason
+        if self._queue.empty():
+            self._queue.put_nowait(reason)
 
     def close(self) -> None:
         self._end("closed")
@@ -100,6 +108,27 @@ class NativeStreamLog:
         self._subscribers: set[NativeStreamSubscription] = set()
         self._closed = False
         self._failure: str | None = None
+        self._finished_reason: str | None = None
+
+    @property
+    def subscriber_count(self) -> int:
+        return len(self._subscribers)
+
+    @property
+    def available(self) -> bool:
+        return not self._closed
+
+    def restart(self) -> None:
+        if self._closed:
+            raise RuntimeError("native observation log is closed")
+        self._finished_reason = None
+
+    def finish(self, reason: str) -> None:
+        if reason not in {"waiting", "completed", "faulted", "cancelled", "interrupted"}:
+            raise ValueError("native observation completion reason is invalid")
+        self._finished_reason = reason
+        for subscription in tuple(self._subscribers):
+            subscription._finish(reason)
 
     def append(
         self,
@@ -109,7 +138,7 @@ class NativeStreamLog:
         scope: str,
         task_reference: str | None = None,
     ) -> NativeStreamFrame:
-        if self._closed:
+        if self._closed or self._finished_reason is not None:
             raise RuntimeError("native observation log is closed")
         if not isinstance(mode, str) or mode not in {"values", "updates"}:
             raise ValueError("native observation mode is unsupported")
@@ -149,6 +178,8 @@ class NativeStreamLog:
             _, removed = self._events.popleft()
             self._bytes -= len(removed.payload)
         for subscriber in tuple(self._subscribers):
+            if subscriber._finished_reason is not None:
+                continue
             try:
                 subscriber._queue.put_nowait(frame)
             except asyncio.QueueFull:
@@ -186,6 +217,8 @@ class NativeStreamLog:
         backlog = tuple(frame for number, frame in self._events if number > sequence)
         subscription = NativeStreamSubscription(self)
         self._subscribers.add(subscription)
+        if self._finished_reason is not None:
+            subscription._finish(self._finished_reason)
         return backlog, subscription
 
     def fail(self, reason: Literal["frame_limit", "projection_failure"]) -> None:

@@ -21,6 +21,7 @@ from open_workflow_agent.native_extensions import (
     LANGGRAPH_CHANNELS,
     LANGGRAPH_COMMAND,
     LANGGRAPH_SEND,
+    LANGGRAPH_STREAMS,
     MAX_NATIVE_SEND_BRANCHES,
 )
 from open_workflow_agent.native_memory_contract import CAPABILITY as MEMORY_CAPABILITY
@@ -73,6 +74,15 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             raise ConfigurationError(
                 "LangGraph PostgreSQL persistence requires a selector event loop on Windows",
                 details={"reason": "unsupported_event_loop"},
+            )
+        if services.config.observability.native_streams is not None and (
+            not self.native.task_nodes_available
+            or not services.config.server.api_security_profile
+            or not services.config.execution_authorization.enabled
+        ):
+            raise ConfigurationError(
+                "native streams require native LangGraph, authenticated API ingress "
+                "and original execution authorization"
             )
         if services.config.memory.native and (
             not self.native.task_nodes_available
@@ -234,6 +244,19 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             extensions += (MEMORY_CAPABILITY,)
             if any(binding.semantic is not None for binding in self.native_memory.bindings):
                 extensions += (MEMORY_SEMANTIC_CAPABILITY,)
+        services = getattr(self, "services", None)
+        streams = False
+        if services is not None and services.config.observability.native_streams is not None:
+            if (
+                services.native_streams is None
+                or not services.config.server.api_security_profile
+                or not services.config.execution_authorization.enabled
+            ):
+                raise ConfigurationError("native stream installation requires original authority")
+            services.native_streams.verify(services.config.observability.native_streams)
+            streams = self.native.task_nodes_available
+            if streams:
+                extensions += (LANGGRAPH_STREAMS,)
         functions = SUPPORTED_FUNCTION_CALLS + (
             tuple(sorted(memory_references(self.native_memory.bindings)))
             if self.native_memory is not None
@@ -243,7 +266,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             engine=self.engine_name,
             functions=functions,
             resume=True,
-            streaming=False,
+            streaming=streams,
             native_task_nodes=self.native.task_nodes_available,
             native_scope_step_limit=NATIVE_SCOPE_STEP_LIMIT
             if self.native.task_nodes_available
@@ -273,6 +296,11 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 input_data,
                 metadata=self._metadata(workflow, invocation, active),
                 invocation_id=invocation.invocation_id,
+                _stream_observer=(
+                    self.services.native_streams.begin(invocation, workflow.native_extensions)
+                    if self.services.native_streams is not None
+                    else None
+                ),
                 _execution_fence=self.services.execution_ownership.native_fence(
                     self._execution_leases[invocation.invocation_id]
                 ),
@@ -304,6 +332,10 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             )
             return result
         finally:
+            if self.services.native_streams is not None:
+                self.services.native_streams.end(
+                    invocation, result.status if result is not None else "interrupted"
+                )
             if result is not None:
                 self._finish_active(invocation, result)
             else:
@@ -338,6 +370,11 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 metadata=self._metadata(plan, handle, active),
                 invocation_id=handle.invocation_id,
                 resume=True,
+                _stream_observer=(
+                    self.services.native_streams.begin(handle, plan.native_extensions)
+                    if self.services.native_streams is not None
+                    else None
+                ),
                 _execution_fence=self.services.execution_ownership.native_fence(
                     self._execution_leases[handle.invocation_id]
                 ),
@@ -370,6 +407,10 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             )
             return result
         finally:
+            if self.services.native_streams is not None:
+                self.services.native_streams.end(
+                    handle, result.status if result is not None else "interrupted"
+                )
             if result is not None:
                 self._finish_active(handle, result)
             else:

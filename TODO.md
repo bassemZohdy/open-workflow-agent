@@ -271,6 +271,12 @@ treated as a deferred task or as additional feature completion.
   After PR #83, continue the [private native-stream foundation](docs/s4-02-native-streams-acceptance.md),
   whose `baebb73` selection passes 106 cases on each platform with zero skips,
   followed by authorized public transport and its capability/qualification gates.
+  The follow-on public values/updates profile and Windows native-write loop
+  repair are [qualified at a597134](docs/s4-02-native-streams-acceptance.md#replacement-public-qualification--a597134):
+  318 combined cases and 18 separate ADK cases pass per platform with zero skips,
+  with 1,237 unchanged Linux source inputs. The SDK-free 242-pass baseline adds
+  46 separately verified PostgreSQL cells, closing its initial skips.
+  Broader stream modes, T50, state updates, replay and time travel remain open.
 
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
   The optional TypeScript package admits official OWS definitions and executes

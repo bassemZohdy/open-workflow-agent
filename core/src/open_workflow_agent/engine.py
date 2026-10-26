@@ -243,6 +243,13 @@ class WorkflowEngine:
                 released.set()
 
     async def initialize(self, services: RuntimeServices) -> None:
+        if (
+            services.config.observability.native_streams is not None
+            and self.engine_name != "langgraph"
+        ):
+            raise UnsupportedWorkflowFeature(
+                "configured native streams require the LangGraph engine"
+            )
         if services.config.memory.native and self.engine_name != "langgraph":
             raise UnsupportedWorkflowFeature(
                 "configured native memory bindings require the LangGraph engine"

@@ -94,12 +94,20 @@ Broader T51/T68, online reindexing, other model/index profiles, native streams,
 state updates, replay and time travel remain open under S4-02. No task or
 research inventory row is promoted by this finite component profile.
 
-After PR #83, the next S4-02 work is a private bounded native-stream observation
-transport and projection from the pinned SDK. Public streaming stays disabled;
-ownership, transport, restart and capability admission gates remain open. See
-the [native-stream scope](docs/s4-02-native-streams-acceptance.md).
+PR #84 merges the private bounded native-stream observation transport and
+projection from the pinned SDK. See the [native-stream scope](docs/s4-02-native-streams-acceptance.md).
 Its frozen `baebb73` private component selection passes 106 cases on each of
 Windows and Docker/Linux with zero skips and 1,226 unchanged Linux inputs.
+The follow-on [public source profile](docs/s4-02-native-streams-acceptance.md#replacement-public-qualification--a597134)
+at `a597134` adds opt-in original-owner SSE, explicit required admission and
+bounded process-local retention. It repairs Windows worker-thread loop selection
+for fenced native writes while preserving early unsupported-loop rejection.
+The combined 318-case stream/native/ownership/write-recovery selection and 18
+separate ADK authority/fencing/rejection cases pass on each platform with zero
+skips; 1,237 frozen Linux inputs remain unchanged. The 242-pass SDK-free baseline
+adds 46 separately verified PostgreSQL cells, closing its initial skips.
+Other stream modes, full T50, native state updates, replay and time travel remain
+open; no task or research row is completed by this finite source profile.
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior

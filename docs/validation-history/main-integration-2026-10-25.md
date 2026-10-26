@@ -234,3 +234,18 @@ broader memory gates and S4-02 remain open. Counts remain 31/37 verified, six
 open and none deferred. No protections, automation flags or published images
 changed. Work continues on `codex/s4-02-native-streams` with private bounded
 observation transport and safe projection from the actual pinned SDK stream.
+
+## PR #84 integration — 2026-10-26 Asia/Dubai
+
+[PR #84](https://github.com/bassemZohdy/open-workflow-agent/pull/84) merged at
+`73778d6025a2d54939a918e5a3acab6b19671dcf`, preserving head
+`39bbecc736f822f7edcd24e1c8feafd52dadd0aa`. The required exact-head check passed
+in [Docs run 40259950435](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40259950435).
+Local main was fast-forwarded and its push confirmed GitHub was up to date.
+
+Private stream source `baebb73` passes 106 native/authority/fencing/transport
+cases on each of Windows and frozen Docker/Linux with zero skips and 1,226
+unchanged Linux source inputs. This merge exposes no public stream capability.
+S4-02/T50 remain open. Work continues on `codex/s4-02-native-stream-api` with
+opt-in deployment policy, original-owner HTTP observation and explicit
+admission, retention, resource, disconnect and restart checks.

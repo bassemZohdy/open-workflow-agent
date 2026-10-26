@@ -459,6 +459,10 @@ def create_app(
     @app.get("/v1/capabilities")
     async def capabilities() -> dict[str, Any]:
         value = runtime_engine.capabilities().as_dict()
+        if runtime_services.native_streams is not None and value["features"]["streaming"]:
+            from .native_stream_api import native_stream_capabilities
+
+            value["features"]["nativeStreaming"] = native_stream_capabilities()
         value["features"]["scheduling"]["on"] = runtime_services.event_store is not None
         value.setdefault("features", {})["events"] = event_capabilities(runtime_services.event_bus)
         value.setdefault("features", {})["approvals"] = runtime_services.approvals.capabilities()
@@ -771,6 +775,8 @@ def create_app(
         _authorize_request(
             "invocations.create", f"workflow:{plan.namespace}/{plan.name}@{plan.version}"
         )
+        if any(item.name == "langgraph.streams" for item in plan.native_extensions):
+            await runtime_engine.compile(plan)
         handle = runtime_services.invocations.create(
             engine=runtime_engine.engine_name,
             session_id=request.session_id,
@@ -845,6 +851,12 @@ def create_app(
     from .memory_recovery_api import mount_memory_recovery
 
     mount_memory_recovery(
+        app, runtime_services, runtime_engine, _authorize_request, authorized_invocation
+    )
+
+    from .native_stream_api import mount_native_streams
+
+    mount_native_streams(
         app, runtime_services, runtime_engine, _authorize_request, authorized_invocation
     )
 

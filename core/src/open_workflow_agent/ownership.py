@@ -237,7 +237,14 @@ async def run_native_storage_write[T](operation: Callable[[], Awaitable[T]]) -> 
     async def invoke() -> T:
         return await operation()
 
-    task = asyncio.create_task(asyncio.to_thread(lambda: asyncio.run(invoke())))
+    def run() -> T:
+        # The caller's compatible loop is not inherited by this worker thread.
+        # In particular Windows' process-wide policy can still select Proactor,
+        # which psycopg cannot use even when invocation runs on Selector.
+        with asyncio.Runner(loop_factory=asyncio.SelectorEventLoop) as runner:
+            return runner.run(invoke())
+
+    task = asyncio.create_task(asyncio.to_thread(run))
     try:
         return await asyncio.shield(task)
     except asyncio.CancelledError:

@@ -165,6 +165,20 @@ existing decision but cannot create a first one or reopen execution. Controls
 are absent without native bindings. See the linked profile for exact requests,
 permissions, recovery semantics and current qualification limits.
 
+## Native data observations
+
+The opt-in LangGraph [native stream profile](native-streams.md) adds
+`GET /v1/invocations/{invocation_id}/stream` for explicitly declared workflows.
+It requires authenticated original ownership and `invocations.stream`; it
+projects task data, not the internal execution plan or checkpoint state.
+Modes are `values`, `updates` or `all`. Responses and replay are bounded;
+`Last-Event-ID` selects the retained following interval in the same worker.
+HTTP 409 means replay/observations are unavailable; HTTP 429 means consumer
+capacity is exhausted. Reads and disconnects never dispatch, resume or cancel
+a workflow. This data-bearing permission is separate from `events.read` on
+sanitized lifecycle diagnostics. See the linked profile for limits, examples,
+expiry, waiting/resume and restart behavior.
+
 ## Scheduling
 
 Scheduling uses durable, fenced claims over the configured common SQLite or

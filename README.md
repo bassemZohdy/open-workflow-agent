@@ -336,6 +336,7 @@ ADK and LangGraph are implementation engines, not public application contracts. 
 - [API guide](docs/api.md) — HTTP endpoints and request/response examples.
 - [Native memory](docs/native-memory.md) — opt-in LangGraph source profile, configured catalog calls, filtered search and original-owner recovery controls.
 - [Local semantic memory](docs/native-semantic-memory.md) — declared offline model/index identity, native vector transactions and versioned semantic queries.
+- [Native stream observations](docs/native-streams.md) — opt-in original-owner task-data SSE, bounded replay and disconnect behavior.
 - [Protocol baselines](docs/protocol-baselines.md) — reviewed protocol versions and the explicit OWS prerelease/schema-snapshot pin.
 - [Workflow admission](docs/workflow-admission.md) — supported definition profile and fail-closed boundaries.
 - [Schema resources](docs/schema-resources.md) — deployment-approved capture and offline validation.
