@@ -13,13 +13,17 @@ if TYPE_CHECKING:
     from .workflow import WorkflowPlan
 
 CAPABILITY = "langgraph.memory@1.0.0"
+SEMANTIC_CAPABILITY = "langgraph.memory.semantic@1.0.0"
 OPERATIONS = ("get", "put", "search", "delete", "sweep")
-_REFERENCE = re.compile(r"memory\.(get|put|search|delete|sweep):1\.0\.0@([a-z][a-z0-9_-]{0,63})\Z")
+_REFERENCE = re.compile(
+    r"memory\.(get|put|search|delete|sweep):(1\.0\.0|1\.1\.0)@([a-z][a-z0-9_-]{0,63})\Z"
+)
 FIELDS = {
     "get": {"key"},
     "put": {"key", "value"},
     "delete": {"key"},
     "search": {"filter", "limit"},
+    "semantic-search": {"query", "filter", "limit"},
     "sweep": set(),
 }
 REQUIRED = {
@@ -27,6 +31,7 @@ REQUIRED = {
     "put": {"key", "value"},
     "delete": {"key"},
     "search": set(),
+    "semantic-search": {"query"},
     "sweep": set(),
 }
 
@@ -34,6 +39,8 @@ REQUIRED = {
 def references(bindings: Sequence[NativeMemoryBindingConfig]) -> frozenset[str]:
     return frozenset(
         f"memory.{operation}:1.0.0@{binding.id}" for binding in bindings for operation in OPERATIONS
+    ) | frozenset(
+        f"memory.search:1.1.0@{binding.id}" for binding in bindings if binding.semantic is not None
     )
 
 
@@ -50,6 +57,11 @@ def verify_plan(plan: WorkflowPlan, bindings: Sequence[NativeMemoryBindingConfig
     declared = any(
         item.required and item.capability_id == CAPABILITY for item in plan.native_extensions
     )
+    semantic_declared = any(
+        item.required and item.capability_id == SEMANTIC_CAPABILITY
+        for item in plan.native_extensions
+    )
+    configured = {binding.id: binding for binding in bindings}
     allowed = references(bindings)
     if not bindings and not any(item.name == "langgraph.memory" for item in plan.native_extensions):
         return
@@ -69,11 +81,18 @@ def verify_plan(plan: WorkflowPlan, bindings: Sequence[NativeMemoryBindingConfig
                     "native memory calls require an installed binding and exact required extension",
                     details={"reference": task.reference},
                 )
+            if configured[matched[3]].semantic is not None and not semantic_declared:
+                raise UnsupportedWorkflowFeature(
+                    "indexed native memory requires its exact semantic capability declaration",
+                    details={"reference": task.reference},
+                )
             arguments = task.definition.get("with", {})
             if isinstance(arguments, str) and arguments.strip().startswith("${"):
                 continue
             try:
-                validate_arguments(matched[1], arguments)
+                validate_arguments(
+                    "semantic-search" if matched[2] == "1.1.0" else matched[1], arguments
+                )
             except ValueError:
                 raise WorkflowSemanticError(
                     "native memory function arguments are unsupported",

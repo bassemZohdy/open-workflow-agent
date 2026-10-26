@@ -350,9 +350,13 @@ yet in a published image.
 | `retention_seconds` | absent | Optional integer 1–31,536,000 |
 | `read_timeout_seconds` | 5 | Positive finite seconds, at most 30 |
 
-This version supports bounded scalar equality filters. It does not advertise
-semantic search, accept workflow-selected namespaces/providers, or merge native
-memory with knowledge, agent tool memory, sessions or checkpoint state.
+The base version supports bounded scalar equality filters. An optional binding
+`semantic` block selects the separately declared [local semantic profile](native-semantic-memory.md)
+and `memory.search:1.1.0`. It requires installed offline artifacts and a new
+binding/empty collection; PostgreSQL additionally needs pgvector. The default
+without that block advertises no semantic capability. Neither version accepts
+workflow-selected namespaces/providers or merges native memory with knowledge,
+agent tool memory, sessions or checkpoint state.
 
 ## `persistence`
 

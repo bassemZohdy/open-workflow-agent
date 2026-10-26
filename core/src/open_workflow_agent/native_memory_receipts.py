@@ -18,6 +18,7 @@ from .memory_reads import (
     _table_exists,
 )
 from .memory_search import MemorySearchQuery
+from .memory_semantic import MemorySemanticIndex
 from .memory_writes import MemoryWrites
 from .persistence import InvocationStore
 
@@ -45,19 +46,27 @@ def verify_catalog_receipt(
     bindings: Sequence[NativeMemoryBindingConfig],
     parent: EffectIdentity,
     receipt: EffectReceipt,
+    semantic_profiles: dict[str, MemorySemanticIndex] | None = None,
 ) -> None:
     # Pending calls re-enter only the attested handler and its own coordinator.
     # Validation failures can legitimately occur before any leaf was admitted.
     if receipt.status != "completed":
         return
     binding = next(
-        (item for item in bindings if parent.operation.endswith(":1.0.0@" + item.id)), None
+        (
+            item
+            for item in bindings
+            if parent.operation.endswith((":1.0.0@" + item.id, ":1.1.0@" + item.id))
+        ),
+        None,
     )
     if binding is None:
         return
     operation = parent.operation.removeprefix("call:memory.").split(":", 1)[0]
-    if parent.operation != f"call:memory.{operation}:1.0.0@{binding.id}":
+    semantic_search = parent.operation == f"call:memory.search:1.1.0@{binding.id}"
+    if not semantic_search and parent.operation != f"call:memory.{operation}:1.0.0@{binding.id}":
         return
+    installed_index = (semantic_profiles or {}).get(binding.id)
     handle = invocations.get(parent.invocation_id)
     if handle is None or handle.workflow_fingerprint != parent.workflow_fingerprint:
         raise ValueError("memory invocation is unavailable")
@@ -73,6 +82,7 @@ def verify_catalog_receipt(
             or request.binding.version != binding.version
             or request.collection != binding.collection
             or request.max_record_bytes != binding.max_record_bytes
+            or request.semantic != installed_index
             or child is None
             or child.status != "completed"
             or receipt.output != {"ok": True}
@@ -132,6 +142,12 @@ def verify_catalog_receipt(
                 inputs.extend(
                     {k: v for k, v in item.items() if k != "limit"} for item in list(inputs)
                 )
+            if semantic_search:
+                if query.index is None or query.index != installed_index:
+                    raise ValueError("semantic memory query differs from installed model/index")
+                inputs = [{"query": query.text, **item} for item in inputs]
+            elif query.index is not None:
+                raise ValueError("filtered search cannot carry a semantic query")
             output = value
         if (
             (query is not None) != (operation == "search")

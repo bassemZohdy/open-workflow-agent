@@ -222,6 +222,9 @@ class RuntimeServices:
         self.protocols.sandbox = self.sandbox
         self.memory_enabled = config.memory.enabled is not False
         self.native_memory_call_guard: Callable[[str], str | None] | None = None
+        from .memory_semantic import MemorySemanticIndex
+
+        self.native_memory_semantic_profiles: dict[str, MemorySemanticIndex] = {}
         memory_tools = (
             ("add_memory", "search_memory", "delete_memory") if self.memory_enabled else ()
         )
@@ -270,6 +273,7 @@ class RuntimeServices:
                     bindings,
                     identity,
                     receipt,
+                    self.native_memory_semantic_profiles,
                 )
             )
         self.external_action_recovery: HttpExternalActionRecovery | None = (
@@ -657,6 +661,11 @@ class RuntimeServices:
             policy["native_memory"] = [
                 item.model_dump(mode="json") for item in self.config.memory.native
             ]
+        if self.native_memory_semantic_profiles:
+            policy["native_memory_semantic_artifacts"] = {
+                key: item.descriptor
+                for key, item in sorted(self.native_memory_semantic_profiles.items())
+            }
         if self.event_transport is not None:
             policy["event_transport"] = self.event_transport.descriptor()
         if self.role_function_calls:

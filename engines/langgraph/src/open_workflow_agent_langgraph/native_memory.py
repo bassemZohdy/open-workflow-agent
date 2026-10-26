@@ -10,11 +10,12 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast
 
-from langgraph.store.base import BaseStore, Item
+from langgraph.store.base import BaseStore, Item, SearchOp
 from open_workflow_agent.errors import ConfigurationError, ModelError, ToolError
 from open_workflow_agent.execution_context import current_action_context
 from open_workflow_agent.memory_reads import MemoryReadBinding, MemoryReadObservations
@@ -23,6 +24,8 @@ from open_workflow_agent.model_responses import bounded_model_json
 
 if TYPE_CHECKING:
     from open_workflow_agent.services import RuntimeServices
+
+    from .native_memory_embeddings import NativeMemoryEmbeddings
 
 _COLLECTION = re.compile(r"[a-z][a-z0-9_-]{0,63}\Z")
 _KEY = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}\Z")
@@ -81,6 +84,7 @@ class NativeMemoryReader:
         collection: str,
         bounds: NativeMemoryReadBounds | None = None,
         binding: MemoryReadBinding | None = None,
+        embeddings: NativeMemoryEmbeddings | None = None,
     ) -> None:
         if type(collection) is not str or not _COLLECTION.fullmatch(collection):
             raise ValueError("native memory collection must be a bounded identifier")
@@ -95,6 +99,7 @@ class NativeMemoryReader:
         self._collection = collection
         self._bounds = bounds or NativeMemoryReadBounds()
         self._binding = binding
+        self._embeddings = embeddings
         self._observations = (
             MemoryReadObservations(services.effect_journal, services.invocations)
             if binding is not None
@@ -153,6 +158,10 @@ class NativeMemoryReader:
             or self._observations is None
         ):
             raise ConfigurationError("native memory search requires an installed finite binding")
+        if query.index is not None and (
+            self._embeddings is None or query.index != self._embeddings.policy
+        ):
+            raise ConfigurationError("semantic memory query differs from its installed index")
         try:
             async with asyncio.timeout(self._bounds.timeout_seconds):
                 if not self._services.memory_enabled:
@@ -167,12 +176,30 @@ class NativeMemoryReader:
 
                 async def fetch() -> dict[str, Any]:
                     try:
-                        items = await self._store.asearch(
-                            native_namespace,
-                            filter=query.filter,
-                            limit=query.limit,
-                            refresh_ttl=False,
-                        )
+                        if query.index is not None:
+                            assert self._embeddings is not None and query.text is not None
+                            vector = (await self._embeddings.aembed_documents([query.text]))[0]
+                            with self._embeddings.prepared(query.text, vector):
+                                returned = await self._store.abatch(
+                                    [
+                                        SearchOp(
+                                            namespace_prefix=native_namespace,
+                                            filter=query.filter,
+                                            limit=query.limit,
+                                            offset=0,
+                                            query=query.text,
+                                            refresh_ttl=False,
+                                        )
+                                    ]
+                                )
+                            items = returned[0]
+                        else:
+                            items = await self._store.asearch(
+                                native_namespace,
+                                filter=query.filter,
+                                limit=query.limit,
+                                refresh_ttl=False,
+                            )
                     except TimeoutError:
                         raise
                     except Exception:
@@ -188,6 +215,17 @@ class NativeMemoryReader:
                         or any(type(key) is not str or not _KEY.fullmatch(key) for key in keys)
                     ):
                         raise ToolError("native memory search result is invalid")
+                    if query.index is not None:
+                        if any(
+                            type(item.score) not in (float, int)
+                            or not math.isfinite(item.score)
+                            or not -1.00001 <= item.score <= 1.00001
+                            for item in items
+                        ):
+                            raise ToolError("native memory semantic score is invalid")
+                        ordered = sorted(items, key=lambda item: (-item.score, item.key))
+                    else:
+                        ordered = sorted(items, key=lambda item: item.key)
                     return {
                         "items": [
                             {
@@ -195,8 +233,13 @@ class NativeMemoryReader:
                                 "value": _public_value(
                                     item, native_namespace, item.key, self._bounds
                                 ),
+                                **(
+                                    {"score": max(-1.0, min(1.0, float(item.score)))}
+                                    if query.index is not None
+                                    else {}
+                                ),
                             }
-                            for item in sorted(items, key=lambda item: item.key)
+                            for item in ordered
                         ]
                     }
 

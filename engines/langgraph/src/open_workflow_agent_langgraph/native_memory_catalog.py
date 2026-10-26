@@ -16,7 +16,9 @@ from open_workflow_agent.native_memory_contract import OPERATIONS, references, v
 from open_workflow_agent.services import RuntimeServices
 
 from .native_memory import NativeMemoryReadBounds
+from .native_memory_embeddings import NativeMemoryEmbeddings
 from .native_memory_provider import NativeMemoryProvider, open_native_memory_provider
+from .native_memory_semantic_storage import verify_semantic_storage
 from .native_storage_logging import protect_native_storage_logging
 
 
@@ -41,6 +43,22 @@ class NativeMemoryCatalog:
             )
         ):
             raise ConfigurationError("native memory deployment binding changed or is unavailable")
+        for binding in self.bindings:
+            provider = self.providers[binding.id]
+            if provider.semantic is not None:
+                if (
+                    self.services.native_memory_semantic_profiles.get(binding.id)
+                    != provider.semantic
+                ):
+                    raise ConfigurationError("native memory semantic artifact binding changed")
+                verify_semantic_storage(
+                    self.services.memory_provider_database_path(
+                        "langgraph", create_namespace=False
+                    ),
+                    provider.binding,
+                    binding.collection,
+                    provider.semantic,
+                )
 
     def guard(self, reference: str) -> str | None:
         if reference not in self.handlers:
@@ -69,7 +87,15 @@ class NativeMemoryCatalog:
         if any(self.services.catalog.has(reference) for reference in references(self.bindings)):
             raise ConfigurationError("native memory function reference is already installed")
         try:
+            shared_embeddings = None
             for binding in self.bindings:
+                embeddings = None
+                if binding.semantic is not None:
+                    if shared_embeddings is None:
+                        shared_embeddings = await NativeMemoryEmbeddings.open(
+                            binding.semantic.policy()
+                        )
+                    embeddings = shared_embeddings.rebind(binding.semantic.policy())
                 provider = await self.stack.enter_async_context(
                     open_native_memory_provider(
                         self.services,
@@ -87,12 +113,24 @@ class NativeMemoryCatalog:
                         )
                         if binding.retention_seconds is not None
                         else None,
+                        semantic=embeddings.policy if embeddings is not None else None,
+                        embeddings=embeddings,
+                        collection=binding.collection,
                     )
                 )
                 self.providers[binding.id] = provider
+                if provider.semantic is not None:
+                    self.services.native_memory_semantic_profiles[binding.id] = provider.semantic
             for binding in self.bindings:
-                for operation in OPERATIONS:
-                    name = f"memory.{operation}:1.0.0@{binding.id}"
+                operations = (
+                    [*OPERATIONS, "semantic-search"] if binding.semantic is not None else OPERATIONS
+                )
+                for operation in operations:
+                    name = (
+                        f"memory.search:1.1.0@{binding.id}"
+                        if operation == "semantic-search"
+                        else f"memory.{operation}:1.0.0@{binding.id}"
+                    )
                     function = self.handler(binding, operation)
                     self.handlers[name] = function
                     self.services.catalog.register(name, function)
@@ -100,6 +138,8 @@ class NativeMemoryCatalog:
             self.opened = True
             self.services.native_memory_call_guard = self.guard
         except BaseException:
+            for binding in self.bindings:
+                self.services.native_memory_semantic_profiles.pop(binding.id, None)
             try:
                 await self.stack.aclose()
             except Exception:
@@ -110,6 +150,8 @@ class NativeMemoryCatalog:
         if self.services.native_memory_call_guard == self.guard:
             self.services.native_memory_call_guard = None
         self.opened = False
+        for binding in self.bindings:
+            self.services.native_memory_semantic_profiles.pop(binding.id, None)
         try:
             await self.stack.aclose()
         finally:
@@ -130,11 +172,14 @@ class NativeMemoryCatalog:
                 validate_arguments(operation, payload)
                 if operation == "get":
                     return {"value": await reader.get(payload["key"])}
-                if operation == "search":
+                if operation in {"search", "semantic-search"}:
                     if "filter" in payload and type(payload["filter"]) is not dict:
                         raise ValueError("search filter must be an object")
                     query = MemorySearchQuery.create(
-                        payload.get("filter"), payload.get("limit", binding.max_search_results)
+                        payload.get("filter"),
+                        payload.get("limit", binding.max_search_results),
+                        text=payload["query"] if operation == "semantic-search" else None,
+                        index=provider.semantic if operation == "semantic-search" else None,
                     )
                     if query.limit > binding.max_search_results:
                         raise ValueError("search limit exceeds installed binding")

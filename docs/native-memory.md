@@ -4,7 +4,8 @@ This opt-in LangGraph profile installs fixed deployment bindings and ordinary
 Open Workflow 1.0.3 custom catalog functions. It requires durable persistence,
 the native LangGraph runtime and original execution authorization. SQLite is
 embedded by default; PostgreSQL is optional. Existing agent memory tools retain
-their separate portable contract. S4-02 remains open, including semantic search.
+their separate portable contract. S4-02 remains open. A separate declared
+[local semantic profile](native-semantic-memory.md) adds versioned indexed search.
 See the [acceptance record](s4-02-native-memory-acceptance.md) for source-specific
 verification and remaining limits. This profile is not yet in a published image.
 

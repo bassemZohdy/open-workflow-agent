@@ -24,6 +24,9 @@ from open_workflow_agent.native_extensions import (
     MAX_NATIVE_SEND_BRANCHES,
 )
 from open_workflow_agent.native_memory_contract import CAPABILITY as MEMORY_CAPABILITY
+from open_workflow_agent.native_memory_contract import (
+    SEMANTIC_CAPABILITY as MEMORY_SEMANTIC_CAPABILITY,
+)
 from open_workflow_agent.native_memory_contract import references as memory_references
 from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.storage import is_postgresql_datasource
@@ -229,6 +232,8 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         if self.native_memory is not None:
             self.native_memory.verify()
             extensions += (MEMORY_CAPABILITY,)
+            if any(binding.semantic is not None for binding in self.native_memory.bindings):
+                extensions += (MEMORY_SEMANTIC_CAPABILITY,)
         functions = SUPPORTED_FUNCTION_CALLS + (
             tuple(sorted(memory_references(self.native_memory.bindings)))
             if self.native_memory is not None

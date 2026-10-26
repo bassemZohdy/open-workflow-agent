@@ -13,6 +13,7 @@ from .errors import InvocationStateError, ModelError
 from .memory_capacity import MemoryNamespaceBounds
 from .memory_reads import MemoryReadBinding
 from .memory_retention import MemoryRecordRetention
+from .memory_semantic import MemorySemanticIndex
 from .model_responses import bounded_model_json
 from .persistence import ExecutionHandle, InvocationStore, _verify_identity
 
@@ -42,6 +43,7 @@ class MemoryMutation:
     max_record_bytes: int = 65_536
     retention: MemoryRecordRetention | None = None
     namespace_limits: MemoryNamespaceBounds | None = None
+    semantic: MemorySemanticIndex | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -65,6 +67,13 @@ class MemoryMutation:
                 self.namespace_limits is not None
                 and not isinstance(self.namespace_limits, MemoryNamespaceBounds)
             )
+            or (
+                self.semantic is not None
+                and (
+                    not isinstance(self.semantic, MemorySemanticIndex)
+                    or not self.semantic.artifact_sha256
+                )
+            )
         ):
             raise mutation_error("request_invalid")
         if self.kind == "sweep" and (self.namespace_limits is None or self.key != "expired"):
@@ -85,6 +94,8 @@ class MemoryMutation:
                     or bounded_model_json(value, limit=self.max_record_bytes) != self.value_json
                 ):
                     raise mutation_error("value_invalid")
+                if self.semantic is not None:
+                    self.semantic.text(value)
             except (ValueError, ModelError, RecursionError):
                 raise mutation_error("value_invalid") from None
         # Bound parent identity/occurrence and the complete request before SQL.
@@ -106,6 +117,7 @@ class MemoryMutation:
         max_record_bytes: int = 65_536,
         retention: MemoryRecordRetention | None = None,
         namespace_limits: MemoryNamespaceBounds | None = None,
+        semantic: MemorySemanticIndex | None = None,
     ) -> MemoryMutation:
         if (
             type(value) is not dict
@@ -128,6 +140,7 @@ class MemoryMutation:
             max_record_bytes,
             retention,
             namespace_limits,
+            semantic,
         )
 
     @property
@@ -163,6 +176,8 @@ class MemoryMutation:
             value["retention"] = self.retention.descriptor
         if self.namespace_limits is not None:
             value["namespace_limits"] = self.namespace_limits.descriptor
+        if self.semantic is not None:
+            value["semantic"] = self.semantic.descriptor
         return value
 
     @property
@@ -173,7 +188,7 @@ class MemoryMutation:
     def from_descriptor(cls, raw: Any) -> MemoryMutation:
         if (
             type(raw) is not dict
-            or (set(raw) - {"retention", "namespace_limits"})
+            or (set(raw) - {"retention", "namespace_limits", "semantic"})
             != {
                 "profile",
                 "parent",
@@ -202,6 +217,9 @@ class MemoryMutation:
             if "namespace_limits" in raw
             else None
         )
+        semantic = (
+            MemorySemanticIndex.from_descriptor(raw["semantic"]) if "semantic" in raw else None
+        )
         if raw["kind"] == "put":
             return cls.put(
                 parent,
@@ -213,6 +231,7 @@ class MemoryMutation:
                 max_record_bytes=raw["max_record_bytes"],
                 retention=retention,
                 namespace_limits=limits,
+                semantic=semantic,
             )
         if raw["kind"] not in {"delete", "sweep"} or raw["value"] is not None:
             raise mutation_error("value_invalid")
@@ -228,6 +247,7 @@ class MemoryMutation:
             raw["max_record_bytes"],
             retention,
             limits,
+            semantic,
         )
 
     def verify_invocation(

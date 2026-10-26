@@ -43,7 +43,7 @@ execution_authorization:
         roles: [memory-owner]
         scopes: [memory]
         audience: [runtime]
-      - actions: [memory.inspect, memory.resolve, invocations.resume]
+      - actions: [invocations.create, memory.inspect, memory.resolve, invocations.resume]
         resources: ['*']
         roles: [memory-owner]
         scopes: [memory]

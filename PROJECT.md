@@ -79,9 +79,20 @@ record the actual stores/platforms and retained failed attempts. The source also
 restores early unsupported-loop rejection and repairs concurrent cold ADK
 PostgreSQL schema setup. Terminal invocations remain immutable; no resolution
 control dispatches native writes. See the [configuration-only guide](docs/native-memory.md).
-Semantic search/indexing, expanded public recovery qualification, native streams,
+Source `a781bc2` adds a separate declared local-model/index
+profile and `memory.search:1.1.0` while retaining filtered search's v1.0 contract.
+It fingerprints installed model/inference artifacts, commits native vectors with
+the value and marker, and retains common observations and resolution authority.
+Actual process-exit recovery, model drift rejection, physical vector cleanup
+and both HTTP resolution choices pass focused checks on SQLite/pgvector. The
+packaged configuration-only API example passes with the real local model,
+including SQLite with networking disabled. The combined suite passes 638 cases
+with zero skips on each of Windows and frozen Linux, with 1,222 unchanged Linux
+source inputs. Its frozen qualification is tracked
+in the [semantic acceptance section](docs/s4-02-native-memory-acceptance.md#semantic-workflow-profile--2026-10-26).
+Broader T51/T68, online reindexing, other model/index profiles, native streams,
 state updates, replay and time travel remain open under S4-02. No task or
-research inventory row is promoted by this finite public profile.
+research inventory row is promoted by this finite component profile.
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior
@@ -135,7 +146,7 @@ JavaScript conformance.
 | S3-07 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s3-07-agent-pattern-acceptance.md#exact-source-qualification-d72781f) |
 | S3-08 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s3-08-selected-adapter-acceptance.md#exact-source-qualification-d72781f) |
 | S4-01 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s4-01-native-extension-acceptance.md#exact-source-qualification-d72781f) |
-| S4-02 | Bounded channels/reducers, Command and Send have focused native/store evidence. The wait/end follow-up awaits qualification; memory, streams, state updates, replay and time travel remain open. | [Native scope and gates](docs/s4-02-native-channels-acceptance.md) |
+| S4-02 | Bounded channels/reducers, Command/Send and configured filtered/semantic memory have finite native/store evidence. Broader memory, streams, state updates, replay and time travel remain open. | [Native scope](docs/s4-02-native-channels-acceptance.md), [memory qualification](docs/s4-02-native-memory-acceptance.md#semantic-workflow-profile--2026-10-26) |
 | S4-03 | TypeScript admission and literal set/do/raise execution are implemented. Full public identity, durability, expressions, calls and independent engine parity remain open. | [JavaScript execution scope](docs/s4-03-javascript-execution-acceptance.md) |
 | S4-04 | Thirteen actual native literal outcomes match locally. All 443 proposed and 774 schema rows remain unmapped/unexecuted; full conformance remains open. | [Literal comparison](docs/s4-04-literal-parity-acceptance.md), [coverage bridge](resources/compatibility/README.md) |
 | S4-05 | Finite bounded history/tracing/metrics/provenance profile verified at `f66cd23`; incoming propagation, durable spans and vendor exporters remain excluded. | [Observability acceptance](docs/s4-05-observability-acceptance.md#exact-source-qualification-f66cd23) |

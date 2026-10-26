@@ -252,8 +252,15 @@ treated as a deferred task or as additional feature completion.
   workflow resume. Default admission remains closed; configured native bindings
   enable the exact required version. It also repairs early platform rejection
   and concurrent cold ADK PostgreSQL schema setup. The [public qualification](docs/s4-02-native-memory-acceptance.md#public-workflow-profile--2026-10-26)
-  retains failed attempts and the final named acceptance limits. Next complete
-  the declared semantic embedding/index profile, broader public recovery gates,
+  retains failed attempts and the final named acceptance limits. Semantic
+  profile `a781bc2` adds declared local MiniLM/exact-index binding, versioned
+  semantic queries, actual artifact identity and atomic value/vector recovery.
+  Both stores pass focused restart, process-exit/newer-write, original-owner
+  resolution, expiry/filter/namespace and physical vector cleanup checks. Its
+  combined cohort passes 638 cases with zero skips on each of Windows and
+  frozen Linux; 1,222 Linux source inputs remain unchanged. See
+  the [semantic qualification](docs/s4-02-native-memory-acceptance.md#semantic-workflow-profile--2026-10-26).
+  Continue broader T51/T68/public recovery/model migration gates,
   native streams, public state updates, replay and time travel. T51/T68 and
   S4-02 remain unchecked; the three product-dependent tasks stay conditional.
   See the [memory scope](docs/s4-02-native-memory-acceptance.md).

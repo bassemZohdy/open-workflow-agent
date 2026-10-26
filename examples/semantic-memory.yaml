@@ -1,0 +1,52 @@
+# Requires a LangGraph build containing the semantic-memory source profile.
+model:
+  provider: fake
+  name: fake/default
+workflow:
+  path: /config/semantic-memory-workflow.yaml
+memory:
+  enabled: true
+  native:
+    - id: semantic-notes
+      collection: semantic-notes
+      max_search_results: 10
+      semantic:
+        profile: local-minilm-v1
+        field: text
+        max_text_bytes: 4096
+        timeout_seconds: 10.0
+security:
+  profiles:
+    memory-owner:
+      type: bearer
+      principal: memory-owner
+      roles: [memory-owner]
+      scopes: [memory]
+      audience: [runtime]
+      token:
+        from_env: OWA_SEMANTIC_MEMORY_TOKEN
+server:
+  api_security_profile: memory-owner
+execution_authorization:
+  enabled: true
+  id: semantic-memory-example
+  version: '1'
+  policy:
+    rules:
+      - actions: [catalog.call, memory.search, memory.add, memory.delete]
+        resources:
+          - memory:self
+          - memory.get:1.0.0@semantic-notes
+          - memory.put:1.0.0@semantic-notes
+          - memory.search:1.0.0@semantic-notes
+          - memory.search:1.1.0@semantic-notes
+          - memory.delete:1.0.0@semantic-notes
+          - memory.sweep:1.0.0@semantic-notes
+        roles: [memory-owner]
+        scopes: [memory]
+        audience: [runtime]
+      - actions: [invocations.create, memory.inspect, memory.resolve, invocations.resume]
+        resources: ['*']
+        roles: [memory-owner]
+        scopes: [memory]
+        audience: [runtime]

@@ -188,3 +188,27 @@ three conditional tasks. No protections or automatic CI/release flags changed.
 Work continues from this main commit on `codex/s4-02-public-memory`, connecting
 versioned workflow calls, filtered search and original-owner recovery controls
 to the merged common evidence and native stores.
+
+## PR #82 integration — 2026-10-26 Asia/Dubai
+
+[PR #82](https://github.com/bassemZohdy/open-workflow-agent/pull/82) merged at
+`5121cc3ac0192cc1f8fae2ec6b94a57fe07edb84`, preserving head
+`1f56d94cca6f9ceab6df54d78a7c5754b38e2c81`. Its exact-head required check passed
+in [Docs run 40251702766](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40251702766).
+Local main was fast-forwarded and its push confirmed GitHub was up to date.
+
+Runtime source `c062e9c` qualifies 588 memory/public-call/native checkpoint cases,
+eight separate cold LangGraph authority cases and 46 actual ADK native/authority/
+fencing cases on each of Windows and frozen Linux, with zero skips in those
+selections. SDK-free core/API/configuration checks add 266 passes and 91 expected
+optional-environment skips. All 1,211 frozen Linux inputs remain unchanged.
+
+The merge enables only configured `langgraph.memory@1.0.0` bindings, scalar-filter
+search and original-owner recovery controls. It repairs early unsupported-loop
+admission and concurrent cold ADK PostgreSQL metadata setup. It is not a full
+repository/release qualification or completion of S4-02. Counts remain 31/37
+verified, six open, none deferred; no protections or automation flags changed.
+
+Work continues from this main commit on `codex/s4-02-semantic-search` with the
+declared local-model/index contract, native vector transactions and versioned
+semantic queries under the same original authority and common recovery proof.
