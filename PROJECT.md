@@ -100,6 +100,11 @@ ownership, transport, restart and capability admission gates remain open. See
 the [native-stream scope](docs/s4-02-native-streams-acceptance.md).
 Its frozen `baebb73` private component selection passes 106 cases on each of
 Windows and Docker/Linux with zero skips and 1,226 unchanged Linux inputs.
+The follow-on [public source candidate](docs/s4-02-native-streams-acceptance.md#public-original-owner-observation-candidate--2026-10-26)
+adds opt-in original-owner SSE, explicit required admission and bounded
+process-local retention. It also repairs Windows worker-thread loop selection
+for fenced native writes. Final native/common-recovery qualification is pending;
+no task or research row is completed by this candidate.
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior

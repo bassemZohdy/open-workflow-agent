@@ -1258,12 +1258,44 @@ class TracingConfig(StrictModel):
     max_retained_bytes: int = Field(default=4_194_304, ge=256, le=1_073_741_824)
 
 
+class NativeStreamsConfig(StrictModel):
+    """Opt-in data-bearing observations; fixed process-local resource budgets."""
+
+    max_logs: int = Field(default=16, ge=1, le=128, strict=True)
+    max_events: int = Field(default=256, ge=1, le=1000, strict=True)
+    max_bytes: int = Field(default=1_048_576, ge=256, le=16_777_216, strict=True)
+    max_event_bytes: int = Field(default=65_536, ge=256, le=262_144, strict=True)
+    max_subscribers: int = Field(default=16, ge=1, le=128, strict=True)
+    queue_size: int = Field(default=32, ge=1, le=1000, strict=True)
+    retention_seconds: float = Field(default=60, gt=0, le=600, allow_inf_nan=False, strict=True)
+
+    @model_validator(mode="after")
+    def validate_stream_capacity(self) -> NativeStreamsConfig:
+        if self.max_event_bytes > self.max_bytes:
+            raise ValueError("native stream frame exceeds its retained byte budget")
+        if self.max_logs * self.max_bytes > 67_108_864:
+            raise ValueError("native stream retained capacity exceeds 64 MiB")
+        if self.max_subscribers * self.max_bytes > 67_108_864:
+            raise ValueError("native stream replay capacity exceeds 64 MiB")
+        if self.max_subscribers * self.queue_size * self.max_event_bytes > 67_108_864:
+            raise ValueError("native stream consumer capacity exceeds 64 MiB")
+        return self
+
+
 class ObservabilityConfig(StrictModel):
     log_level: str = "INFO"
     structured_logging: bool = False
     log_format: str = "json"  # "json" or "text"
     history: LifecycleHistoryConfig = Field(default_factory=LifecycleHistoryConfig)
     tracing: TracingConfig = Field(default_factory=TracingConfig)
+    native_streams: NativeStreamsConfig | None = None
+
+    @model_serializer(mode="wrap")
+    def serialized_observability(self, handler: SerializerFunctionWrapHandler) -> Any:
+        value = handler(self)
+        if self.native_streams is None:
+            value.pop("native_streams", None)
+        return value
 
 
 class EventConfig(StrictModel):
@@ -1330,6 +1362,17 @@ class RuntimeConfig(StrictModel):
     events: EventConfig = Field(default_factory=EventConfig)
     execution_timing: ExecutionTimingConfig = Field(default_factory=ExecutionTimingConfig)
     child_workflows: ChildWorkflowConfig = Field(default_factory=ChildWorkflowConfig)
+
+    @model_validator(mode="after")
+    def validate_native_stream_security(self) -> RuntimeConfig:
+        if self.observability.native_streams is not None and (
+            not self.server.api_security_profile or not self.execution_authorization.enabled
+        ):
+            raise ValueError(
+                "native streams require authenticated API ingress "
+                "and original execution authorization"
+            )
+        return self
 
     @model_validator(mode="after")
     def validate_a2a_security_profile(self) -> RuntimeConfig:

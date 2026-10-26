@@ -475,6 +475,15 @@ The common client is pinned to MCP `2026-07-28` and A2A `1.0` wire semantics. Op
 
 ## Observability
 
+Optional data-bearing native observations use `observability.native_streams: {}`.
+This selects the [declared LangGraph stream profile](native-streams.md), which
+requires authenticated API ingress and original execution authorization.
+Unconfigured/default serialization stays unchanged. Original owners separately
+need `invocations.stream`, and workflows must require `langgraph.streams@1.0.0`.
+Log, byte, frame, consumer, queue and retention bounds are deployment settings;
+the linked guide lists their defaults and aggregate limits. This process-local
+history is independent of diagnostic history and native checkpoints.
+
 Lifecycle records use CloudEvents `1.0` structured JSON semantics and expose common identifiers plus sanitized error information. Engine-native checkpoint state and secrets are never part of the public lifecycle contract.
 
 Optional diagnostic history uses the configured persistent common SQLite or

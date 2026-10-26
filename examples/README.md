@@ -28,6 +28,7 @@ The same layout works for the LangGraph image, Kubernetes ConfigMaps/volumes, an
 | [`memory-agent.yaml`](memory-agent.yaml) | Long-term memory tools (`add_memory`/`search_memory`/`delete_memory`) with `memory.enabled: auto`. |
 | [`native-memory.yaml`](native-memory.yaml) + [`native-memory-workflow.yaml`](native-memory-workflow.yaml) | Opt-in LangGraph catalog memory and filtered search; requires a build containing this source profile. See [configuration and recovery](../docs/native-memory.md). |
 | [`semantic-memory.yaml`](semantic-memory.yaml) + [`semantic-memory-workflow.yaml`](semantic-memory-workflow.yaml) | Opt-in local semantic memory with the packaged CPU model and native SQLite/pgvector indexing. See [the versioned profile](../docs/native-semantic-memory.md). |
+| [`native-stream.yaml`](native-stream.yaml) + [`native-stream-workflow.yaml`](native-stream-workflow.yaml) | Opt-in original-owner native values/updates and bounded process-local SSE replay. See [the stream profile](../docs/native-streams.md). |
 | [`tools-agent.yaml`](tools-agent.yaml) | A configured agent tool (bounded protocol clients, deployment-controlled). |
 | [`scheduled-workflow.yaml`](scheduled-workflow.yaml) | Workflow-side `schedule.every` (durable, at-least-once, single-runtime ownership). |
 | [`approval-workflow.yaml`](approval-workflow.yaml) | Durable human-in-the-loop approval composed from `emit` + `listen` (requires `approvals.enabled`). |

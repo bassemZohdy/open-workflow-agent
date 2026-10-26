@@ -271,6 +271,9 @@ treated as a deferred task or as additional feature completion.
   After PR #83, continue the [private native-stream foundation](docs/s4-02-native-streams-acceptance.md),
   whose `baebb73` selection passes 106 cases on each platform with zero skips,
   followed by authorized public transport and its capability/qualification gates.
+  The follow-on public values/updates candidate and its Windows native-write
+  loop repair are in [qualification](docs/s4-02-native-streams-acceptance.md#public-original-owner-observation-candidate--2026-10-26).
+  Broader stream modes, T50, state updates, replay and time travel remain open.
 
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
   The optional TypeScript package admits official OWS definitions and executes

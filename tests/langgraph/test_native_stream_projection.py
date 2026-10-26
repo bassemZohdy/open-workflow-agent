@@ -57,7 +57,8 @@ async def test_native_stream_driver_preserves_effects_and_hides_private_state(
         original = engine.native.execute_plan
 
         async def observed(*args, **kwargs):
-            return await original(*args, **kwargs, _stream_observer=log)
+            kwargs["_stream_observer"] = log
+            return await original(*args, **kwargs)
 
         monkeypatch.setattr(engine.native, "execute_plan", observed)
         result = await engine.invoke(plan, handle, {"start": "input"})

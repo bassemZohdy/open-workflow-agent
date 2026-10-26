@@ -1,7 +1,7 @@
 # S4-02 native stream observations
 
-Status: private foundation in development after PR #83 (`872d424`). Public
-native streaming remains disabled. This record owns the new stream work;
+Status: the private foundation is merged through PR #84 (`73778d6`). An opt-in
+public values/updates candidate is undergoing qualification. This record owns the stream work;
 [memory qualification](s4-02-native-memory-acceptance.md) and [channels/Send](s4-02-native-channels-acceptance.md)
 retain their separate evidence. S4-02 and T50 remain open.
 
@@ -68,18 +68,58 @@ retained under `tmp/merge-20261025/baebb73/`. All **1,226 frozen source inputs**
 remain unchanged. This qualifies the private component only; no public native
 streaming, full T50, full-repository or release claim follows from these checks.
 
+## Public original-owner observation candidate — 2026-10-26
+
+The candidate adds the [configured source profile](native-streams.md), [bootstrap example](../examples/native-stream.yaml)
+and [OWS workflow](../examples/native-stream-workflow.yaml). Selecting
+`observability.native_streams` requires authenticated API ingress and original
+execution authorization. Exact required `langgraph.streams@1.0.0` declarations
+enable collection on the native adapter. Optional/absent declarations collect
+no task data. Unsupported required profiles reject before `/v1/invoke` creates
+an invocation. Default serialization and admission remain unchanged.
+
+The HTTP endpoint verifies original ownership, current `invocations.stream`
+permission and retained original authority before looking up observations.
+It never owns execution, writes common recovery evidence or dispatches tasks.
+Mode, frame, history, queue, response and aggregate registry budgets are bounded.
+Global response slots survive log eviction until the actual response closes;
+sender deadlines, cancellation and disconnect cleanup release them. Partial
+projection/retention never silently advances a requested cursor. Waiting
+segments finish their responses; a same-worker resume can extend the retained
+incarnation. The actual abrupt-exit witnesses require unavailable old cursors,
+recoverable native checkpoints and no repeated model call after resume.
+
+The restart witness exposed a real Windows fenced-write issue. A selector main
+loop passes admission, but the independent write thread previously used the
+process-wide default Proactor policy, which psycopg rejects. The common write
+helper now explicitly creates a selector loop using `asyncio.Runner` without
+changing the process-wide policy. The worker retains a selector main loop and
+the default global Windows policy, so both ordinary and thread-created loops
+are covered. Cancellation still drains the native transaction before release.
+
+Focused API/projection development checks pass on SQLite/PostgreSQL, including
+original-principal isolation, explicit permission, changed-policy denial,
+bounded replay/filtering, waiting/resume, network cancellation, subscriber
+pressure, abrupt process exit and configuration-only startup. Strict typing,
+Ruff and the earlier core buffer/registry/transport checks pass. Final frozen
+native, common ownership/recovery and ADK compatibility checks are pending.
+
+Failed attempts are retained under `tmp/merge-20261025/stream-api-*.xml`:
+the test policy initially omitted `model.complete`; a four-event retention
+test correctly reported a resume replay gap before a separate retained-interval
+case selected a sufficient budget; the fresh worker exposed the Proactor error;
+and the example initially used an unsupported prefix resource pattern. Those
+fixtures/example are corrected without weakening authorization or replay rules.
+
 ## Remaining implementation and verification
 
-Public capability and `EngineCapabilities.streaming` remain false throughout
-this qualified private foundation.
+The qualified private source above advertises no public stream capability.
+The candidate opts in only to the named values/updates source profile.
 
-Next, implement the opt-in deployment policy and bounded per-runtime registry,
-original-owner HTTP observation endpoint, explicit capability/admission gate,
-stream lifetime/event/byte limits, replay errors and disconnect cleanup. Retain
-the current portable lifecycle and A2A stream contracts. A management read must
-never dispatch or resume a workflow. Test two simultaneous original principals,
-denied actions, response data boundaries, independent observers, waiting/resume,
-actual abrupt restart, SQLite and optional PostgreSQL before advertising it.
+Finish frozen qualification before claiming the public candidate verified.
+Then continue other stream modes and the remaining full T50 criteria with
+explicit access/redaction contracts. The portable lifecycle and A2A streams
+retain their separate behavior; source qualification does not publish an image.
 
 Native state updates, workflow replay and time travel retain their independent
 ownership, fingerprint, receipt and checkpoint gates. This foundation neither
