@@ -33,7 +33,7 @@ async def preflight(request, tmp_path):
     channels = isinstance(request.param, tuple) and request.param[1] == "channels"
     config = configuration()
     config.observability.native_streams = None
-    config.execution_authorization.policy.rules[0].actions.append("state.update")
+    config.execution_authorization.policy.rules[0].actions.extend(["state.update", "state.resolve"])
     if backend == "postgresql":
         datasource = os.getenv("OWA_TEST_POSTGRES_URL")
         if not datasource:

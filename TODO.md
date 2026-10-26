@@ -308,6 +308,13 @@ treated as a deferred task or as additional feature completion.
   plus 763 SDK-free cases, with zero skips and 1,266 unchanged Linux inputs. Public
   ingress, unknown-control resolution and full continuation/branch acceptance
   remain required. See the [attestation scope](docs/s4-02-native-state-acceptance.md#attested-owa-data-updates-after-pr-89).
+  PR #90 is merged. Private explicit resolution now records request-bound
+  original-owner decisions without native redispatch. Proof-backed completion
+  permits private continuation; acknowledged unknown abandonment blocks adopting
+  a current native head. Common audit/outcome rollback, immutability, current and
+  original permission, actual OWA state and fresh-process checks pass on both
+  stores. Continue public configured ingress and broader continuation/branching;
+  see the [resolution scope](docs/s4-02-native-state-acceptance.md#explicit-state-control-resolution-after-pr-90).
 
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
   The optional TypeScript package admits official OWS definitions and executes

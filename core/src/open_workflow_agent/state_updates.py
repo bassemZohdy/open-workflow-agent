@@ -6,11 +6,11 @@ import asyncio
 import json
 import re
 from collections.abc import Awaitable, Callable
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import Any
 from weakref import WeakValueDictionary
 
-from ._effect_storage import insert_pending_receipt
+from ._effect_storage import insert_completed_receipt, insert_pending_receipt
 from .effects import (
     EffectIdentity,
     EffectJournal,
@@ -26,6 +26,15 @@ from .memory_reads import _bounded_column
 from .model_responses import bounded_model_json
 from .ownership import execution_write_guard, owned_write_transaction
 from .persistence import ExecutionHandle, InvocationStore, _verify_identity
+from .state_update_resolution import PREFIX as RESOLUTION_PREFIX
+from .state_update_resolution import (
+    StateUpdateResolution,
+    abandoned_receipt,
+    abandonment_error,
+    resolution_identity,
+    resolution_receipt,
+    resolution_request_digest,
+)
 from .storage import StorageConnection
 
 PROFILE = "owa/state-update/v1"
@@ -344,7 +353,7 @@ class StateUpdates:
                     ("request_json", 131_072),
                     ("request_digest", 64),
                     ("authorization_digest", 64),
-                    ("phase", 16),
+                    ("phase", 32),
                     ("proof_json", 1024),
                 )
             )
@@ -355,7 +364,8 @@ class StateUpdates:
             row is None
             or tuple(row[:2]) != (identity.invocation_id, identity.workflow_fingerprint)
             or type(row[2]) is not str
-            or row[5] not in {"prepared", "dispatched", "completed"}
+            or row[5]
+            not in {"prepared", "dispatched", "completed", "resolved_complete", "abandoned"}
         ):
             raise state_update_error("intent_changed")
         request = StateUpdateRequest.from_descriptor(json.loads(row[2], object_pairs_hook=_unique))
@@ -388,9 +398,16 @@ class StateUpdates:
             or ReceiptDependency._digest(decision) != row[4]
         ):
             raise state_update_error("authority_changed")
+        resolution = self._resolution(request)
+        if (resolution is not None) != (row[5] in {"resolved_complete", "abandoned"}):
+            raise state_update_error("resolution_missing_or_orphaned")
+        if resolution is not None and (
+            (resolution[0].decision == "abandon_unknown") != (row[5] == "abandoned")
+        ):
+            raise state_update_error("resolution_changed")
         native = self._proof(request)
         proof = None
-        if row[5] == "completed":
+        if row[5] in {"completed", "resolved_complete"}:
             if type(row[6]) is not str:
                 raise state_update_error("proof_missing")
             proof = StateUpdateProof(**json.loads(row[6], object_pairs_hook=_unique))
@@ -399,19 +416,85 @@ class StateUpdates:
                 raise state_update_error("proof_changed")
         elif row[6] is not None or (row[5] == "prepared" and native is not None):
             raise state_update_error("proof_orphaned")
-        if receipt != _receipt(request, proof):
+        expected = (
+            abandoned_receipt(request, resolution[1])
+            if row[5] == "abandoned" and resolution is not None
+            else _receipt(request, proof)
+        )
+        if receipt != expected:
             raise state_update_error("receipt_changed")
         return request, row[5]
 
     def verify(self, identity: EffectIdentity, receipt: EffectReceipt) -> None:
         self._load(identity, receipt)
 
+    def _resolution(
+        self, request: StateUpdateRequest
+    ) -> tuple[StateUpdateResolution, EffectReceipt] | None:
+        identity = resolution_identity(request.identity)
+        row = self.connection.execute(
+            "SELECT owner,status,"
+            + _bounded_column(self.connection, "payload", 8192)
+            + " FROM workflow_effects WHERE identity=?",
+            (identity.key,),
+        ).fetchone()
+        index = self.connection.execute(
+            "SELECT invocation_id,fingerprint,"
+            + _bounded_column(self.connection, "payload", 8192)
+            + " FROM workflow_effect_invocations WHERE identity=?",
+            (identity.key,),
+        ).fetchone()
+        if row is None and index is None:
+            return None
+        if row is None or index is None or type(row[2]) is not str or type(index[2]) is not str:
+            raise state_update_error("resolution_missing_or_orphaned")
+        try:
+            raw = json.loads(row[2], object_pairs_hook=_unique)
+            decision = StateUpdateResolution.from_descriptor(raw["output"]["resolution"])
+            permission = self.authorizations.inspect_decision(
+                identity,
+                "state.resolve",
+                "invocation:" + request.invocation_id,
+                resolution_request_digest(request, decision),
+            ).receipt
+            if permission is None or permission.status != "completed":
+                raise state_update_error("resolution_authority_missing")
+            expected = resolution_receipt(request, decision, ReceiptDependency._digest(permission))
+            saved = self.invocations.get(request.invocation_id)
+            if (
+                saved is None
+                or saved.owner_principal != decision.principal
+                or tuple(row[:2]) != (expected.owner, expected.status)
+                or raw != _receipt_payload(expected)
+                or tuple(index[:2]) != (identity.invocation_id, identity.workflow_fingerprint)
+                or EffectIdentity.from_value(json.loads(index[2], object_pairs_hook=_unique))
+                != identity
+            ):
+                raise ValueError("resolution evidence changed")
+        except (KeyError, TypeError, ValueError):
+            raise state_update_error("resolution_changed") from None
+        return decision, expected
+
+    def verify_resolution(self, identity: EffectIdentity, receipt: EffectReceipt) -> None:
+        update = replace(identity, operation=PREFIX + identity.operation[len(RESOLUTION_PREFIX) :])
+        known = self.journal.get(update)
+        if known is None:
+            raise state_update_error("intent_missing")
+        request, phase = self._load(update, known)
+        resolution = self._resolution(request)
+        if (
+            phase not in {"resolved_complete", "abandoned"}
+            or resolution is None
+            or resolution[1] != receipt
+        ):
+            raise state_update_error("resolution_changed")
+
     def completed_request(self, identity: EffectIdentity) -> StateUpdateRequest:
         receipt = self.journal.get(identity)
         if receipt is None or receipt.status != "completed":
             raise state_update_error("control_acknowledgement_required")
         request, phase = self._load(identity, receipt)
-        if phase != "completed" or request.projection_digest is None:
+        if phase not in {"completed", "resolved_complete"} or request.projection_digest is None:
             raise state_update_error("control_attestation_required")
         return request
 
@@ -436,12 +519,18 @@ class StateUpdates:
             )
             if request.identity.key != key or request.workflow_fingerprint != fingerprint:
                 raise state_update_error("identity_missing")
+            receipt = self.journal.get(request.identity)
+            if receipt is None:
+                raise state_update_error("intent_missing")
+            _, phase = self._load(request.identity, receipt)
+            if phase == "abandoned":
+                # Audit resolution acknowledges uncertainty; it cannot establish
+                # a safe native head for continuation or another state update.
+                resolution = self._resolution(request)
+                assert resolution is not None
+                raise abandonment_error(resolution[1].request_digest)
             if request.projection_digest is not None:
                 if request.request_id == prepared_request_id:
-                    receipt = self.journal.get(request.identity)
-                    if receipt is None:
-                        raise state_update_error("intent_missing")
-                    _, phase = self._load(request.identity, receipt)
                     if phase == "prepared":
                         # Only the same not-yet-dispatched command may rebuild
                         # its original preflight after process restart.
@@ -454,6 +543,104 @@ class StateUpdates:
         request, phase = self._load(identity, receipt)
         if phase == "dispatched" and self._proof(request) is None:
             raise state_update_error("outcome_unknown")
+
+    async def resolve(
+        self,
+        handle: ExecutionHandle,
+        request: StateUpdateRequest,
+        decision: StateUpdateResolution,
+        authority: ExecutionAuthority | None,
+    ) -> EffectReceipt:
+        """Record one authorized choice; never call the native mutation callback."""
+        try:
+            if not isinstance(decision, StateUpdateResolution):
+                raise state_update_error("resolution_invalid")
+            self._handle(handle, request)
+            if (
+                authority is None
+                or authority.principal.identity != handle.owner_principal
+                or decision.principal != handle.owner_principal
+            ):
+                raise state_update_error("original_owner_required")
+            resource = "invocation:" + handle.invocation_id
+            self.authorizations.authorize_request(authority, "state.resolve", resource)
+            lock = self._locks.setdefault(request.identity.key, asyncio.Lock())
+            async with lock:
+                # Reject a mismatched choice before reserving its immutable
+                # authorization slot. The ownership lock also waits out any
+                # earlier native commit before inspecting its proof.
+                with owned_write_transaction(
+                    self.connection,
+                    handle._execution_lease,
+                    invocation_id=handle.invocation_id,
+                    workflow_fingerprint=handle.workflow_fingerprint,
+                ):
+                    known = self.journal.get(request.identity)
+                    if known is None:
+                        raise state_update_error("intent_missing")
+                    stored, phase = self._load(request.identity, known)
+                    if stored != request:
+                        raise state_update_error("request_changed")
+                    if phase in {"resolved_complete", "abandoned"}:
+                        resolution = self._resolution(request)
+                        if resolution is None or resolution[0] != decision:
+                            raise state_update_error("resolution_changed")
+                    elif phase != "dispatched":
+                        raise state_update_error("resolution_requires_dispatch")
+                    elif (self._proof(request) is not None) != (decision.decision == "complete"):
+                        raise state_update_error("resolution_evidence_mismatch")
+                granted = self.authorizations.authorize(
+                    handle,
+                    resolution_identity(request.identity),
+                    "state.resolve",
+                    resource,
+                    resolution_request_digest(request, decision),
+                    execution_lease=handle._execution_lease,
+                )
+                if granted is None:
+                    raise state_update_error("authorization_required")
+                audit = resolution_receipt(
+                    request, decision, ReceiptDependency._digest(granted.receipt)
+                )
+                with owned_write_transaction(
+                    self.connection,
+                    handle._execution_lease,
+                    invocation_id=handle.invocation_id,
+                    workflow_fingerprint=handle.workflow_fingerprint,
+                ):
+                    self._handle(handle, request)
+                    known = self.journal.get(request.identity)
+                    if known is None:
+                        raise state_update_error("intent_missing")
+                    stored, phase = self._load(request.identity, known)
+                    if stored != request:
+                        raise state_update_error("request_changed")
+                    if phase in {"resolved_complete", "abandoned"}:
+                        if self._resolution(request) != (decision, audit):
+                            raise state_update_error("resolution_changed")
+                        return audit
+                    if phase != "dispatched":
+                        raise state_update_error("resolution_requires_dispatch")
+                    proof = self._proof(request)
+                    if (proof is not None) != (decision.decision == "complete"):
+                        raise state_update_error("resolution_evidence_mismatch")
+                    insert_completed_receipt(
+                        self.connection, resolution_identity(request.identity), audit
+                    )
+                    self._finish(
+                        handle,
+                        request,
+                        abandoned_receipt(request, audit)
+                        if proof is None
+                        else _receipt(request, proof),
+                        "abandoned" if proof is None else "resolved_complete",
+                        proof,
+                    )
+                    return audit
+        except OwaError:
+            raise
+        except Exception:
+            raise state_update_error("resolution_failure") from None
 
     async def update(
         self,
@@ -536,7 +723,11 @@ class StateUpdates:
                 stored, phase = self._load(request.identity, receipt)
                 if stored != request:
                     raise state_update_error("request_changed")
-            if phase == "completed":
+            if phase == "abandoned":
+                resolution = self._resolution(request)
+                assert resolution is not None
+                raise abandonment_error(resolution[1].request_digest)
+            if phase in {"completed", "resolved_complete"}:
                 proof = self._proof(request)
                 assert proof is not None
                 return proof
@@ -579,24 +770,34 @@ class StateUpdates:
                     or self._proof(request) != proof
                 ):
                     raise state_update_error("proof_missing")
-                self.connection.execute(
-                    f"UPDATE {TABLE} SET phase='completed',proof_json=? "
-                    "WHERE identity=? AND phase='dispatched'",
-                    (_json(asdict(proof), 1024), request.identity.key),
-                )
-                receipt = _receipt(request, proof)
-                changed = self.connection.execute(
-                    "UPDATE workflow_effects SET status='completed',payload=? "
-                    "WHERE identity=? AND owner=? AND status='pending'",
-                    (_json(_receipt_payload(receipt), 4096), request.identity.key, OWNER),
-                )
-                if changed.rowcount != 1 or self.journal.get(request.identity) != receipt:
-                    raise state_update_error("receipt_changed")
-                assert handle._execution_lease is not None
-                statement, values = execution_write_guard(self.connection, handle._execution_lease)
-                if self.connection.execute(statement, values).fetchone() is None:
-                    raise state_update_error("ownership_lost")
+                self._finish(handle, request, _receipt(request, proof), "completed", proof)
             return proof
+
+    def _finish(
+        self,
+        handle: ExecutionHandle,
+        request: StateUpdateRequest,
+        receipt: EffectReceipt,
+        phase: str,
+        proof: StateUpdateProof | None,
+    ) -> None:
+        changed = self.connection.execute(
+            f"UPDATE {TABLE} SET phase=?,proof_json=? WHERE identity=? AND phase='dispatched'",
+            (phase, None if proof is None else _json(asdict(proof), 1024), request.identity.key),
+        )
+        if changed.rowcount != 1:
+            raise state_update_error("intent_changed")
+        changed = self.connection.execute(
+            "UPDATE workflow_effects SET status=?,payload=? "
+            "WHERE identity=? AND owner=? AND status='pending'",
+            (receipt.status, _json(_receipt_payload(receipt), 4096), request.identity.key, OWNER),
+        )
+        if changed.rowcount != 1 or self.journal.get(request.identity) != receipt:
+            raise state_update_error("receipt_changed")
+        assert handle._execution_lease is not None
+        statement, values = execution_write_guard(self.connection, handle._execution_lease)
+        if self.connection.execute(statement, values).fetchone() is None:
+            raise state_update_error("ownership_lost")
 
 
 def verify_state_update_index(

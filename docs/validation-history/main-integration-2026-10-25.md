@@ -339,3 +339,20 @@ suspended OWA state, common receipts and completed scope evidence. Required
 mutation admission stays closed. S4-02/T45/T49 remain open. Work continues on
 `codex/s4-02-state-update-attestation` with atomic SDK data replacement, versioned
 common/native attestation and private continuation/recovery checks.
+
+## PR #90 integration — 2026-10-26 Asia/Dubai
+
+[PR #90](https://github.com/bassemZohdy/open-workflow-agent/pull/90) merged at
+`1e83e14b7646572dcf982b9c3ea184eb908e04e1`, preserving head
+`32a0a6a301ac1e03cc2cdad13316c863f26750dc`. Its required exact-head check passed
+in [Docs run 40281799381](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40281799381).
+Local main was fast-forwarded and its push confirmed GitHub was up to date.
+
+Private attestation source `1a546e6` passes 428 combined cases and 22 separate
+actual ADK cases per platform, plus 763 SDK-free core/API cases, all with zero
+skips and 1,266 unchanged Linux inputs. The SDK update changes only OWA data,
+preserves history/routes/counters/channels and binds the exact base and result
+to versioned common/native evidence. Private continuation and fresh-process
+recovery pass; public mutation admission stays closed. S4-02/T45/T49 remain open.
+Work continues on `codex/s4-02-state-control-resolution` with authorized immutable
+completion/unknown-outcome decisions, followed by public configured ingress.

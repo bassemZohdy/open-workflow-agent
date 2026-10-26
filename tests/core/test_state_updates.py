@@ -51,16 +51,19 @@ class Evidence:
 
 
 @pytest.fixture
-def controls(authority_tree):
+def controls(authority_tree, request):
     services, archive, auth, plan, handle, authority, _ = authority_tree
     rule = services.config.execution_authorization.policy.rules[0]
     rule.actions.append("state.update")
+    if getattr(request, "param", None) != "without-resolution-permission":
+        rule.actions.append("state.resolve")
     rule.resources.append("*")
     auth.reserve_invocation(handle, authority, input_data={"initial": True})
     with authority_scope(authority):
         archive.admit(plan, handle, {"initial": True}, execution_lease=handle._execution_lease)
     coordinator = StateUpdates(services.effect_journal, services.invocations, auth)
     coordinator._test_database = services.execution_ownership._database
+    coordinator._test_ownership = services.execution_ownership
     evidence = Evidence()
     coordinator.register(evidence.backend())
     request = StateUpdateRequest.create(

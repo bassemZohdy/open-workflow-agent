@@ -564,6 +564,10 @@ class EffectJournal:
                 if self._state_updates is None:
                     raise ValueError("state update backend is unavailable")
                 self._state_updates.verify(identity, receipt)
+            if identity.operation.startswith("policy:state-resolution:v1:"):
+                if self._state_updates is None:
+                    raise ValueError("state update backend is unavailable")
+                self._state_updates.verify_resolution(identity, receipt)
             if identity.operation.startswith("policy:memory-resolution:v1:"):
                 if self._memory_writes is None:
                     raise ValueError("memory mutation backend is unavailable")

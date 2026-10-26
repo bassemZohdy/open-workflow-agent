@@ -12,6 +12,7 @@ from native_stream_test_support import authority
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.services import RuntimeServices
+from open_workflow_agent.state_update_resolution import StateUpdateResolution
 from open_workflow_agent.state_updates import StateUpdateRequest, StateUpdates
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 from open_workflow_agent_langgraph.native_state_preflight import prepare_native_state_update
@@ -39,7 +40,20 @@ async def main() -> None:
             lease = services.execution_ownership.acquire(handle, seconds=300)
             handle._execution_lease = lease
             actor = authority(services, "alice")
-            if value["mode"] == "prepared":
+            if value["mode"].startswith("resolve-"):
+                complete = value["mode"] == "resolve-complete"
+                await coordinator.resolve(
+                    handle,
+                    request,
+                    StateUpdateResolution(
+                        "resolve-1",
+                        "alice",
+                        "complete" if complete else "abandon_unknown",
+                        not complete,
+                    ),
+                    actor,
+                )
+            elif value["mode"] == "prepared":
                 prepared = await prepare_native_state_update(
                     services,
                     handle,
@@ -50,14 +64,20 @@ async def main() -> None:
                     values=request.values,
                 )
                 assert bridge.stage(prepared).request == request
-            await coordinator.update(handle, request, actor)
+            if not value["mode"].startswith("resolve-"):
+                await coordinator.update(handle, request, actor)
         receipt = services.effect_journal.get(request.identity)
         proof = bridge.inspect(request)
-        assert receipt.status == "completed" and proof is not None
+        assert receipt.status in {"completed", "faulted"}
+        if receipt.status == "completed":
+            assert proof is not None
+        else:
+            assert receipt.error["details"]["reason"] == "control_abandoned"
         Path(sys.argv[2]).write_text(
             json.dumps(
                 {
-                    "proof": asdict(proof),
+                    "proof": asdict(proof) if proof is not None else None,
+                    "status": receipt.status,
                     "model_calls": len(services.model.calls),
                     "staged": len(bridge.proposals),
                 }
