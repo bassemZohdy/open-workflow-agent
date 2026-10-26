@@ -326,3 +326,30 @@ then omission of security-profile discriminators when excluding all defaults.
 The harness now launches its process outside the event loop and omits only the
 unused sandbox configuration. Runtime loop policy, validators and authority
 requirements were not weakened. The corrected six fresh-process cases pass.
+
+
+#### Frozen attestation qualification — `1a546e6`
+
+Runtime/tests are frozen at `1a546e6edc0214e003989700a85cad16085c3812`.
+The combined cohort selects versioned commands, actual OWA updates/continuation,
+preflight, control recovery, state/history API, native transactions/tasks/scopes,
+corruption and receipt/fork consistency, authority/fencing and admission checks.
+Windows and Linux use separate fresh PostgreSQL databases. Dependency locks
+match the immutable LangGraph/ADK images recorded above; Linux runs with read-only
+source/root filesystems, a non-root user, dropped capabilities and resource bounds.
+No packages are installed at startup.
+
+| Selection | Windows | Frozen Docker/Linux |
+| --- | --- | --- |
+| Combined attestation/state/native/authority regression | 428 passed, zero skips | 428 passed, zero skips |
+| Separate actual ADK authority/fencing/rejection | 22 passed, zero skips | 22 passed, zero skips |
+| SDK-free common journal/compiler/authorization/recovery/API | 763 passed, zero skips | Not selected |
+
+All 1,266 frozen Linux source inputs remain unchanged. Manifests, logs and XML
+remain under `tmp/merge-20261025/1a546e6/`. The combined selection finished in
+1145.03 seconds on Windows and 446.54 seconds on Linux, with 90 other-engine
+cells deselected on each platform. The SDK-free cohort finished in 248.64 seconds.
+Lint, formatting, strict typing of 171 core/ADK/LangGraph source files, Markdown
+links and consolidation tracking checks pass. This is private component
+qualification; it enables no public mutation route, capability, task checkbox,
+release image or conditional product track.

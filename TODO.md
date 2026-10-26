@@ -303,7 +303,9 @@ treated as a deferred task or as additional feature completion.
   PR #89 is merged. The next private component binds exact base/result digests
   and ordered control identities to SDK-updated OWA data and common receipts.
   Focused SQLite/PostgreSQL continuation and fresh-process recovery checks pass;
-  previous visits, routes, counters and native channels remain intact. Public
+  previous visits, routes, counters and native channels remain intact. Frozen
+  `1a546e6` passes 428 combined cases and 22 separate ADK cases on each platform,
+  plus 763 SDK-free cases, with zero skips and 1,266 unchanged Linux inputs. Public
   ingress, unknown-control resolution and full continuation/branch acceptance
   remain required. See the [attestation scope](docs/s4-02-native-state-acceptance.md#attested-owa-data-updates-after-pr-89).
 

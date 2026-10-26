@@ -154,8 +154,10 @@ control identities. Atomic native verification preserves earlier task history,
 routes, counters and channels. Private continuation uses the changed value without
 repeating earlier tasks. Fresh-process prepared-command recovery, interrupted
 acknowledgement and completed-proof inspection pass on SQLite and PostgreSQL.
-Public ingress, unknown-control resolution and full continuation/branch acceptance
-remain open. See the [attestation record](docs/s4-02-native-state-acceptance.md#attested-owa-data-updates-after-pr-89).
+Frozen `1a546e6` passes 428 combined cases and 22 separate actual ADK cases
+on each platform, plus 763 SDK-free core/API cases, with zero skips and 1,266
+unchanged Linux inputs. Public ingress, unknown-control resolution and full
+continuation/branch acceptance remain open. See the [attestation record](docs/s4-02-native-state-acceptance.md#attested-owa-data-updates-after-pr-89).
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior
