@@ -4,7 +4,7 @@ import asyncio
 import hashlib
 import json
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from open_workflow_agent._native_sqlite_inspection import inspect_native_sqlite
 from open_workflow_agent.child_suspension import ChildSuspension
@@ -23,14 +23,23 @@ from open_workflow_agent.native_extensions import (
     LANGGRAPH_SEND,
     MAX_NATIVE_SEND_BRANCHES,
 )
+from open_workflow_agent.native_memory_contract import CAPABILITY as MEMORY_CAPABILITY
+from open_workflow_agent.native_memory_contract import references as memory_references
 from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.storage import is_postgresql_datasource
 from open_workflow_agent.timers import TimerSuspension
-from open_workflow_agent.workflow import WorkflowPlan
+from open_workflow_agent.workflow import (
+    SUPPORTED_FUNCTION_CALLS,
+    WorkflowPlan,
+    _NativeMemoryRecoveryRequired,
+)
 
 from . import native as native_module
 from .agent import LangGraphAgentFactory
 from .native import LANGGRAPH_AVAILABLE, NATIVE_SCOPE_STEP_LIMIT, LangGraphFunctionalAdapter
+
+if TYPE_CHECKING:
+    from .native_memory_catalog import NativeMemoryCatalog
 
 
 class LangGraphWorkflowEngine(PortableWorkflowEngine):
@@ -46,6 +55,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
     def __init__(self) -> None:
         super().__init__()
         self.native = LangGraphFunctionalAdapter()
+        self.native_memory: NativeMemoryCatalog | None = None
 
     async def initialize(self, services: Any) -> None:
         database_path = services.engine_database_path("langgraph", create_namespace=False)
@@ -61,14 +71,45 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 "LangGraph PostgreSQL persistence requires a selector event loop on Windows",
                 details={"reason": "unsupported_event_loop"},
             )
-        await super().initialize(services)
-        factory = LangGraphAgentFactory()
-        self.agent = factory.create(
-            services.config.agent,
-            services.config.model,
-            factory.bind_tools(services.agent_tool_bindings()),
-        )
+        if services.config.memory.native and (
+            not self.native.task_nodes_available
+            or not services.config.execution_authorization.enabled
+        ):
+            raise ConfigurationError(
+                "native memory bindings require native LangGraph "
+                "and original execution authorization"
+            )
         self.native.database_path = database_path
+        if services.config.memory.native:
+            from .native_memory_catalog import NativeMemoryCatalog
+
+            installed = NativeMemoryCatalog(services)
+            await installed.open()
+            self.native_memory = installed
+        try:
+            await super().initialize(services)
+            factory = LangGraphAgentFactory()
+            self.agent = factory.create(
+                services.config.agent,
+                services.config.model,
+                factory.bind_tools(services.agent_tool_bindings()),
+            )
+        except BaseException:
+            try:
+                await super().shutdown()
+            finally:
+                if self.native_memory is not None:
+                    await self.native_memory.close()
+                    self.native_memory = None
+            raise
+
+    async def shutdown(self) -> None:
+        try:
+            await super().shutdown()
+        finally:
+            if self.native_memory is not None:
+                await self.native_memory.close()
+                self.native_memory = None
 
     async def _native_initial_history_exists(self, handle: ExecutionHandle) -> bool:
         key = hashlib.sha256(
@@ -180,17 +221,29 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                     )
 
     def capabilities(self) -> EngineCapabilities:
+        extensions: tuple[str, ...] = (
+            (LANGGRAPH_CHANNELS, LANGGRAPH_COMMAND, LANGGRAPH_SEND)
+            if self.native.task_nodes_available
+            else ()
+        )
+        if self.native_memory is not None:
+            self.native_memory.verify()
+            extensions += (MEMORY_CAPABILITY,)
+        functions = SUPPORTED_FUNCTION_CALLS + (
+            tuple(sorted(memory_references(self.native_memory.bindings)))
+            if self.native_memory is not None
+            else ()
+        )
         return EngineCapabilities(
             engine=self.engine_name,
+            functions=functions,
             resume=True,
             streaming=False,
             native_task_nodes=self.native.task_nodes_available,
             native_scope_step_limit=NATIVE_SCOPE_STEP_LIMIT
             if self.native.task_nodes_available
             else None,
-            native_extensions=(LANGGRAPH_CHANNELS, LANGGRAPH_COMMAND, LANGGRAPH_SEND)
-            if self.native.task_nodes_available
-            else (),
+            native_extensions=extensions,
         )
 
     async def invoke(
@@ -224,7 +277,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             else:
                 result = self._record_result(invocation, status="completed", output=output)
             return result
-        except (TimerSuspension, ChildSuspension):
+        except (TimerSuspension, ChildSuspension, _NativeMemoryRecoveryRequired):
             if invocation.status == "running":
                 self.services.invocations.update(invocation, status="waiting")
             result = self._stored_result(invocation)
@@ -290,7 +343,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 else self._record_result(handle, status="completed", output=output)
             )
             return result
-        except (TimerSuspension, ChildSuspension):
+        except (TimerSuspension, ChildSuspension, _NativeMemoryRecoveryRequired):
             if handle.status == "running":
                 self.services.invocations.update(handle, status="waiting")
             result = self._stored_result(handle)

@@ -115,7 +115,7 @@ def _is_limited_path(path: str) -> bool:
             or path.startswith("/v1/schedules/")
             or path.startswith("/v1/approvals/")
         )
-        and path.endswith(("/resume", "/cancel", "/decision", "/reassign", "/escalate"))
+        and path.endswith(("/resume", "/cancel", "/decision", "/reassign", "/escalate", "/resolve"))
     )
 
 
@@ -272,7 +272,7 @@ def create_app(
                 resolver=runtime_services.external_catalogs,
                 catalog=runtime_services.catalog,
                 grpc_enabled=runtime_services.grpc_enabled,
-                enabled_function_calls=runtime_services.role_function_calls,
+                enabled_function_calls=runtime_services.workflow_function_calls,
             )
             runtime_services.verify_grpc_plan(app.state.plan)
             runtime_services.workflow_catalog.register(app.state.plan)
@@ -284,7 +284,7 @@ def create_app(
                     resolver=runtime_services.external_catalogs,
                     catalog=runtime_services.catalog,
                     grpc_enabled=runtime_services.grpc_enabled,
-                    enabled_function_calls=runtime_services.role_function_calls,
+                    enabled_function_calls=runtime_services.workflow_function_calls,
                 )
                 runtime_services.verify_grpc_plan(child_plan)
                 runtime_services.workflow_catalog.register(child_plan)
@@ -700,7 +700,7 @@ def create_app(
             compile_sandbox_workflow(
                 sandbox=runtime_config.sandbox,
                 grpc_enabled=runtime_services.grpc_enabled,
-                enabled_function_calls=runtime_services.role_function_calls,
+                enabled_function_calls=runtime_services.workflow_function_calls,
             ),
         )
         if (
@@ -765,7 +765,7 @@ def create_app(
             compile_sandbox_workflow(
                 sandbox=runtime_config.sandbox,
                 grpc_enabled=runtime_services.grpc_enabled,
-                enabled_function_calls=runtime_services.role_function_calls,
+                enabled_function_calls=runtime_services.workflow_function_calls,
             ),
         )
         _authorize_request(
@@ -842,6 +842,12 @@ def create_app(
         _authorize_request("invocations.inspect", "invocation:" + invocation_id)
         return recovery_diagnostics(runtime_services, handle)
 
+    from .memory_recovery_api import mount_memory_recovery
+
+    mount_memory_recovery(
+        app, runtime_services, runtime_engine, _authorize_request, authorized_invocation
+    )
+
     @app.post("/v1/admin/knowledge/reload")
     async def reload_knowledge() -> dict[str, Any]:
         _authorize_request("knowledge.reload", "knowledge")
@@ -856,7 +862,7 @@ def create_app(
             return compile_sandbox_workflow(
                 sandbox=runtime_config.sandbox,
                 grpc_enabled=runtime_services.grpc_enabled,
-                enabled_function_calls=runtime_services.role_function_calls,
+                enabled_function_calls=runtime_services.workflow_function_calls,
             )
         return fallback
 

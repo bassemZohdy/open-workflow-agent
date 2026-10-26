@@ -23,6 +23,7 @@ class MemoryWriteResolution:
     principal: str
     decision: Literal["complete", "abandon_unknown"]
     acknowledge_unknown: bool = False
+    authorization_digest: str | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -33,20 +34,31 @@ class MemoryWriteResolution:
             or self.decision not in {"complete", "abandon_unknown"}
             or type(self.acknowledge_unknown) is not bool
             or self.acknowledge_unknown != (self.decision == "abandon_unknown")
+            or (
+                self.authorization_digest is not None
+                and (
+                    type(self.authorization_digest) is not str
+                    or not re.fullmatch(r"[a-f0-9]{64}", self.authorization_digest)
+                )
+            )
         ):
             raise ValueError("memory resolution requires an explicit finite decision")
 
     @property
     def descriptor(self) -> dict[str, Any]:
-        return {"profile": PROFILE, **asdict(self)}
+        value = {"profile": PROFILE, **asdict(self)}
+        if self.authorization_digest is None:
+            value.pop("authorization_digest")
+        return value
 
     @classmethod
     def from_descriptor(cls, value: Any) -> MemoryWriteResolution:
         if (
             type(value) is not dict
-            or set(value)
+            or set(value) - {"authorization_digest"}
             != {"profile", "operation_id", "principal", "decision", "acknowledge_unknown"}
             or value["profile"] != PROFILE
+            or ("authorization_digest" in value and value["authorization_digest"] is None)
         ):
             raise ValueError("memory resolution descriptor is invalid")
         return cls(**{key: item for key, item in value.items() if key != "profile"})

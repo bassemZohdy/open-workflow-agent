@@ -13,6 +13,7 @@ from typing import Any, Literal, cast
 from ._effect_storage import insert_completed_receipt
 from .effects import EffectIdentity, EffectJournal, EffectReceipt, effect_request_digest
 from .errors import InvocationStateConflict, InvocationStateError, ModelError
+from .memory_search import MemorySearchQuery
 from .model_responses import bounded_model_json
 from .ownership import owned_write_transaction
 from .persistence import ExecutionHandle, InvocationStore, _verify_identity
@@ -75,6 +76,7 @@ def _request(
     collection: str,
     key: str,
     maximum: int,
+    query: MemorySearchQuery | None = None,
 ) -> tuple[EffectIdentity, str, str]:
     if (
         not isinstance(parent, EffectIdentity)
@@ -89,12 +91,15 @@ def _request(
         or not 1 <= maximum <= 65_536
     ):
         raise _invalid("request_invalid")
+    if query is not None and (not isinstance(query, MemorySearchQuery) or key != query.key):
+        raise _invalid("request_invalid")
     suffix = effect_request_digest(
         PROFILE + ":slot",
         {
             "parent_operation": parent.operation,
             "collection": collection,
             "key": key,
+            **({"query": query.descriptor} if query is not None else {}),
         },
     )
     identity = replace(parent, operation=OPERATION_PREFIX + suffix)
@@ -106,6 +111,7 @@ def _request(
         "collection": collection,
         "key": key,
         "max_record_bytes": maximum,
+        **({"query": query.descriptor} if query is not None else {}),
     }
     try:
         encoded = bounded_model_json(value, limit=MAX_REQUEST_BYTES)
@@ -182,7 +188,7 @@ def _load(
     request = json.loads(row[3], object_pairs_hook=_unique)
     if (
         type(request) is not dict
-        or set(request)
+        or set(request) - {"query"}
         != {
             "profile",
             "parent",
@@ -206,6 +212,7 @@ def _load(
         request["collection"],
         request["key"],
         request["max_record_bytes"],
+        MemorySearchQuery.from_descriptor(request["query"]) if "query" in request else None,
     )
     handle = invocations.get(identity.invocation_id)
     if (
@@ -352,9 +359,10 @@ class MemoryReadObservations:
         max_record_bytes: int,
         fetch: Callable[[], Awaitable[dict[str, Any] | None]],
         observer: Callable[..., Any] | None = None,
+        query: MemorySearchQuery | None = None,
     ) -> dict[str, Any] | None:
         identity, request, digest = _request(
-            parent, binding, namespace, collection, key, max_record_bytes
+            parent, binding, namespace, collection, key, max_record_bytes, query
         )
         if handle.owner_principal is None or namespace != (
             "owa/principal-memory/v1:" + hashlib.sha256(handle.owner_principal.encode()).hexdigest()

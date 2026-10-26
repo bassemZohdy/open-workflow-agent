@@ -1,10 +1,13 @@
-# S4-02 native memory — private stores, repeatable reads and fenced transactions
+# S4-02 native memory — configured calls and retained recovery evidence
 
 Status: started after the main integration at `f013a2e`; S4-02 remains open.
-This is a private component in the LangGraph adapter, not an enabled workflow
-feature. A required `langgraph.memory@1.0.0` declaration still fails admission
-before invocation/native mutation. No official schema, public API, native
-extension payload or core memory contract changes in this slice.
+The [public workflow profile](#public-workflow-profile--2026-10-26) connects the
+private foundations to deployment-configured catalog calls and authenticated
+recovery controls. Its frozen-source qualification is recorded there. The
+earlier sections preserve their historical private boundaries and qualification
+limits. Default installations still reject required native memory; only an
+installed LangGraph binding enables the exact version. The official OWS schema
+and portable agent memory tool contract remain unchanged.
 
 ## Implemented boundary
 
@@ -622,28 +625,120 @@ expected optional skips (21 PostgreSQL cases and two SDK modules); see
 regression results, not full repository/release qualification or completion of
 S4-02; public memory admission remains closed.
 
-## Remaining work before enabling the capability
+## Public workflow profile — 2026-10-26
 
-- Define and validate the versioned workflow bindings, logical record/schema and
-  retention semantics within the approved metadata extension boundary.
-- Connect the private provider factories and read receipts to those validated
-  workflow bindings without making external services mandatory.
-- Complete bounded native search and its declared filter/index/semantic profile.
+Runtime source `c062e9c8fec33c01ae88975be7e050f47fdd77a2` adds the opt-in
+`langgraph.memory@1.0.0` profile. See the final qualification below and the [configuration,
+function contracts and recovery API](native-memory.md),
+[runtime configuration](configuration.md#knowledge-embedding-and-memory) and
+[executable example](../examples/native-memory-workflow.yaml).
+
+At most 16 unique deployment bindings own their fixed collection, provider
+identity, JSON bounds, namespace capacity, retention and cleanup policy. They
+install exact versioned get/put/search/delete/sweep functions through standard
+OWS custom calls. An exact required declaration and original execution
+authorization are mandatory; ADK, missing native dependencies and unconfigured
+bindings reject admission. Providers open before background dispatch; shutdown
+removes only the handlers still owned by this installation. Replacing a handler
+or changing a binding invalidates capability/execution. SQLite remains embedded
+and PostgreSQL optional. Native objects, locations and namespaces are not inputs
+or outputs.
+
+Search supports top-level scalar equality, strict JSON types, explicit null
+versus missing fields, exact namespace equality and deterministic ascending key
+limits. The 4 KiB/16-field query and at-most-64 result bound reject semantic,
+offset and operator requests. Both stores filter expiry and child namespaces
+before applying the result limit. The whole projected envelope fits the binding
+record-byte bound. Query-aware common observations retain the original result
+under the original permission and lease. Completed outer catalog receipts
+require one matching verified leaf even if its native checkpoint link has not
+yet been saved. Pinned SQLite driver diagnostics redact parameters and
+checkpoint blobs before formatting, including when root logging is DEBUG.
+
+An uncertain native write leaves its outer call pending and pauses execution.
+Only exact attested memory handlers may re-enter that pending parent; their
+common coordinators reconcile the leaf or refuse blind redispatch. Other
+catalog calls retain their existing recovery rules. Authenticated original-owner
+inspection returns bounded common metadata. Resolution requires matching parent
+and request digests, a protected original-authority permission receipt and an
+owned atomic immutable audit/phase/outcome. Replay also requires that grant;
+removing the proof from an otherwise recomputed audit is rejected. Completion
+requires a native marker; abandonment acknowledges an unknown outcome and
+resumes into a common fault. Duplicate choices acknowledge the same audit;
+conflicts and first decisions after terminal status are rejected. No native
+write is dispatched by the control, and terminal workflow results stay immutable.
+
+Focused qualification includes an actual public workflow process exit after
+SDK commit, common recovery under a fresh owner without another native apply,
+both resolution choices through HTTP and actual resume, private metadata/access
+denial, missing leaf proof, missing or removed operator grant, strict scalar
+filters, deterministic expiry/namespace limiting, retained search after a later
+write, handler replacement, close/reopen and the configuration-only example.
+The final selection combines these with the prior memory, lifecycle, ownership,
+journal, checkpoint and native task graph coverage.
+
+Earlier attempts remain retained under `tmp/merge-20261025/`: the API wait-state
+and policy-fixture failures, worker configuration/table/status corrections,
+`public-memory-search-final-focused.xml` (SQLite DEBUG leak, repaired), and
+`public-memory-grant-removal-red.xml` (two store witnesses of missing audit grant,
+repaired by `23056fa`). The `85c5a33` full runs were intentionally canceled when
+that last actionable gap was found; they have no qualification result and are
+not counted as failures, passes or task deferrals. Its source manifest and
+cancellation record remain in that directory.
+
+Source `23056fa` subsequently passed 587/588 Linux cases, including all public
+memory cases. The existing minimal-service adapter test exposed a startup-order
+regression before unsupported Windows/PostgreSQL loop rejection. Its Windows
+run reproduced that failure and was canceled as superseded. The restored early
+check at `c062e9c` passes all seven adapter tests. The extra fresh PostgreSQL ADK
+authority run passed seven of eight cases; a bounded diagnostic reproduced SQL
+state `23505` during concurrent SDK metadata initialization. `c062e9c` guards the
+original SDK migrations with a database/schema-scoped advisory transaction lock
+and ten-second deadline, preserving SDK SQL and formats and leaving workflow
+execution concurrent. The same eight cold cases then pass. Both red reports
+and the diagnostic are retained; these failures are not deferrals.
+
+### Final source qualification — `c062e9c`
+
+| Selection | Windows | Frozen Linux |
+| --- | --- | --- |
+| Memory/public calls/journal/ownership/lifecycle/resolution/native checkpoints | 588 passed, zero skips; 8 unrelated cases deselected | 588 passed, zero skips; 8 unrelated cases deselected |
+| ADK native execution/adapter/read drain/authority/checkpoint fencing | 46 passed, zero skips; 37 unrelated cases deselected | 46 passed, zero skips; 37 unrelated cases deselected |
+| Separate cold LangGraph shared authority/isolation/denial | 8 passed, zero skips; 44 unrelated cases deselected | 8 passed, zero skips; 44 unrelated cases deselected |
+| Core/API/configuration/recovery/logging/tracking without SDKs | 266 passed, 91 expected optional-environment skips | Not selected independently |
+
+Both Docker profiles mount the same frozen source read-only, retain all **1,211
+source inputs unchanged**, run as UID 12347 with a read-only root, dropped
+capabilities, no-new-privileges and finite memory/PID/tmp limits, and install
+nothing at startup. The LangGraph dependency image is
+`sha256:591b1bc4959940d8c6d7fa4f5c5b2471ddf2d68570e04415cbc420981f5e9f42`;
+the ADK image is
+`sha256:741a21400325548a51308cdbd6a5c9055443f7eecc8f950b43042c955d58be3b`.
+Root and engine manifests/locks match each image's retained baseline. Full
+memory, ADK and separate shared-authority checks use distinct fresh PostgreSQL
+16.15 databases so warmed SDK schemas cannot satisfy the cold-start witness.
+Reports, source manifest, image identities and bounded results remain under
+`tmp/merge-20261025/c062e9c/`.
+
+Ruff, formatting and strict mypy pass for changed core and principal adapter
+sources. The example passes the pinned official OWS schema and skill validation
+with no errors/warnings; the two custom memory calls intentionally use durable
+coordinators instead of an indiscriminate retry wrapper. This is finite
+component qualification, not a full repository/release or proposed-test result.
+S4-02 remains open and the backlog stays **31/37 verified, six open, none deferred**.
+
+## Remaining S4-02 memory work
+
+- Complete the declared semantic search and embedding/index profile. The public
+  version above provides bounded equality filters, not semantic search.
   The tracker maps B052/B053 to T51's put/get/search/delete, restart and
   cross-thread contract and B079 to T68's embedded-store profile. Repeatable
-  point reads alone do not establish those search or complete public outcomes.
-- Qualify the complete public binding profile over the private namespace bounds,
-  bounded physical cleanup and logical expiry, preserving recovery proof.
-  Connect explicit resolution of uncertain dispatched writes to authenticated,
-  authorized public controls and qualify that complete boundary. The private
-  control primitive above records proof-based completion or acknowledged unknown
-  abandonment. The private authorized writer connects native transactions to
-  common intents, completed receipts, native receipt observation and missing
-  evidence rejection; versioned public workflow bindings remain open.
-- Complete the public profile's native-checkpoint/crash recovery and changed
-  authority/policy qualification on the required engines/stores/platforms.
-  The finite first-use/provider setup and shutdown witnesses above do not
-  replace complete public workflow qualification before capability changes.
+  finite Python profile does not establish the full proposed test or JS parity.
+- Expand public checkpoint/crash, changed authority/policy, boundary limits and
+  the combined retention/capacity/control profile beyond the named witnesses.
+  Complete the remaining full T51/T68 criteria before promoting those rows.
+- Native streams, public state updates, replay and time travel retain their
+  full S4-02 acceptance gates. This memory profile does not complete them.
 
 Core remains responsible for common memory semantics, identity, loading,
 expressions, admission and errors. Framework APIs and provider dependencies stay

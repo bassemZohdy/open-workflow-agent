@@ -406,6 +406,7 @@ class EffectJournal:
         self._invocations = invocations
         self._memory_writes: MemoryWrites | None = None
         self._sandbox_job_verifier: Callable[[EffectIdentity, EffectReceipt], None] | None = None
+        self._native_memory_verifier: Callable[[EffectIdentity, EffectReceipt], None] | None = None
         self._execution_authorization_seal: OutcomeParticipant | None = None
         self._execution_authorization_intent: IntentParticipant | None = None
         self.connection: StorageConnection = open_storage(database, "owa_runtime")
@@ -535,6 +536,8 @@ class EffectJournal:
                     from .execution_authorization import verify_authorized_business_snapshot
 
                     verify_authorized_business_snapshot(self.connection, identity, receipt)
+            if identity.operation.startswith("call:memory.") and self._native_memory_verifier:
+                self._native_memory_verifier(identity, receipt)
             if identity.operation in {"policy:approval-request:v1", "policy:approval-mutation:v1"}:
                 from .protected_approval_store import verify_protected_approval_receipt
 

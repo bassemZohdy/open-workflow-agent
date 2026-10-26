@@ -247,9 +247,15 @@ treated as a deferred task or as additional feature completion.
   It preserves long accepted task contexts and serializes native checkpoint
   first-use migrations. Eight shared authority cases pass on each platform
   with fresh PostgreSQL databases.
-  Native memory admission stays closed. Next complete versioned public workflow
-  bindings including bounded search, authenticated/authorized resolution controls and remaining public
-  recovery qualification.
+  Source `c062e9c` adds opt-in configured get/put/search/delete/sweep calls,
+  scalar-filter search and original-owner authenticated resolution with actual
+  workflow resume. Default admission remains closed; configured native bindings
+  enable the exact required version. It also repairs early platform rejection
+  and concurrent cold ADK PostgreSQL schema setup. The [public qualification](docs/s4-02-native-memory-acceptance.md#public-workflow-profile--2026-10-26)
+  retains failed attempts and the final named acceptance limits. Next complete
+  the declared semantic embedding/index profile, broader public recovery gates,
+  native streams, public state updates, replay and time travel. T51/T68 and
+  S4-02 remain unchecked; the three product-dependent tasks stay conditional.
   See the [memory scope](docs/s4-02-native-memory-acceptance.md).
   Then continue streams, public state updates, replay and
   time travel. Preserve common authority, ownership, receipts and private

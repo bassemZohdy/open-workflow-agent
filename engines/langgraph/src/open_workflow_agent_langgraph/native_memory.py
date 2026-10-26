@@ -18,6 +18,7 @@ from langgraph.store.base import BaseStore, Item
 from open_workflow_agent.errors import ConfigurationError, ModelError, ToolError
 from open_workflow_agent.execution_context import current_action_context
 from open_workflow_agent.memory_reads import MemoryReadBinding, MemoryReadObservations
+from open_workflow_agent.memory_search import MemorySearchQuery
 from open_workflow_agent.model_responses import bounded_model_json
 
 if TYPE_CHECKING:
@@ -143,4 +144,78 @@ class NativeMemoryReader:
         except TimeoutError:
             raise ToolError(
                 "native memory read exceeded its deadline", details={"reason": "timeout"}
+            ) from None
+
+    async def search(self, query: MemorySearchQuery) -> dict[str, Any]:
+        if (
+            not isinstance(query, MemorySearchQuery)
+            or self._binding is None
+            or self._observations is None
+        ):
+            raise ConfigurationError("native memory search requires an installed finite binding")
+        try:
+            async with asyncio.timeout(self._bounds.timeout_seconds):
+                if not self._services.memory_enabled:
+                    raise ConfigurationError("native memory is disabled by deployment")
+                context = current_action_context()
+                namespace = self._services._memory_namespace()
+                match = _PRINCIPAL_NAMESPACE.fullmatch(namespace or "")
+                if context is None or match is None:
+                    raise ConfigurationError("native memory requires original invocation authority")
+                await self._services.authorize_current_action("memory.search", "memory:self")
+                native_namespace = ("owa_native_memory_v1", match[1], self._collection)
+
+                async def fetch() -> dict[str, Any]:
+                    try:
+                        items = await self._store.asearch(
+                            native_namespace,
+                            filter=query.filter,
+                            limit=query.limit,
+                            refresh_ttl=False,
+                        )
+                    except TimeoutError:
+                        raise
+                    except Exception:
+                        raise ToolError(
+                            "native memory search failed", details={"reason": "store_failure"}
+                        ) from None
+                    if type(items) is not list or len(items) > query.limit:
+                        raise ToolError("native memory search result is invalid")
+                    keys = [item.key for item in items if isinstance(item, Item)]
+                    if (
+                        len(keys) != len(items)
+                        or len(set(keys)) != len(keys)
+                        or any(type(key) is not str or not _KEY.fullmatch(key) for key in keys)
+                    ):
+                        raise ToolError("native memory search result is invalid")
+                    return {
+                        "items": [
+                            {
+                                "key": item.key,
+                                "value": _public_value(
+                                    item, native_namespace, item.key, self._bounds
+                                ),
+                            }
+                            for item in sorted(items, key=lambda item: item.key)
+                        ]
+                    }
+
+                result = await self._observations.read(
+                    context.handle,
+                    context.identity,
+                    binding=self._binding,
+                    namespace=match[0],
+                    collection=self._collection,
+                    key=query.key,
+                    max_record_bytes=self._bounds.max_record_bytes,
+                    fetch=fetch,
+                    observer=context.observer,
+                    query=query,
+                )
+                if result is None:
+                    raise ToolError("native memory search observation is invalid")
+                return result
+        except TimeoutError:
+            raise ToolError(
+                "native memory search exceeded its deadline", details={"reason": "timeout"}
             ) from None

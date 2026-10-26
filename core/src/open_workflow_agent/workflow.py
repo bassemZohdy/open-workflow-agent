@@ -156,6 +156,10 @@ class _EffectRecoveryRequired(WorkflowExecutionError):
     """Private recovery failure that cannot safely enter task retry/catch routing."""
 
 
+class _NativeMemoryRecoveryRequired(_EffectRecoveryRequired):
+    """A configured internal memory call must pause for retained evidence/control."""
+
+
 class _NoCancellationToken:
     def checkpoint(self) -> None:
         return None
@@ -1742,6 +1746,17 @@ class WorkflowExecutor:
                 },
             )
             raise
+        except _NativeMemoryRecoveryRequired:
+            self._set_invocation_status(state, "waiting")
+            self._emit(
+                "WorkflowWaiting",
+                {
+                    **event_context,
+                    "status": "waiting",
+                    "progress": {"reason": "native_memory_recovery"},
+                },
+            )
+            raise
         except Exception as exc:
             self._set_invocation_status(state, "faulted", output=None, error=_error_details(exc))
             self._emit(
@@ -1944,6 +1959,16 @@ class WorkflowExecutor:
                     "status": "cancelled",
                     "reason": exc.details.get("reason", "cancelled"),
                     "error": _error_details(exc),
+                },
+            )
+            raise
+        except _NativeMemoryRecoveryRequired:
+            self._emit(
+                "TaskWaiting",
+                {
+                    **self._task_event(reference, name, local),
+                    "status": "waiting",
+                    "progress": {"reason": "native_memory_recovery"},
                 },
             )
             raise
@@ -2504,6 +2529,10 @@ class WorkflowExecutor:
                 call not in {"http", "mcp", "a2a", "openapi", "grpc"} and self.services is not None
             ):
                 await self.services.authorize_current_action("catalog.call", call)
+                guard = getattr(self.services, "native_memory_call_guard", None)
+                permission = guard(call) if guard is not None else None
+                if permission is not None:
+                    await self.services.authorize_current_action(permission, "memory:self")
             return await self._run_effect_scoped(
                 call,
                 payload,
@@ -2544,6 +2573,8 @@ class WorkflowExecutor:
                     uncertainty.message, details=uncertainty.details
                 ) from None
         identity = self._effect_identity(state, operation or "call:" + call)
+        memory_guard = getattr(self.services, "native_memory_call_guard", None)
+        native_memory = bool(memory_guard(call)) if memory_guard is not None else False
         operation_id = (
             payload.get("operation_id")
             if call in {"http", "mcp", "a2a", "openapi", "grpc"} and isinstance(payload, Mapping)
@@ -2709,6 +2740,11 @@ class WorkflowExecutor:
             if audited_intent is not None:
                 await self._notify_receipt(state, audited_intent.identity, audited_intent.receipt)
         if receipt.owner != owner:
+            if native_memory:
+                # Only the exact installed internal handler is eligible.
+                # Its common observations/write intents decide whether work
+                # can be repeated; ordinary catalog calls remain unchanged.
+                owner = receipt.owner
             if call == "http" and recovery is not None and admitted is not None:
                 try:
                     recovered = await recovery.recover(
@@ -2733,10 +2769,11 @@ class WorkflowExecutor:
                     )
                     await self._notify_receipt(state, identity, resolved)
                     return self._effect_result(resolved)
-            raise _EffectRecoveryRequired(
-                "workflow action has an unresolved execution intent",
-                details={"instance": state.variables.get("_task_reference")},
-            )
+            if not native_memory:
+                raise _EffectRecoveryRequired(
+                    "workflow action has an unresolved execution intent",
+                    details={"instance": state.variables.get("_task_reference")},
+                )
         try:
             result = await dispatch()
             validate_expression_data(result)
@@ -2771,6 +2808,20 @@ class WorkflowExecutor:
             # authorized business cancellation. Retain its pending intent.
             raise
         except Exception as exc:
+            if native_memory and self.services is not None:
+                current = state.metadata.get("_invocation_handle")
+                if isinstance(
+                    current, ExecutionHandle
+                ) and self.services.memory_writes.has_dispatched(current, identity):
+                    raise _NativeMemoryRecoveryRequired(
+                        "native memory write requires evidence reconciliation "
+                        "or explicit resolution",
+                        details={
+                            "stage": "memory",
+                            "reason": "recovery_required",
+                            "instance": identity.task_reference,
+                        },
+                    ) from None
             self._checkpoint_effect_completion(state)
             # Match the common task boundary and avoid saving unexpected native
             # exception messages in the durable journal.

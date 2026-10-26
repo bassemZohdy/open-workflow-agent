@@ -757,6 +757,15 @@ def _role_function_calls(manifest: dict[str, Any]) -> frozenset[str]:
                 ),
             )
             enabled_function_calls.update(descriptor.references)
+    native = manifest.get("policy", {}).get("native_memory")
+    if native is not None:
+        from .config import MemoryConfig
+        from .native_memory_contract import references
+
+        if type(native) is not list or not native:
+            raise _unavailable("archive_invalid")
+        bindings = MemoryConfig.model_validate({"native": native}).native
+        enabled_function_calls.update(references(bindings))
     return frozenset(enabled_function_calls)
 
 
