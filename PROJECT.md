@@ -159,6 +159,18 @@ on each platform, plus 763 SDK-free core/API cases, with zero skips and 1,266
 unchanged Linux inputs. Public ingress, unknown-control resolution and full
 continuation/branch acceptance remain open. See the [attestation record](docs/s4-02-native-state-acceptance.md#attested-owa-data-updates-after-pr-89).
 
+PR #90 is merged at `1e83e14`. The next private component adds explicit,
+request-bound `state.resolve` decisions for dispatched state controls. Matching
+native proof permits completion; acknowledged abandonment records an unknown
+outcome and never establishes a safe head for continuation or another update.
+The resolution audit and control outcome commit together. Original/current
+permission, original owner and a live execution lease remain required. Focused
+common-store and actual OWA/fresh-process checks pass on SQLite/PostgreSQL.
+Frozen `0f9312f` passes 384 combined cases and 22 separate actual ADK cases per
+platform, plus 827 SDK-free core/API cases, all with zero skips and 1,268 unchanged
+Linux inputs. See the [resolution scope](docs/s4-02-native-state-acceptance.md#explicit-state-control-resolution-after-pr-90).
+Public configured ingress and broader continuation/branch gates remain open.
+
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior
 remain missing. S4-04 has a new 13-case actual native outcome comparison with

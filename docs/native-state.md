@@ -109,3 +109,9 @@ resulting OWA projection and ordered common control history. Focused continuatio
 and fresh-process recovery checks preserve earlier task visits and native
 channels. Public mutation remains unavailable. See the
 [attestation scope and remaining gates](s4-02-native-state-acceptance.md#attested-owa-data-updates-after-pr-89).
+
+Private interrupted-control resolution can complete from retained native proof
+or record explicitly acknowledged uncertainty. It never repeats the native
+update. Abandonment preserves the unknown outcome and blocks further native
+continuation or state updates. These controls still have no public route; see
+the [resolution scope](s4-02-native-state-acceptance.md#explicit-state-control-resolution-after-pr-90).

@@ -12,6 +12,7 @@ from uuid import uuid4
 import pytest
 from open_workflow_agent.errors import OwaError
 from open_workflow_agent.execution_authority import authority_scope
+from open_workflow_agent.state_update_resolution import StateUpdateResolution, resolution_identity
 from open_workflow_agent.state_updates import StateUpdateBackend, StateUpdates
 from open_workflow_agent.storage import open_storage
 from test_native_state_preflight import preflight as _preflight_fixture
@@ -162,6 +163,12 @@ async def test_private_native_continuation_uses_updated_data_and_keeps_prior_wor
     services, engine, handle, actor, _reference, original, _saver, plan = preflight
     candidate = bridge.stage(await prepare(preflight))
     await coordinator.update(handle, candidate.request, actor)
+    await continue_updated_invocation(controls)
+
+
+async def continue_updated_invocation(controls):
+    preflight, _coordinator, _bridge = controls
+    services, engine, handle, actor, _reference, original, _saver, plan = preflight
     wakes = {}
     for registration in services.timers.resumable_for_invocation(
         handle.invocation_id, plan.fingerprint
@@ -336,6 +343,14 @@ async def test_fresh_process_recovers_or_verifies_attested_owa_state(
             await coordinator.update(handle, candidate.request, actor)
     else:
         await coordinator.update(handle, candidate.request, actor)
+    data = await run_attestation_worker(controls, tmp_path, mode, candidate.request)
+    assert data["model_calls"] == 0 and data["staged"] == 0
+    assert bridge.inspect(candidate.request) is not None
+
+
+async def run_attestation_worker(controls, tmp_path, mode, request):
+    preflight, _coordinator, _bridge = controls
+    services, _engine, handle, *_ = preflight
     if mode != "inspect":
         services.execution_ownership.release(handle._execution_lease)
         handle._execution_lease = None
@@ -346,7 +361,7 @@ async def test_fresh_process_recovers_or_verifies_attested_owa_state(
                 "config": services.config.model_dump(mode="json", exclude={"sandbox"}),
                 "root": str(services.database_root) if services.database_root is not None else None,
                 "invocation_id": handle.invocation_id,
-                "request": candidate.request.descriptor,
+                "request": request.descriptor,
                 "mode": mode,
             }
         )
@@ -369,6 +384,74 @@ async def test_fresh_process_recovers_or_verifies_attested_owa_state(
         if process.poll() is None:
             process.kill()
             await asyncio.to_thread(process.communicate, timeout=10)
-    data = json.loads(result.read_text())
+    return json.loads(result.read_text())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("committed", [False, True])
+async def test_resolution_of_real_owa_control_never_repeats_native_write(controls, committed):
+    preflight, coordinator, bridge = controls
+    services, _engine, handle, actor, *_ = preflight
+    candidate = bridge.stage(await prepare(preflight))
+
+    async def interrupted(request, handle):
+        if committed:
+            await bridge.apply(request, handle)
+        raise RuntimeError("stopped around native dispatch")
+
+    coordinator._backends[bridge.storage_identity] = StateUpdateBackend(
+        bridge.storage_identity, interrupted, bridge.inspect
+    )
+    with pytest.raises(OwaError):
+        await coordinator.update(handle, candidate.request, actor)
+    before = await checkpoint(controls)
+    audit = await coordinator.resolve(
+        handle,
+        candidate.request,
+        StateUpdateResolution(
+            "resolve-1", "alice", "complete" if committed else "abandon_unknown", not committed
+        ),
+        actor,
+    )
+    assert services.effect_journal.get(resolution_identity(candidate.request.identity)) == audit
+    assert (await checkpoint(controls)).checkpoint["id"] == before.checkpoint["id"]
+    services.effect_journal.verify_invocation(handle.invocation_id, handle.workflow_fingerprint)
+    if committed:
+        await continue_updated_invocation(controls)
+    else:
+        with pytest.raises(OwaError) as failure:
+            await prepare(preflight)
+        assert failure.value.details["reason"] == "control_abandoned"
+        with pytest.raises(OwaError):
+            await coordinator.update(handle, candidate.request, actor)
+    assert services.model.calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("committed", [False, True])
+async def test_fresh_process_resolves_and_reinspects_real_owa_control(
+    controls, tmp_path, committed
+):
+    preflight, coordinator, bridge = controls
+    services, _engine, handle, actor, *_ = preflight
+    candidate = bridge.stage(await prepare(preflight))
+
+    async def interrupted(request, handle):
+        if committed:
+            await bridge.apply(request, handle)
+        raise RuntimeError("stopped before process handoff")
+
+    coordinator._backends[bridge.storage_identity] = StateUpdateBackend(
+        bridge.storage_identity, interrupted, bridge.inspect
+    )
+    with pytest.raises(OwaError):
+        await coordinator.update(handle, candidate.request, actor)
+    before = await checkpoint(controls)
+    mode = "resolve-complete" if committed else "resolve-abandon"
+    data = await run_attestation_worker(controls, tmp_path, mode, candidate.request)
+    assert data["status"] == ("completed" if committed else "faulted")
     assert data["model_calls"] == 0 and data["staged"] == 0
-    assert bridge.inspect(candidate.request) is not None
+    assert (await checkpoint(controls)).checkpoint["id"] == before.checkpoint["id"]
+    again = await run_attestation_worker(controls, tmp_path, "inspect", candidate.request)
+    assert again == data
+    services.effect_journal.verify_invocation(handle.invocation_id, handle.workflow_fingerprint)

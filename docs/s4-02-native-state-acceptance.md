@@ -353,3 +353,78 @@ Lint, formatting, strict typing of 171 core/ADK/LangGraph source files, Markdown
 links and consolidation tracking checks pass. This is private component
 qualification; it enables no public mutation route, capability, task checkbox,
 release image or conditional product track.
+
+### Explicit state-control resolution after PR #90
+
+The private common coordinator now accepts `owa/state-update-resolution/v1`
+decisions only for an existing dispatched control. A fixed per-control audit
+identity permits one immutable operation ID, owner and choice. Both current
+caller and retained original authority must allow `state.resolve` on the
+invocation. The stored authorization binds the exact control request and
+decision; ordinary receipt/index verification rechecks that binding. A live
+original-owner execution lease governs every write. Terminal invocations are
+not reopened. No public route or runtime registration is enabled.
+
+`complete` requires matching retained native proof. `abandon_unknown` requires
+explicit acknowledgement and no current matching proof; it claims neither
+rollback nor nonexecution. Neither choice calls the native mutation callback.
+The audit and control receipt/phase/proof commit in one common transaction.
+Rejected evidence/choices create no resolution audit or immutable permission
+slot, so a correct choice remains possible. An interrupted common commit rolls
+back its audit and outcome together; an already retained permission can be
+reused by the same exact choice.
+
+Existing prepared/dispatched/completed meanings are unchanged. New
+`resolved_complete` and `abandoned` phases require their matching audit.
+Completed resolution retains the exact native proof and supports private OWA
+continuation. Abandonment retains an immutable unknown-outcome fault and cannot
+retry the update. Common audit inspection can verify that fault, but current
+native-head validation rejects abandonment, including if valid matching proof
+appears later. It cannot silently authorize continuation or another state
+update. Existing business history is not rewritten.
+
+Focused common SQLite/PostgreSQL checks cover exact versioned decisions,
+incorrect/correct choices, original and current permission, absent/substituted
+callers, stale leases, terminal handles, prepared/unadmitted controls, duplicate
+resolution, reopening, atomic rollback, damaged audit/index/phase/permission and
+self-consistent audit rewrites with the wrong authorization digest. Real OWA
+checks prove neither resolution adds a native checkpoint, proof-backed
+completion continues with updated data, abandonment blocks preflight, and fresh
+processes can resolve and subsequently inspect both outcomes with zero model
+calls. The initial development run retained two test-harness failures that
+referenced ownership through `InvocationStore`; the corrected fixture uses the
+actual execution-ownership store. Reports remain under
+`tmp/merge-20261025/state-resolution-*.xml`.
+
+Public configured ingress, capacity/deadline/cancellation handling at that
+boundary, broader continuation, replay/time travel and full S4-02/T45/T49 remain
+open. No task checkbox, research feature, release image or conditional track is
+promoted by private resolution checks.
+
+
+#### Frozen resolution qualification — `0f9312f`
+
+Runtime/tests are frozen at `0f9312f997ac6ea49a629652df0b599efdd22e4d`.
+The combined cohort selects all new common resolution and actual OWA/fresh-process
+resolution cases alongside versioned commands, updated-data continuation,
+preflight, common/native control recovery, state/history reads, atomic SDK
+transactions, native task/scope behavior, authority/fencing and admission.
+Windows and Linux use separate fresh PostgreSQL databases. Immutable dependency
+images and matching lock verification, read-only/non-root Linux execution,
+resource bounds and the absence of startup installs remain as recorded above.
+
+| Selection | Windows | Frozen Docker/Linux |
+| --- | --- | --- |
+| Combined resolution/state/native/authority regression | 384 passed, zero skips | 384 passed, zero skips |
+| Separate actual ADK authority/fencing/rejection | 22 passed, zero skips | 22 passed, zero skips |
+| SDK-free common journal/compiler/authorization/recovery/API | 827 passed, zero skips | Not selected |
+
+All 1,268 frozen Linux source inputs remain unchanged. Reports and the source
+manifest remain under `tmp/merge-20261025/0f9312f/`. The combined selection
+finished in 643.81 seconds on Windows and 306.50 seconds on Linux,
+with 38 other-engine cells deselected. The SDK-free cohort finished in
+273.40 seconds. Lint, formatting, strict typing of 172 core/ADK/LangGraph
+source files, Markdown links and consolidation tracking checks pass. Final
+documentation changes no frozen runtime/test/example inputs. This is private
+component qualification, not public mutation, full repository or release
+qualification; S4-02/T45/T49 remain unchecked.
