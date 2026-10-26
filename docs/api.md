@@ -179,6 +179,22 @@ a workflow. This data-bearing permission is separate from `events.read` on
 sanitized lifecycle diagnostics. See the linked profile for limits, examples,
 expiry, waiting/resume and restart behavior.
 
+## Native state/history views
+
+The opt-in LangGraph [state-read profile](native-state.md) adds original-owner
+`GET /v1/invocations/{invocation_id}/state` and `/states` endpoints. Both need
+`state.inspect` under current and retained original authority and an exact
+required workflow declaration. A state `reference` selects one checkpoint;
+history `limit`/`before` select a bounded newest-first page. Opaque references
+survive process restart while retained native state remains available.
+
+These data-bearing views expose task data, declared channel values and public
+root visits/lineage. They use existing read-only native storage, never initialize
+or migrate it, and always report continuation as not inspected. Reads cannot
+dispatch, update, resume, replay or branch a workflow. Unknown/out-of-window
+states and excessive payloads return HTTP 409; full read capacity returns 429.
+See the linked guide for byte/window/deadline bounds and current acceptance.
+
 ## Scheduling
 
 Scheduling uses durable, fenced claims over the configured common SQLite or

@@ -249,3 +249,25 @@ unchanged Linux source inputs. This merge exposes no public stream capability.
 S4-02/T50 remain open. Work continues on `codex/s4-02-native-stream-api` with
 opt-in deployment policy, original-owner HTTP observation and explicit
 admission, retention, resource, disconnect and restart checks.
+
+## PR #85 integration — 2026-10-26 Asia/Dubai
+
+[PR #85](https://github.com/bassemZohdy/open-workflow-agent/pull/85) merged at
+`2f33a3b9422e960273628f881dcb34606037bb28`, preserving head
+`36ed0f5ec4abcba874750df6b0965dbf45fe5c6d`. Its required exact-head check passed
+in [Docs run 40263591960](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40263591960).
+Local main was fast-forwarded and its push confirmed GitHub was up to date.
+
+Runtime `a597134` passes 318 combined stream/native/ownership/write-recovery
+cases and 18 separate actual ADK authority/fencing/admission cases on each of
+Windows and frozen Docker/Linux with zero skips and 1,237 unchanged Linux
+inputs. The SDK-free baseline passes 242 cases; its 46 omitted PostgreSQL cells
+pass a separate fresh-database run, closing those skips. The acceptance record
+retains the initial startup-order failure and intentionally stopped duplicate.
+
+The merge adds only the opt-in original-owner values/updates source profile and
+repairs Windows fenced-write worker loop selection. It does not publish images
+or complete S4-02/T50. The count stays 31/37 verified, six open, none deferred;
+protections and automation flags are unchanged. Work continues on
+`codex/s4-02-native-state-controls` with bounded state/history reads as the
+prerequisite for exact compare-and-update and safe branch management.

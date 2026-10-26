@@ -109,6 +109,13 @@ adds 46 separately verified PostgreSQL cells, closing its initial skips.
 Other stream modes, full T50, native state updates, replay and time travel remain
 open; no task or research row is completed by this finite source profile.
 
+After PR #85, the [state-control candidate](docs/s4-02-native-state-acceptance.md)
+adds original-owner root state/history views using read-only native snapshots
+and opaque references that survive process restart. These references are the
+prerequisite for compare-and-update/branch controls, not authority to execute
+them. Native writes, replay/time travel and full T45/T49 remain open. Final
+frozen qualification of the read candidate is pending.
+
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior
 remain missing. S4-04 has a new 13-case actual native outcome comparison with

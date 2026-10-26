@@ -243,6 +243,8 @@ class WorkflowEngine:
                 released.set()
 
     async def initialize(self, services: RuntimeServices) -> None:
+        if services.config.native_state is not None and self.engine_name != "langgraph":
+            raise UnsupportedWorkflowFeature("configured native state views require LangGraph")
         if (
             services.config.observability.native_streams is not None
             and self.engine_name != "langgraph"

@@ -29,6 +29,7 @@ from open_workflow_agent.native_memory_contract import (
     SEMANTIC_CAPABILITY as MEMORY_SEMANTIC_CAPABILITY,
 )
 from open_workflow_agent.native_memory_contract import references as memory_references
+from open_workflow_agent.native_state import CAPABILITY as STATE_READ_CAPABILITY
 from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.storage import is_postgresql_datasource
 from open_workflow_agent.timers import TimerSuspension
@@ -44,6 +45,7 @@ from .native import LANGGRAPH_AVAILABLE, NATIVE_SCOPE_STEP_LIMIT, LangGraphFunct
 
 if TYPE_CHECKING:
     from .native_memory_catalog import NativeMemoryCatalog
+    from .native_state import LangGraphStateReader
 
 
 class LangGraphWorkflowEngine(PortableWorkflowEngine):
@@ -60,6 +62,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         super().__init__()
         self.native = LangGraphFunctionalAdapter()
         self.native_memory: NativeMemoryCatalog | None = None
+        self.state_reader: LangGraphStateReader | None = None
 
     async def initialize(self, services: Any) -> None:
         database_path = services.engine_database_path("langgraph", create_namespace=False)
@@ -84,6 +87,15 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 "native streams require native LangGraph, authenticated API ingress "
                 "and original execution authorization"
             )
+        if services.config.native_state is not None and (
+            not self.native.task_nodes_available
+            or not services.config.server.api_security_profile
+            or not services.config.execution_authorization.enabled
+        ):
+            raise ConfigurationError(
+                "native state views require native LangGraph, authenticated ingress "
+                "and original execution authorization"
+            )
         if services.config.memory.native and (
             not self.native.task_nodes_available
             or not services.config.execution_authorization.enabled
@@ -93,6 +105,11 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 "and original execution authorization"
             )
         self.native.database_path = database_path
+        if services.config.native_state is not None:
+            from .native_state import LangGraphStateReader
+
+            self.state_reader = LangGraphStateReader(services)
+            services.native_state_reader = self.state_reader
         if services.config.memory.native:
             from .native_memory_catalog import NativeMemoryCatalog
 
@@ -111,6 +128,9 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             try:
                 await super().shutdown()
             finally:
+                if services.native_state_reader is self.state_reader:
+                    services.native_state_reader = None
+                self.state_reader = None
                 if self.native_memory is not None:
                     await self.native_memory.close()
                     self.native_memory = None
@@ -120,6 +140,10 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         try:
             await super().shutdown()
         finally:
+            if self.state_reader is not None:
+                if self.services.native_state_reader is self.state_reader:
+                    self.services.native_state_reader = None
+                self.state_reader = None
             if self.native_memory is not None:
                 await self.native_memory.close()
                 self.native_memory = None
@@ -245,6 +269,17 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             if any(binding.semantic is not None for binding in self.native_memory.bindings):
                 extensions += (MEMORY_SEMANTIC_CAPABILITY,)
         services = getattr(self, "services", None)
+        if services is not None and services.config.native_state is not None:
+            if (
+                self.state_reader is None
+                or services.native_state_reader is not self.state_reader
+                or not services.config.server.api_security_profile
+                or not services.config.execution_authorization.enabled
+            ):
+                raise ConfigurationError("native state installation requires original authority")
+            self.state_reader.verify(services.config.native_state)
+            if self.native.task_nodes_available:
+                extensions += (STATE_READ_CAPABILITY,)
         streams = False
         if services is not None and services.config.observability.native_streams is not None:
             if (

@@ -473,6 +473,16 @@ Protocol clients enforce bounded HTTP behavior such as TLS verification, timeout
 
 The common client is pinned to MCP `2026-07-28` and A2A `1.0` wire semantics. OpenAPI support remains a bounded operation adapter and must not be described as full OpenAPI 3.2 document conformance until that implementation and conformance coverage exist.
 
+## Native state/history views
+
+Native checkpoint views select the separate top-level `native_state: {}`
+[source profile](native-state.md). It requires authenticated ingress and original
+execution authorization, an exact required workflow declaration and the
+`state.inspect` management action. It reads existing root SQLite/PostgreSQL
+checkpoints; it does not enable mutation or create another persistence store.
+The linked guide lists bounded history/page, native/response byte, concurrency
+and deadline settings. The absent optional block is omitted from serialization.
+
 ## Observability
 
 Optional data-bearing native observations use `observability.native_streams: {}`.

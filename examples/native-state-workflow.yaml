@@ -1,0 +1,30 @@
+document:
+  dsl: '1.0.3'
+  namespace: examples
+  name: native-state
+  version: '1.0.0'
+  title: Inspect committed native task data
+  metadata:
+    owa:
+      nativeExtensions:
+        - name: langgraph.state.read
+          version: '1.0.0'
+          required: true
+input:
+  schema:
+    format: json
+    document:
+      type: object
+      required: [value]
+      properties:
+        value:
+          type: string
+do:
+  - prepare:
+      set:
+        value: '${ .value }'
+  - answer:
+      call: llm:1.0.0@default
+  - finish:
+      set:
+        done: true
