@@ -78,6 +78,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 "LangGraph PostgreSQL persistence requires a selector event loop on Windows",
                 details={"reason": "unsupported_event_loop"},
             )
+        self.native.database_path = database_path
         if services.config.observability.native_streams is not None and (
             not self.native.task_nodes_available
             or not services.config.server.api_security_profile
@@ -104,12 +105,6 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 "native memory bindings require native LangGraph "
                 "and original execution authorization"
             )
-        self.native.database_path = database_path
-        if services.config.native_state is not None:
-            from .native_state import LangGraphStateReader
-
-            self.state_reader = LangGraphStateReader(services)
-            services.native_state_reader = self.state_reader
         if services.config.memory.native:
             from .native_memory_catalog import NativeMemoryCatalog
 
@@ -117,6 +112,11 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             await installed.open()
             self.native_memory = installed
         try:
+            if services.config.native_state is not None:
+                from .native_state import LangGraphStateReader
+
+                self.state_reader = LangGraphStateReader(services)
+                services.native_state_reader = self.state_reader
             await super().initialize(services)
             factory = LangGraphAgentFactory()
             self.agent = factory.create(

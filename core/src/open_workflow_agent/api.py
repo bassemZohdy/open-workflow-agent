@@ -464,9 +464,11 @@ def create_app(
 
             value["features"]["nativeStreaming"] = native_stream_capabilities()
         if runtime_services.native_state_reader is not None:
+            from .native_state import CAPABILITY as STATE_READ_CAPABILITY
             from .native_state_api import native_state_capabilities
 
-            value["features"]["nativeState"] = native_state_capabilities()
+            if STATE_READ_CAPABILITY in value["nativeExtensions"]:
+                value["features"]["nativeState"] = native_state_capabilities()
         value["features"]["scheduling"]["on"] = runtime_services.event_store is not None
         value.setdefault("features", {})["events"] = event_capabilities(runtime_services.event_bus)
         value.setdefault("features", {})["approvals"] = runtime_services.approvals.capabilities()

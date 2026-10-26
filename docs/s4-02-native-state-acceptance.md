@@ -52,6 +52,14 @@ initializer admission separation, repeated cancellation, fresh-process reads,
 declared channels and changed-policy denial. Final frozen platform/native/
 authority qualification remains pending.
 
+Startup review also found that state registration needed to wait until configured
+memory providers had opened, and that native-backend availability must be
+evaluated after selecting the actual SQLite/PostgreSQL path. The corrected
+initialization keeps the existing unsupported-loop rejection first, verifies
+the selected backend, installs the reader inside guarded startup and removes
+it on failure/shutdown. Capability metadata is emitted only while the matching
+extension is advertised; withdrawing policy does not leave a readable endpoint.
+
 ## Remaining state-management work
 
 Build compare-and-update on exact base references, original-owner management

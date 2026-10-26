@@ -531,3 +531,69 @@ async def test_configuration_only_example_starts_invokes_and_reads_history(
             assert len(services.model.calls) == 1
     finally:
         services.close()
+
+
+@pytest.mark.asyncio
+async def test_withdrawn_state_policy_is_not_advertised_or_readable(state_runtime):
+    services, _ = state_runtime
+    handle, _ = await invoke(state_runtime)
+    async with client_for(state_runtime) as client:
+        services.config.native_state = None
+        capabilities = (await client.get("/v1/capabilities")).json()
+        assert "langgraph.state.read@1.0.0" not in capabilities["nativeExtensions"]
+        assert "nativeState" not in capabilities["features"]
+        response = await client.get(f"/v1/invocations/{handle.invocation_id}/state")
+        assert response.status_code == 422
+    assert len(services.model.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_failed_memory_startup_does_not_install_state_reader(
+    state_runtime, tmp_path, monkeypatch
+):
+    from open_workflow_agent.config import NativeMemoryBindingConfig
+    from open_workflow_agent.errors import ConfigurationError
+    from open_workflow_agent_langgraph.native_memory_catalog import NativeMemoryCatalog
+
+    original, _ = state_runtime
+    config = original.config.model_copy(deep=True)
+    config.memory.native = [NativeMemoryBindingConfig(id="notes", collection="state_startup_test")]
+    services = RuntimeServices(
+        config,
+        model=FakeModel(),
+        database_root=None if config.persistence.datasource else tmp_path / "startup",
+    )
+    engine = LangGraphWorkflowEngine()
+
+    async def fail(_self):
+        raise ConfigurationError("controlled startup failure")
+
+    monkeypatch.setattr(NativeMemoryCatalog, "open", fail)
+    try:
+        with pytest.raises(ConfigurationError, match="controlled startup"):
+            await engine.initialize(services)
+        assert services.native_state_reader is None
+        assert engine.state_reader is None
+        assert "langgraph.state.read@1.0.0" not in engine.capabilities().native_extensions
+        assert services.model.calls == []
+    finally:
+        await engine.shutdown()
+        services.close()
+
+
+@pytest.mark.asyncio
+async def test_selected_missing_native_backend_is_rejected_before_state_installation(
+    state_runtime, monkeypatch
+):
+    from open_workflow_agent.errors import ConfigurationError
+    from open_workflow_agent_langgraph import native
+
+    services, installed = state_runtime
+    field = "AsyncPostgresSaver" if services.datasource else "AsyncSqliteSaver"
+    monkeypatch.setattr(native, field, None)
+    candidate = LangGraphWorkflowEngine()
+    with pytest.raises(ConfigurationError, match="native state"):
+        await candidate.initialize(services)
+    assert candidate.state_reader is None
+    assert services.native_state_reader is installed.state_reader
+    assert services.model.calls == []
