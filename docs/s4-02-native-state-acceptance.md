@@ -107,7 +107,24 @@ unit now takes an exclusive lock without changing ordinary native execution's
 fence contract. The first PostgreSQL fixture mistakenly selected a temporary
 SQLite root; fixing fixture selection allowed the real PostgreSQL cases to run.
 Earlier reports remain under `tmp/merge-20261025/state-atomic-dev*.xml`.
-Frozen qualification of this private prerequisite is pending.
+Frozen runtime `3bf27d736510e741425e12e496d7925da6b62bae` selects 30 direct SDK
+transaction cases, 39 configured workflow state/API cases, 20 core state cases,
+eight native fencing cases and two LangGraph admission cases. Ten ADK cells
+are deselected; this unregistered module changes no ADK behavior. The direct SDK
+transaction fixtures do not qualify OWA workflow state mutation or continuation.
+
+| Private updater selection | Windows | Frozen Docker/Linux |
+| --- | --- | --- |
+| Atomic SDK unit plus state-read/fencing/admission regressions | 99 passed, zero skips | 99 passed, zero skips |
+
+Linux uses the same immutable LangGraph dependency image and deployment
+restrictions as the read profile above, with verified unchanged dependency locks
+and a separate fresh PostgreSQL database. All 1,253 source inputs remain
+unchanged. Reports and the input manifest remain under
+`tmp/merge-20261025/3bf27d7/`. The selection finished in 168.67 seconds on
+Windows and 62.02 seconds on Linux. Ruff, formatting, strict typing of 161
+core/LangGraph source files, relative Markdown links and four tracking checks
+pass. This qualifies only the private storage primitive and retained regressions.
 
 Build compare-and-update on exact base references, original-owner management
 authorization, schema/allowed-task attribution and the common owned mutation
