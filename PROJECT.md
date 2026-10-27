@@ -75,8 +75,11 @@ child run or effects. Native fork execution, durable lineage and public admissio
 remain open; see the [lineage acceptance record](docs/s4-02-native-lineage-acceptance.md).
 Frozen `f018d7f` passes 490 combined cases and 26 separate ADK cases per platform,
 plus 881 SDK-free cases, with zero skips and 1,286 unchanged Linux inputs. This
-qualifies the private preparation component; actual forks/effect enforcement and
-public replay admission remain the next implementation gates.
+qualifies the private preparation component. The next private SDK unit now writes
+the selected scope closure and proof atomically under a pre-reserved target
+lease; common lineage, receipt remapping, effect enforcement and public replay
+admission remain open. The lineage record distinguishes storage atomicity from
+a business fork that is safe to resume.
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior

@@ -104,7 +104,12 @@ class _TransactionConnection:
 
 
 @asynccontextmanager
-async def _saver(database: str, fence: NativeWriteFence) -> AsyncIterator[tuple[Any, Any, bool]]:
+async def _saver(
+    database: str,
+    fence: NativeWriteFence,
+    *,
+    proof_table: str = TABLE,
+) -> AsyncIterator[tuple[Any, Any, bool]]:
     postgres = is_postgresql_datasource(database)
     if postgres:
         sdk = import_module("langgraph.checkpoint.postgres.aio").AsyncPostgresSaver
@@ -132,7 +137,7 @@ async def _saver(database: str, fence: NativeWriteFence) -> AsyncIterator[tuple[
         # No setup DDL is allowed in the mutation path, including on a missing
         # proof table. Installing connection-local fence triggers must succeed.
         await install_sqlite_native_fence(
-            conn, fence, native_database=database, tables=("checkpoints", "writes", TABLE)
+            conn, fence, native_database=database, tables=("checkpoints", "writes", proof_table)
         )
         saver = sdk(_TransactionConnection(conn))
         saver.is_setup = True

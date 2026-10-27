@@ -1,9 +1,10 @@
 # S4-02 selected-checkpoint lineage preparation
 
-Updated 2026-10-27. S4-02 and T49 remain open. This private component validates
-the basis for a future native replay or branch. It does not create a child
-invocation, fork native checkpoints, dispatch effects, expose an HTTP route or
-advertise a replay/branch capability. Both principal engines reject required
+Updated 2026-10-27. S4-02 and T49 remain open. The preparation component validates
+the basis for a future native replay or branch. A separate private transaction
+unit now writes selected scopes under a pre-reserved target identity. Neither
+component creates or admits a public child invocation, dispatches effects,
+exposes an HTTP route or advertises a replay/branch capability. Both principal engines reject required
 replay/branch profiles before invocation creation.
 
 ## Declared policy and common command
@@ -68,7 +69,7 @@ follows separately. No task checkbox or research row is promoted by these checks
 
 ## Remaining implementation and acceptance
 
-Implement a fenced native fork under the new business identity, durable common
+The private fenced SDK fork unit below precedes durable common
 lineage/idempotency and recovery, checkpoint/scope binding remapping, branch data
 attribution and effect enforcement before exposing controls. Prove read-only
 effects cannot execute, explicit re-execution creates new receipts, interruption
@@ -110,3 +111,46 @@ It does not qualify native fork execution, effect enforcement, public replay or
 branch controls, published images, full repository/release acceptance or task
 completion. Task counts remain 31/37 verified, six open, none deferred. The
 conditional S4-09/S4-10/S4-11 tracks remain conditional.
+
+
+## Private atomic SDK fork unit — 2026-10-27
+
+The native writer consumes an immutable selected basis and explicitly staged
+OWA projections for an already reserved target. A trusted future coordinator
+must authorize/reserve that target and retain its exclusive lease. The callback
+may perform only SDK storage work; it receives detached fresh target configs,
+without source checkpoint IDs. It must not run OWA tasks, models, tools or common
+persistence while native/common ownership locks are held.
+
+The transaction revalidates each exact source checkpoint/projection, parent and
+metadata under raw byte guards before SDK decoding. All target scopes must be
+absent. SDK writes for the complete declared scope closure and the native
+`owa_state_lineage_v1` marker commit together, or all roll back. Target ownership
+is locked across the unit; repeated cancellation drains it before the caller
+can release ownership. SQLite reuses the existing deferred SDK commit/fence
+boundary with a separate proof table; PostgreSQL also serializes the finite
+per-source quota across different targets.
+
+Proof pins source/target/fingerprint, exact common command and source basis,
+staged projection digest and ordered target checkpoint coordinates. Repeats
+require a live target fence and matching retained native projections/parents;
+they return proof without SDK redispatch. Conflicting requests, changed staged
+values, a different control using an existing target, missing/damaged checkpoints
+and oversized proof fail closed. Maximums are 64 scopes, 64 fork records per
+source, a 65,536-byte proof, and configured native byte/history/deadline bounds.
+The writer performs no setup DDL; its proof table must be prepared separately.
+Source pending task writes are never inherited into the new target configs.
+
+This establishes storage atomicity only. Staged projections still need common
+receipt/scope binding remapping and durable lineage admission before they are
+safe to resume. Tests manually reserve target handles; the native writer does
+not create them. A native marker alone is not a public replay, a completed
+business fork or an exactly-once effect guarantee. No capability, HTTP route,
+production image or task/research status is promoted.
+
+The first development cohort passed 22 transaction cases but retained six fixture
+teardown errors after deliberately expiring leases. Cleanup now tolerates that
+specific expected ownership conflict. Expanded fork and existing updater checks
+then pass 70 cases across SQLite/PostgreSQL. Quota/concurrency checks and frozen
+cross-platform regression follow separately; reports remain under
+`tmp/merge-20261025/lineage-fork-*`.

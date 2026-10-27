@@ -229,8 +229,10 @@ treated as a deferred task or as additional feature completion.
   inputs. The 22 actual HTTP/lifecycle/example cases include both stores.
   Replay/branch policy and selected-checkpoint preflight now have focused checks:
   exact declarations, explicit effect acknowledgement, historical root/scope
-  closure and original/current authority. No child run or effects are created.
-  Native fork execution, durable lineage and public admission remain open;
+  closure and original/current authority. Preparation creates no child run or
+  effects. A private SDK writer now commits the scope closure and native proof
+  atomically under a pre-reserved target lease. Durable common lineage, receipt
+  remapping, effect enforcement and public admission remain open;
   see [lineage acceptance](docs/s4-02-native-lineage-acceptance.md).
   Frozen `f018d7f` passes 490 combined and 26 separate ADK cases per platform,
   plus 881 SDK-free cases, zero skips, 1,286 unchanged Linux inputs. This verifies
