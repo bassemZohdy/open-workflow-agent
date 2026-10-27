@@ -1,9 +1,10 @@
 # S4-02 selected-checkpoint lineage preparation
 
-Updated 2026-10-27. S4-02 and T49 remain open. This private component validates
-the basis for a future native replay or branch. It does not create a child
-invocation, fork native checkpoints, dispatch effects, expose an HTTP route or
-advertise a replay/branch capability. Both principal engines reject required
+Updated 2026-10-27. S4-02 and T49 remain open. The preparation component validates
+the basis for a future native replay or branch. A separate private transaction
+unit now writes selected scopes under a pre-reserved target identity. Neither
+component creates or admits a public child invocation, dispatches effects,
+exposes an HTTP route or advertises a replay/branch capability. Both principal engines reject required
 replay/branch profiles before invocation creation.
 
 ## Declared policy and common command
@@ -68,7 +69,7 @@ follows separately. No task checkbox or research row is promoted by these checks
 
 ## Remaining implementation and acceptance
 
-Implement a fenced native fork under the new business identity, durable common
+The private fenced SDK fork unit below precedes durable common
 lineage/idempotency and recovery, checkpoint/scope binding remapping, branch data
 attribution and effect enforcement before exposing controls. Prove read-only
 effects cannot execute, explicit re-execution creates new receipts, interruption
@@ -110,3 +111,99 @@ It does not qualify native fork execution, effect enforcement, public replay or
 branch controls, published images, full repository/release acceptance or task
 completion. Task counts remain 31/37 verified, six open, none deferred. The
 conditional S4-09/S4-10/S4-11 tracks remain conditional.
+
+
+## Private atomic SDK fork unit — 2026-10-27
+
+The native writer consumes an immutable selected basis and explicitly staged
+OWA projections for an already reserved target. A trusted future coordinator
+must authorize/reserve that target and retain its exclusive lease. The callback
+may perform only SDK storage work; it receives detached fresh target configs,
+without source checkpoint IDs. It must not run OWA tasks, models, tools or common
+persistence while native/common ownership locks are held.
+
+The writer verifies the exact database binding pinned by preflight before opening
+a native connection. The transaction revalidates each source checkpoint/projection, parent and
+metadata under raw byte guards before SDK decoding. All target scopes must be
+absent. SDK writes for the complete declared scope closure and the native
+`owa_state_lineage_v1` marker commit together, or all roll back. Target ownership
+is locked across the unit; repeated cancellation drains it before the caller
+can release ownership. SQLite reuses the existing deferred SDK commit/fence
+boundary with a separate proof table; PostgreSQL also serializes the finite
+per-source quota across different targets.
+
+Proof pins source/target/fingerprint, exact common command and source basis,
+staged projection digest and ordered target checkpoint coordinates. Repeats
+require a live target fence and matching retained native projections/parents;
+they return proof without SDK redispatch. Conflicting requests, changed staged
+values, a different control using an existing target, missing/damaged checkpoints
+and oversized proof fail closed. Maximums are 64 scopes, 64 fork records per
+source, a 65,536-byte proof, and configured native byte/history/deadline bounds.
+The writer performs no setup DDL; its proof table must be prepared separately.
+Source pending task writes are never inherited into the new target configs.
+
+This establishes storage atomicity only. Staged projections still need common
+receipt/scope binding remapping and durable lineage admission before they are
+safe to resume. Tests manually reserve target handles; the native writer does
+not create them. A native marker alone is not a public replay, a completed
+business fork or an exactly-once effect guarantee. No capability, HTTP route,
+production image or task/research status is promoted.
+
+The first development cohort passed 22 transaction cases but retained six fixture
+teardown errors after deliberately expiring leases. Cleanup now tolerates that
+specific expected ownership conflict. Expanded fork and existing updater checks
+then pass 70 cases across SQLite/PostgreSQL. Quota/concurrency checks and frozen
+cross-platform regression follow separately; reports remain under
+`tmp/merge-20261025/lineage-fork-*`.
+
+
+The first frozen candidate `81691b7` was superseded during qualification when
+review found its low-level writer needed an explicit preflight storage-binding
+check. Only the affected LangGraph runs were stopped; their partial logs and
+cancellation note are retained and are not green evidence. The new check rejects
+an altered binding before opening native storage; its four focused binding/
+atomic-scope witnesses pass. Independent core/ADK selections use unchanged
+runtime/test inputs and continue without being restarted for this native-only
+correction. Final native qualification uses a new frozen source and fresh stores.
+
+
+## Frozen native fork qualification — `479906c`
+
+Native runtime/tests/examples are frozen at
+`479906c7b0915f216c3411eac6d7211cd2cdc330`. The combined selection adds all 48
+actual fork cases to the previous 490-case policy/state-control/native/authority
+regression. The new cases cover complete scope closure, new target checkpoints,
+source preservation, exact repeat without redispatch, rollback after partial/all
+SDK writes, invalid scope/results/values, concurrent duplicate requests, expired
+ownership, cancellation draining, corrupt/oversized proof, conflicting requests,
+pending-write exclusion, packet/scope bounds, per-source quota, orphan target
+writes and preflight storage-binding rejection before native access.
+
+| Selection | Windows | Frozen Docker/Linux | Source |
+| --- | --- | --- | --- |
+| Combined fork/lineage/state/native/authority regression | 538 passed, zero skips | 538 passed, zero skips | `479906c` |
+| Separate actual ADK authority/fencing/rejection | 26 passed, zero skips | 26 passed, zero skips | `81691b7`, unchanged inputs |
+| SDK-free common compiler/journal/authorization/recovery/API/configuration | 881 passed, zero skips | Not selected | `81691b7`, unchanged inputs |
+
+The core/ADK cohorts completed independently of the native-only correction.
+Git comparison confirms unchanged core/ADK runtime, selected test/fixture and
+dependency inputs. Only the affected native cohorts were restarted; the first
+candidate's partial native results remain explicitly superseded. The final
+native runs use fresh, separate PostgreSQL stores and the existing immutable
+SDK image with matching locks. Linux retains read-only source/root filesystems,
+non-root execution, dropped capabilities and resource limits, without package
+installation. All 1,288 frozen Linux inputs remain unchanged.
+
+The final native selection finishes in 837.01 seconds on Windows and 450.09
+seconds on Linux, with 42 other-engine cells deselected. Core takes 294.36
+seconds. Manifests, XML, logs and result JSON remain under
+`tmp/merge-20261025/479906c/` and the unchanged companion source under
+`tmp/merge-20261025/81691b7/`. Formatting, Ruff, strict typing of 181
+core/ADK/LangGraph files, Markdown links, four task-tracking checks and diff
+checks pass. Final documentation changes no frozen runtime/test/example inputs.
+
+This qualifies the private native transaction unit only. Common target creation,
+lineage admission/audit/recovery, receipt/scope remapping, effect enforcement,
+public configured controls, broad T49 and full S4-02/release qualification remain
+open. Task counts stay 31/37 verified, six open, none deferred, with the three
+conditional tracks unchanged.

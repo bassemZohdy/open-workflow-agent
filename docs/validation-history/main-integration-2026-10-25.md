@@ -390,3 +390,22 @@ are qualified source profiles; no published image or full S4-02 acceptance is
 claimed. Chronological task notes were consolidated without deleting scope or
 verification history. Work continues on `codex/s4-02-state-replay-policy` with
 immutable policy/commands and selected-checkpoint preflight before native forks.
+
+## PR #93 integration — 2026-10-27 Asia/Dubai
+
+[PR #93](https://github.com/bassemZohdy/open-workflow-agent/pull/93) merged at
+`b363f106d5c353ff9970feb20349a15827b37df6`, preserving head
+`4634a8387b33f35a9fa75d4c5839834407662677`. Its required exact-head check passed
+in [Docs run 40424937052](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40424937052).
+Local main was fast-forwarded and its push confirmed the exact GitHub main hash.
+
+Private selected-checkpoint preparation source `f018d7f` passes 490 combined
+cases and 26 separate actual ADK cases per platform, plus 881 SDK-free cases,
+with zero skips and 1,286 unchanged Linux inputs. No public replay/branch
+execution is enabled. Work continues on `codex/s4-02-native-lineage-fork` with
+an atomic multi-scope SDK fork/proof unit before common lineage and effects.
+
+Cleanup removed 18 completed remote S4-02 development branches in one atomic
+push, each guarded by its refreshed exact head. All commits are retained on
+main; attached worktree branches, required Docker services and test evidence
+were preserved. Task counts remain 31/37 verified, six open, none deferred.

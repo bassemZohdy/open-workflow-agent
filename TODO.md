@@ -217,31 +217,27 @@ treated as a deferred task or as additional feature completion.
 - [ ] **S4-02** (L) — Add declared native channels/reducers, Command/Send, memory, streams, state updates, replay and time travel.
   Verified finite components cover declared channels/routing, configured native
   filtered/semantic memory, public values/updates streams and state/history
-  reads. Configured public root mutation, attestation and explicit recovery
-  decisions are merged through PR #92 (`6ec11f1`); earlier private component
-  evidence is retained in the integration and component history records.
-  The configured original-owner public update/recovery profile now covers
-  bounded capacity/deadlines, cancellation draining, restart-safe proof inspection
-  and HTTP continuation. See the [profile guide](docs/native-state-updates.md)
-  and its source-matched qualification in the state acceptance record.
-  Frozen `db437d8` passes 420 combined cases and 22 separate ADK cases per
-  platform, plus 841 SDK-free cases, with zero skips and 1,278 unchanged Linux
-  inputs. The 22 actual HTTP/lifecycle/example cases include both stores.
-  Replay/branch policy and selected-checkpoint preflight now have focused checks:
-  exact declarations, explicit effect acknowledgement, historical root/scope
-  closure and original/current authority. No child run or effects are created.
-  Native fork execution, durable lineage and public admission remain open;
-  see [lineage acceptance](docs/s4-02-native-lineage-acceptance.md).
-  Frozen `f018d7f` passes 490 combined and 26 separate ADK cases per platform,
-  plus 881 SDK-free cases, zero skips, 1,286 unchanged Linux inputs. This verifies
-  the private preparation component, without completing replay or branching.
-  Continue broader native profiles and replay/time-travel branches.
-  Replay/time travel require a new business identity, immutable lineage and an
-  explicit effect policy. Broader memory T51/T68, stream modes/T50, native scope,
-  T45/T49 and full S4-02 acceptance remain open. Hosted qualification of the
-  direct-child routing/scope process-stop repair also remains open.
-  Preserve common authority, ownership, receipts and private checkpoints.
-  See [channels](docs/s4-02-native-channels-acceptance.md),
+  reads. The configured original-owner root update/recovery source profile is
+  merged in PR #92 (`6ec11f1`), including bounded HTTP work, cancellation draining,
+  restart-safe proof inspection, configuration-only examples and continuation;
+  see the [profile guide](docs/native-state-updates.md).
+  PR #93 (`b363f10`) adds immutable replay/branch policies, explicit effect
+  acknowledgement and selected-checkpoint preflight with historical root/scope
+  closure and original/current authority. The private SDK writer now commits
+  that closure and native proof atomically under a pre-reserved target lease.
+  Durable common lineage, receipt/scope binding remapping, branch attribution,
+  effect enforcement and public replay/branch admission remain open. Storage
+  atomicity alone does not make a business fork safe to resume. Frozen `479906c`
+  passes 538 native combined cases per platform, zero skips and 1,288 unchanged
+  Linux inputs; unchanged core/ADK inputs at `81691b7` pass 881/26 cases. See
+  [lineage acceptance](docs/s4-02-native-lineage-acceptance.md) for source-matched
+  qualification and retained development failures/corrections.
+  Continue broader native profiles and replay/time-travel branches, preserving
+  new business identity, immutable lineage and explicit effect policy. Broader
+  memory T51/T68, stream modes/T50, native scope, T45/T49 and full S4-02 acceptance
+  remain open, as does hosted qualification of the direct-child routing/scope
+  process-stop repair. Preserve common authority, ownership, receipts and private
+  checkpoints. See [channels](docs/s4-02-native-channels-acceptance.md),
   [memory](docs/s4-02-native-memory-acceptance.md),
   [streams](docs/s4-02-native-streams-acceptance.md),
   [state controls](docs/s4-02-native-state-acceptance.md),
