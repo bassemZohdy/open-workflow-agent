@@ -77,3 +77,36 @@ Public admission, lifecycle budgets, configured examples, full T49 and broader
 S4-02/time-travel qualification remain required. Broader memory/stream/native
 scope gates and [state-control acceptance](s4-02-native-state-acceptance.md) remain
 independent.
+
+
+## Frozen source qualification — `f018d7f`
+
+Runtime/tests/examples are frozen at
+`f018d7f17256c41c41445fb76d046e1fbdb8b254`. The combined cohort adds 32
+compiler/command cases, 32 actual selected-basis cases, two explicit
+re-execution acknowledgement cases and four LangGraph admission cases to the
+previous 420-case state-control/native/authority regression. All required
+SQLite/PostgreSQL cases run; other-engine cells are deselected explicitly.
+
+| Selection | Windows | Frozen Docker/Linux |
+| --- | --- | --- |
+| Combined lineage/state controls/native/authority regression | 490 passed, zero skips | 490 passed, zero skips |
+| Separate actual ADK authority/fencing/rejection | 26 passed, zero skips | 26 passed, zero skips |
+| SDK-free common compiler/journal/authorization/recovery/API/configuration | 881 passed, zero skips | Not selected |
+
+Windows and Linux use separate fresh PostgreSQL databases. Existing immutable
+SDK dependency images retain matching locks. Linux runs without package
+installation, with read-only source/root filesystems, a non-root user, dropped
+capabilities and resource limits. All 1,286 frozen Linux inputs remain unchanged.
+Logs, XML, manifests and machine-readable results remain under
+`tmp/merge-20261025/f018d7f/`. The combined cohort finishes in 792.60 seconds
+on Windows and 320.62 seconds on Linux; the SDK-free cohort takes 270.85 seconds.
+Formatting, Ruff, strict typing of 180 core/ADK/LangGraph source files, Markdown
+links, task tracking and whitespace checks pass. Final documentation changes
+leave frozen runtime/test/example inputs unchanged.
+
+This is source qualification for private policy and read-only basis preparation.
+It does not qualify native fork execution, effect enforcement, public replay or
+branch controls, published images, full repository/release acceptance or task
+completion. Task counts remain 31/37 verified, six open, none deferred. The
+conditional S4-09/S4-10/S4-11 tracks remain conditional.

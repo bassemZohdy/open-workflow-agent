@@ -232,6 +232,9 @@ treated as a deferred task or as additional feature completion.
   closure and original/current authority. No child run or effects are created.
   Native fork execution, durable lineage and public admission remain open;
   see [lineage acceptance](docs/s4-02-native-lineage-acceptance.md).
+  Frozen `f018d7f` passes 490 combined and 26 separate ADK cases per platform,
+  plus 881 SDK-free cases, zero skips, 1,286 unchanged Linux inputs. This verifies
+  the private preparation component, without completing replay or branching.
   Continue broader native profiles and replay/time-travel branches.
   Replay/time travel require a new business identity, immutable lineage and an
   explicit effect policy. Broader memory T51/T68, stream modes/T50, native scope,

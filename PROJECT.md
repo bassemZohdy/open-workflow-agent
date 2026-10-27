@@ -73,6 +73,10 @@ acknowledgement and a read-only selected historical checkpoint basis. It preserv
 only the completed scope closure referenced by that checkpoint and creates no
 child run or effects. Native fork execution, durable lineage and public admission
 remain open; see the [lineage acceptance record](docs/s4-02-native-lineage-acceptance.md).
+Frozen `f018d7f` passes 490 combined cases and 26 separate ADK cases per platform,
+plus 881 SDK-free cases, with zero skips and 1,286 unchanged Linux inputs. This
+qualifies the private preparation component; actual forks/effect enforcement and
+public replay admission remain the next implementation gates.
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior
