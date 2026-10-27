@@ -68,18 +68,17 @@ explicit bootstrap/admission, bounded HTTP work, SDK cancellation draining,
 stateless restart proof inspection and configuration-only examples. Its acceptance
 record distinguishes the focused public profile from broader state-management work.
 
-Replay/branch work now validates immutable declared policies, explicit effect
-acknowledgement and a read-only selected historical checkpoint basis. It preserves
-only the completed scope closure referenced by that checkpoint and creates no
-child run or effects. Native fork execution, durable lineage and public admission
-remain open; see the [lineage acceptance record](docs/s4-02-native-lineage-acceptance.md).
-Frozen `f018d7f` passes 490 combined cases and 26 separate ADK cases per platform,
-plus 881 SDK-free cases, with zero skips and 1,286 unchanged Linux inputs. This
-qualifies the private preparation component. The next private SDK unit now writes
-the selected scope closure and proof atomically under a pre-reserved target
-lease; common lineage, receipt remapping, effect enforcement and public replay
-admission remain open. The lineage record distinguishes storage atomicity from
-a business fork that is safe to resume.
+Replay/branch preparation is merged in PR #93 (`b363f10`): immutable declared
+policies, effect acknowledgement and a selected historical root's completed
+scope closure. The private SDK fork now commits that closure and native proof
+atomically under a pre-reserved target lease. Frozen native source `479906c`
+passes 538 combined cases per platform with zero skips and 1,288 unchanged
+Linux inputs. Unchanged companion inputs at `81691b7` pass 881 SDK-free cases
+and 26 actual ADK cases per platform. The [lineage acceptance record](docs/s4-02-native-lineage-acceptance.md)
+retains the superseded native candidate, source comparison, corrections and
+scope limits. Common lineage, receipt/scope remapping, effect enforcement and
+public replay admission remain open; storage atomicity alone is not a business
+fork that is safe to resume. No task or research row is promoted.
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior

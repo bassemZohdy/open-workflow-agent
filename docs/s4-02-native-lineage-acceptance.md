@@ -165,3 +165,45 @@ an altered binding before opening native storage; its four focused binding/
 atomic-scope witnesses pass. Independent core/ADK selections use unchanged
 runtime/test inputs and continue without being restarted for this native-only
 correction. Final native qualification uses a new frozen source and fresh stores.
+
+
+## Frozen native fork qualification — `479906c`
+
+Native runtime/tests/examples are frozen at
+`479906c7b0915f216c3411eac6d7211cd2cdc330`. The combined selection adds all 48
+actual fork cases to the previous 490-case policy/state-control/native/authority
+regression. The new cases cover complete scope closure, new target checkpoints,
+source preservation, exact repeat without redispatch, rollback after partial/all
+SDK writes, invalid scope/results/values, concurrent duplicate requests, expired
+ownership, cancellation draining, corrupt/oversized proof, conflicting requests,
+pending-write exclusion, packet/scope bounds, per-source quota, orphan target
+writes and preflight storage-binding rejection before native access.
+
+| Selection | Windows | Frozen Docker/Linux | Source |
+| --- | --- | --- | --- |
+| Combined fork/lineage/state/native/authority regression | 538 passed, zero skips | 538 passed, zero skips | `479906c` |
+| Separate actual ADK authority/fencing/rejection | 26 passed, zero skips | 26 passed, zero skips | `81691b7`, unchanged inputs |
+| SDK-free common compiler/journal/authorization/recovery/API/configuration | 881 passed, zero skips | Not selected | `81691b7`, unchanged inputs |
+
+The core/ADK cohorts completed independently of the native-only correction.
+Git comparison confirms unchanged core/ADK runtime, selected test/fixture and
+dependency inputs. Only the affected native cohorts were restarted; the first
+candidate's partial native results remain explicitly superseded. The final
+native runs use fresh, separate PostgreSQL stores and the existing immutable
+SDK image with matching locks. Linux retains read-only source/root filesystems,
+non-root execution, dropped capabilities and resource limits, without package
+installation. All 1,288 frozen Linux inputs remain unchanged.
+
+The final native selection finishes in 837.01 seconds on Windows and 450.09
+seconds on Linux, with 42 other-engine cells deselected. Core takes 294.36
+seconds. Manifests, XML, logs and result JSON remain under
+`tmp/merge-20261025/479906c/` and the unchanged companion source under
+`tmp/merge-20261025/81691b7/`. Formatting, Ruff, strict typing of 181
+core/ADK/LangGraph files, Markdown links, four task-tracking checks and diff
+checks pass. Final documentation changes no frozen runtime/test/example inputs.
+
+This qualifies the private native transaction unit only. Common target creation,
+lineage admission/audit/recovery, receipt/scope remapping, effect enforcement,
+public configured controls, broad T49 and full S4-02/release qualification remain
+open. Task counts stay 31/37 verified, six open, none deferred, with the three
+conditional tracks unchanged.
