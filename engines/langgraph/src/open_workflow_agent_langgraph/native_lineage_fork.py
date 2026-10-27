@@ -271,6 +271,11 @@ async def apply_native_lineage_fork(
         limits = NativeStateConfig.model_validate((bounds or NativeStateConfig()).model_dump())
         proposal.verify(plan, target, limits)
         request = proposal.preflight.request
+        storage_identity = hashlib.sha256(
+            _json_identity(["owa/langgraph-state-lineage/v1", database, plan.fingerprint]).encode()
+        ).hexdigest()
+        if request.storage_identity != storage_identity:
+            raise lineage_error("fork_storage_binding_changed")
         if (
             fence.lease.engine != target.engine
             or fence.lease.invocation_id != target.invocation_id

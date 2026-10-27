@@ -122,7 +122,8 @@ may perform only SDK storage work; it receives detached fresh target configs,
 without source checkpoint IDs. It must not run OWA tasks, models, tools or common
 persistence while native/common ownership locks are held.
 
-The transaction revalidates each exact source checkpoint/projection, parent and
+The writer verifies the exact database binding pinned by preflight before opening
+a native connection. The transaction revalidates each source checkpoint/projection, parent and
 metadata under raw byte guards before SDK decoding. All target scopes must be
 absent. SDK writes for the complete declared scope closure and the native
 `owa_state_lineage_v1` marker commit together, or all roll back. Target ownership
@@ -154,3 +155,13 @@ specific expected ownership conflict. Expanded fork and existing updater checks
 then pass 70 cases across SQLite/PostgreSQL. Quota/concurrency checks and frozen
 cross-platform regression follow separately; reports remain under
 `tmp/merge-20261025/lineage-fork-*`.
+
+
+The first frozen candidate `81691b7` was superseded during qualification when
+review found its low-level writer needed an explicit preflight storage-binding
+check. Only the affected LangGraph runs were stopped; their partial logs and
+cancellation note are retained and are not green evidence. The new check rejects
+an altered binding before opening native storage; its four focused binding/
+atomic-scope witnesses pass. Independent core/ADK selections use unchanged
+runtime/test inputs and continue without being restarted for this native-only
+correction. Final native qualification uses a new frozen source and fresh stores.

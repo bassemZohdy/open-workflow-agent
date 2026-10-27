@@ -520,3 +520,29 @@ async def test_orphan_target_writes_cannot_be_adopted_as_an_empty_target(fork):
     with pytest.raises(OwaError):
         await apply(fork, callback=forbidden)
     assert snapshot(fork) == before
+
+
+@pytest.mark.asyncio
+async def test_changed_storage_binding_rejects_before_native_access(fork, monkeypatch):
+    from open_workflow_agent_langgraph import native_lineage_fork as module
+
+    original = fork[7]
+    candidate = replace(
+        original,
+        preflight=replace(
+            original.preflight,
+            request=replace(original.preflight.request, storage_identity="0" * 64),
+        ),
+    )
+    attempts = []
+
+    def forbidden(*args, **kwargs):
+        attempts.append(True)
+        raise AssertionError("wrong storage binding reached native connection")
+
+    monkeypatch.setattr(module, "_saver", forbidden)
+    before = snapshot(fork)
+    with pytest.raises(OwaError) as failure:
+        await apply(fork, proposal=candidate)
+    assert failure.value.details["reason"] == "fork_storage_binding_changed"
+    assert attempts == [] and snapshot(fork) == before
