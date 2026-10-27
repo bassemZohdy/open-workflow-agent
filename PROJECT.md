@@ -19,7 +19,7 @@ and [automation controls](docs/development.md#fast-development-and-optional-auto
 
 ## Current backlog delivery mode
 
-Updated 2026-10-26. **31 of 37 tasks are verified; 6 remain open. None is deferred.**
+Updated 2026-10-27. **31 of 37 tasks are verified; 6 remain open. None is deferred.**
 Eleven of the original 17 open tasks are verified. The user kept S4-09/S4-10/S4-11
 conditional. The three ready tasks are S4-02, S4-03 and S4-04.
 
@@ -42,8 +42,8 @@ run remains partial; this is not a full green result for the merged source.
 
 S4-02 remains the next ordered ready task. Merged source profiles cover bounded
 channels/routing, native memory, values/updates streams and state/history reads.
-Work now covers state-control recovery and admission; public state mutation,
-replay/time travel and broader component scopes remain open.
+The configured root data update/recovery profile is merged in PR #92.
+Replay/time travel and broader component scopes remain open.
 
 Current S4-02 component evidence is organized by feature rather than by candidate:
 
@@ -53,7 +53,7 @@ Current S4-02 component evidence is organized by feature rather than by candidat
 | Native memory | Configured filtered/semantic memory, owned recovery, expiry/capacity and lifecycle; [acceptance](docs/s4-02-native-memory-acceptance.md) retains broader T51/T68 gates. |
 | Streams | Public original-owner values/updates observation; [acceptance](docs/s4-02-native-streams-acceptance.md) retains broader modes/T50. |
 | State/history | Bounded original-owner projected views and opaque references; [guide](docs/native-state.md) and [acceptance](docs/s4-02-native-state-acceptance.md). |
-| State controls | Atomic updates, attestation and recovery merged through PR #91 (`0157f1d`); [configured public source profile](docs/native-state-updates.md) now has focused API/restart/cancellation checks. |
+| State controls | Configured public root updates, attestation and recovery merged in PR #92 (`6ec11f1`); [profile guide](docs/native-state-updates.md) covers API/restart/cancellation and continuation. |
 
 Latest public state-control source `db437d8` passes 420 combined cases and 22
 separate ADK cases on each of Windows and frozen Docker/Linux, plus 841 SDK-free
@@ -67,6 +67,16 @@ promoted by these finite components. Broader profiles, replay and time travel re
 explicit bootstrap/admission, bounded HTTP work, SDK cancellation draining,
 stateless restart proof inspection and configuration-only examples. Its acceptance
 record distinguishes the focused public profile from broader state-management work.
+
+Replay/branch work now validates immutable declared policies, explicit effect
+acknowledgement and a read-only selected historical checkpoint basis. It preserves
+only the completed scope closure referenced by that checkpoint and creates no
+child run or effects. Native fork execution, durable lineage and public admission
+remain open; see the [lineage acceptance record](docs/s4-02-native-lineage-acceptance.md).
+Frozen `f018d7f` passes 490 combined cases and 26 separate ADK cases per platform,
+plus 881 SDK-free cases, with zero skips and 1,286 unchanged Linux inputs. This
+qualifies the private preparation component; actual forks/effect enforcement and
+public replay admission remain the next implementation gates.
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior

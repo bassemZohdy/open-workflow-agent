@@ -41,11 +41,20 @@ class NativeStatePreflight:
 
 
 class _BoundedSaver:
-    def __init__(self, saver: Any, bounds: NativeStateConfig, postgres: bool) -> None:
+    def __init__(
+        self,
+        saver: Any,
+        bounds: NativeStateConfig,
+        postgres: bool,
+        *,
+        selected: dict[str, str] | None = None,
+    ) -> None:
         self.saver, self.bounds, self.postgres = saver, bounds, postgres
         self.remaining = bounds.max_native_bytes
         self.cache: dict[str, Any] = {}
         self.coordinates: dict[str, tuple[str, int]] = {}
+        self.selected = dict(selected or {})
+        self.parents: dict[str, str | None] = {}
 
     async def aget_tuple(self, config: dict[str, Any]) -> Any:
         thread = config["configurable"]["thread_id"]
@@ -56,7 +65,11 @@ class _BoundedSaver:
         index, _ = await checkpoint_index(self.saver, thread, self.bounds, self.postgres)
         checkpoint = None
         if index:
-            key = index[0][0]
+            key = self.selected.get(thread, index[0][0])
+            parents = dict(index)
+            if key not in parents:
+                raise state_update_error("native_scope_missing")
+            self.parents[thread] = parents[key]
             self.remaining -= await guard_checkpoint(
                 self.saver, thread, key, self.remaining, self.postgres
             )
@@ -83,6 +96,8 @@ class _BoundedSaver:
                 or checkpoint.checkpoint["v"] != 4
                 or type(checkpoint.metadata.get("step")) is not int
                 or checkpoint.metadata.get("source") not in {"input", "loop", "update", "fork"}
+                or (checkpoint.parent_config or {}).get("configurable", {}).get("checkpoint_id")
+                != parents[key]
             ):
                 raise state_update_error("native_checkpoint_changed")
             timestamp = checkpoint.checkpoint.get("ts")
