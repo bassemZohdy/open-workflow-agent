@@ -77,7 +77,10 @@ Linux inputs. Unchanged companion inputs at `81691b7` pass 881 SDK-free cases
 and 26 actual ADK cases per platform. The [lineage acceptance record](docs/s4-02-native-lineage-acceptance.md)
 retains the superseded native candidate, source comparison, corrections and
 scope limits. A private common registry now records source-backed receipt
-mappings and provides an explicit scoped effect gate. Native proof inspection, target
+mappings and provides an explicit scoped effect gate. Frozen `6532346` passes
+92 combined and 26 ADK cases on Docker/Linux; Windows has 91/92 and 25/26
+passes with both PostgreSQL connection failures passing individually on retry.
+All 1,290 Linux inputs remain unchanged. Native proof inspection, target
 reservation/recovery, checkpoint/scope remapping, mandatory scope installation
 and public replay admission remain open; the existing native storage unit is
 not yet a business fork safe to resume. No task or research row is promoted.

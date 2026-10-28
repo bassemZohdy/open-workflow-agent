@@ -241,7 +241,41 @@ Focused development checks passed 50 compiler/policy/registry cases on SQLite an
 PostgreSQL; an earlier wider authorization selection passed 238 cases. Initial
 runs exposed a tuple-to-JSON conversion error and an ordering error in the proof
 check; both were corrected and the final focused selection is green. Neither
-result completes S4-02/T49 or changes a research status. Native proof inspection,
-common target reservation/idempotent recovery, checkpoint/scope binding
-remapping, mandatory scope installation and actual replay/branch continuation
-remain required before admission.
+result completes S4-02/T49 or changes a research status. Native proof inspection, common target reservation/idempotent recovery,
+verification that mapped receipts belong to the selected checkpoint,
+checkpoint/scope binding remapping, global recovery verification, mandatory scope
+installation and actual replay/branch continuation remain required before
+admission.
+
+
+## Common lineage qualification — `6532346`
+
+Runtime/tests/examples are frozen at
+`6532346dfb2d625fc4292aab62da1205dc3b4c36`. The combined selection runs 22
+SQLite/PostgreSQL common lineage cases and 32 policy cases alongside actual
+LangGraph authority isolation, checkpoint fencing and required-capability
+rejection. A separate ADK selection covers its authority/fencing/rejection
+contracts. No paid APIs or production images are used.
+
+| Selection | Windows | Frozen Docker/Linux |
+| --- | --- | --- |
+| Common lineage, policy and LangGraph contracts | 91 passed, one PostgreSQL setup error; that case passed on fresh-store retry | 92 passed, zero skips |
+| Separate ADK authority/fencing/rejection | 25 passed, one PostgreSQL connection failure; that case passed on fresh-store retry | 26 passed, zero skips |
+
+Both original Windows failures reported the PostgreSQL server closing the host
+connection during service setup. A subsequent direct connection succeeded and
+both failed cases passed serially with fresh databases. The original failures,
+retry XML, logs and result JSON are retained under `tmp/merge-20261025/6532346/`.
+Windows evidence is the original run plus targeted retries, not a single green
+full run. The Linux selections use a read-only source/root filesystem, non-root
+user, dropped capabilities, bounded resources, existing SDK images with matching
+locks and no startup installation. All 1,290 frozen Linux inputs remained
+unchanged. The combined runs took 137.84 seconds on Windows and 46.46 seconds
+on Linux; the separate ADK runs took 95.47 and 28.82 seconds respectively.
+
+Formatting, Ruff, strict typing of 182 core/ADK/LangGraph files, Markdown links,
+four tracking checks and whitespace checks pass. Final documentation does not
+change frozen runtime/test/example inputs. This remains a private component:
+no end-to-end replay capability, native proof inspection or task completion is
+claimed. The backlog remains 31/37 verified, six open and none deferred; the
+three conditional tracks remain conditional.
