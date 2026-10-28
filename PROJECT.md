@@ -19,7 +19,7 @@ and [automation controls](docs/development.md#fast-development-and-optional-auto
 
 ## Current backlog delivery mode
 
-Updated 2026-10-27. **31 of 37 tasks are verified; 6 remain open. None is deferred.**
+Updated 2026-10-29. **31 of 37 tasks are verified; 6 remain open. None is deferred.**
 Eleven of the original 17 open tasks are verified. The user kept S4-09/S4-10/S4-11
 conditional. The three ready tasks are S4-02, S4-03 and S4-04.
 
@@ -76,9 +76,11 @@ passes 538 combined cases per platform with zero skips and 1,288 unchanged
 Linux inputs. Unchanged companion inputs at `81691b7` pass 881 SDK-free cases
 and 26 actual ADK cases per platform. The [lineage acceptance record](docs/s4-02-native-lineage-acceptance.md)
 retains the superseded native candidate, source comparison, corrections and
-scope limits. Common lineage, receipt/scope remapping, effect enforcement and
-public replay admission remain open; storage atomicity alone is not a business
-fork that is safe to resume. No task or research row is promoted.
+scope limits. A private common registry now records source-backed receipt
+mappings and provides an explicit scoped effect gate. Native proof inspection, target
+reservation/recovery, checkpoint/scope remapping, mandatory scope installation
+and public replay admission remain open; the existing native storage unit is
+not yet a business fork safe to resume. No task or research row is promoted.
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior

@@ -207,3 +207,41 @@ lineage admission/audit/recovery, receipt/scope remapping, effect enforcement,
 public configured controls, broad T49 and full S4-02/release qualification remain
 open. Task counts stay 31/37 verified, six open, none deferred, with the three
 conditional tracks unchanged.
+
+
+## Common lineage and scoped effect gate — 2026-10-29
+
+A private common registry binds a reserved target to a typed lineage request,
+caller-supplied native proof verifier and up to 64 references to verified source
+business receipts. It records the binding through the existing fenced common
+receipt journal, verifies both original/current authority and the retained
+request-bound authorization decision, and rejects conflicting or orphaned
+bindings. Reopening the common stores re-verifies the proof and source receipts.
+The native verifier is a required injected boundary; these tests use a fake and
+there is not yet an installed native proof inspector or lineage coordinator.
+
+Receipt remapping represents the target identity and its immutable source
+receipt dependency without fabricating a target business receipt. The target
+identity has the same workflow task reference and occurrence but a new invocation
+identity. Policy/internal receipts are not blindly remapped. Existing source
+receipt verification runs before recording and on every read; missing or altered
+evidence fails closed.
+
+A trusted continuation may explicitly enter the lineage scope. Within that
+scope, the common action-authorization boundary verifies the retained binding,
+native proof, current target ownership and effect identity before permitting an
+action. `read_only` denies external actions; `reexecute` requires its recorded
+explicit acknowledgement and still passes through ordinary target authorization
+and new receipt creation. Unscoped ordinary execution is unchanged. The scope is
+not yet installed by the engine's continuation path, and receipt mappings are
+not yet consumed by native checkpoint validation. Therefore this is a private
+component, not end-to-end replay enforcement or a public capability.
+
+Focused development checks passed 50 compiler/policy/registry cases on SQLite and
+PostgreSQL; an earlier wider authorization selection passed 238 cases. Initial
+runs exposed a tuple-to-JSON conversion error and an ordering error in the proof
+check; both were corrected and the final focused selection is green. Neither
+result completes S4-02/T49 or changes a research status. Native proof inspection,
+common target reservation/idempotent recovery, checkpoint/scope binding
+remapping, mandatory scope installation and actual replay/branch continuation
+remain required before admission.

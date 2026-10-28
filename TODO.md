@@ -225,9 +225,12 @@ treated as a deferred task or as additional feature completion.
   acknowledgement and selected-checkpoint preflight with historical root/scope
   closure and original/current authority. The private SDK writer now commits
   that closure and native proof atomically under a pre-reserved target lease.
-  Durable common lineage, receipt/scope binding remapping, branch attribution,
-  effect enforcement and public replay/branch admission remain open. Storage
-  atomicity alone does not make a business fork safe to resume. Frozen `479906c`
+  A private common registry records lineage and source-backed receipt mappings;
+  an explicit scoped gate checks effect policy at the common action boundary.
+  Native proof inspection, common target reservation/recovery, checkpoint/scope
+  remapping, mandatory gate installation, branch attribution and public
+  replay/branch admission remain open. Storage atomicity alone does not make a
+  business fork safe to resume. Frozen `479906c`
   passes 538 native combined cases per platform, zero skips and 1,288 unchanged
   Linux inputs; unchanged core/ADK inputs at `81691b7` pass 881/26 cases. See
   [lineage acceptance](docs/s4-02-native-lineage-acceptance.md) for source-matched
