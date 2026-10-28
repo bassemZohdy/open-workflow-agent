@@ -446,6 +446,13 @@ class EffectJournal:
                     else "length(CAST(payload AS BLOB))"
                 )
                 payload_column = f"CASE WHEN {size}<=4096 THEN payload ELSE NULL END"
+            elif identity.operation == "policy:lineage-binding:v1":
+                size = (
+                    "octet_length(payload)"
+                    if self.connection.is_postgresql
+                    else "length(CAST(payload AS BLOB))"
+                )
+                payload_column = f"CASE WHEN {size}<=2097152 THEN payload ELSE NULL END"
             row = self.connection.execute(
                 "SELECT owner, status,"
                 + payload_column

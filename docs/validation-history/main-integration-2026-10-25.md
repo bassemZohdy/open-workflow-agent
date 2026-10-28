@@ -409,3 +409,18 @@ Cleanup removed 18 completed remote S4-02 development branches in one atomic
 push, each guarded by its refreshed exact head. All commits are retained on
 main; attached worktree branches, required Docker services and test evidence
 were preserved. Task counts remain 31/37 verified, six open, none deferred.
+
+## PR #94 integration — 2026-10-27 Asia/Dubai
+
+[PR #94](https://github.com/bassemZohdy/open-workflow-agent/pull/94) merged at
+`a96572f427661472b28230e531df499bc4124afd`, preserving head
+`2dade965acb7903b8a380c383e2375e3f157ba89`. The required check passed in
+[Docs run 40439468691](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40439468691).
+Local and GitHub main were confirmed equal. The merged development branch was
+removed; the required Docker databases and historical evidence remain.
+
+Native source `479906c` passes 538 combined cases per platform, zero skips, and
+1,288 unchanged Linux inputs. Unchanged core/ADK inputs at `81691b7` pass 881
+SDK-free and 26 ADK cases per platform. This qualifies the private atomic native
+fork transaction, not public replay. Work continues on common lineage, receipt
+provenance and a scoped effect gate; the three conditional tracks stay conditional.

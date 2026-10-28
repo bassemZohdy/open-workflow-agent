@@ -921,6 +921,15 @@ class RuntimeServices:
     ) -> None:
         authorize_role_action(action, resource)
         context = current_action_context()
+        from .lineage_registry import current_lineage
+
+        lineage = current_lineage()
+        if lineage is not None:
+            if context is None:
+                raise ConfigurationError("lineage action requires an invocation scope")
+            if lineage.journal is not self.effect_journal:
+                raise ConfigurationError("lineage action requires its original services")
+            lineage.authorize_effect(context.handle, context.identity)
         if context is None:
             if self.config.execution_authorization.enabled:
                 raise ConfigurationError("execution action requires an original invocation scope")
