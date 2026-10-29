@@ -90,8 +90,11 @@ SQLite/PostgreSQL cases pass for both effect policies. Normal public admission
 still rejects this profile. The development branch adds atomic private target
 reservation, request recovery, historical basis reconstruction and idempotent
 native fork recognition; a six-case SQLite/PostgreSQL selection passes for
-restart-style replay and reservation rollback. A durable coordinator and
-process-crash recovery have not been proven.
+restart-style replay and reservation rollback. A private coordinator now passes
+14 cases on SQLite/PostgreSQL, including externally terminating a worker after
+reservation, admission, native fork or lineage binding. The tests do not qualify
+public admission. Two additional process-kill cases interrupt a model call and
+verify that its uncertain outcome faults without a second call.
 No task or research row is promoted.
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault

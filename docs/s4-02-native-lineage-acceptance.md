@@ -109,6 +109,23 @@ receipt tables concurrently; its result is retained rather than counted green.
 The same preflight and admission selection subsequently passes 40 cases when
 run serially against that database, with no skips.
 
+The private root replay coordinator now reconciles the reservation, original
+authority admission, native fork, lineage binding and owned continuation. A
+14-case SQLite/PostgreSQL selection passes with no skips, including externally
+terminating an independent worker after reservation, admission, fork and
+binding, then resuming the same target. Both read-only and re-execution policies
+are covered, including repeated calls. A separate two-case SQLite/PostgreSQL
+selection terminates a worker inside a model call; continuation faults without
+another model call. An initial PostgreSQL attempt lost the deliberately short
+test lease before reaching that call; a longer test lease passed on both stores.
+These tests do not qualify a public replay API or broader replay profiles.
+The associated proof, reservation, receipt-history and admission regression
+passes 22 cases across SQLite and PostgreSQL, with no skips.
+An earlier expanded run was interrupted after an observed failure; the apparent
+PostgreSQL case passed independently, but the interrupted run retained no failure
+details and is not green evidence. The subsequent complete selection is recorded
+in `tmp/merge-20261025/lineage-coordinator-crash-dev2.xml`.
+
 The private fenced SDK fork unit below precedes durable common
 lineage/idempotency and recovery, checkpoint/scope binding remapping, branch data
 attribution and effect enforcement before exposing controls. Prove read-only

@@ -1,7 +1,11 @@
 """Private native replay from a real historical checkpoint and common lineage."""
 
+import asyncio
 import json
 import os
+import subprocess
+import sys
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -30,16 +34,35 @@ from open_workflow_agent_langgraph.native_lineage_inspection import inspect_nati
 from open_workflow_agent_langgraph.native_lineage_preflight import prepare_native_lineage
 from open_workflow_agent_langgraph.native_lineage_reservation import NativeReplayReservations
 from open_workflow_agent_langgraph.native_lineage_transition import stage_root_replay
+from open_workflow_agent_langgraph.native_replay_coordinator import NativeReplayCoordinator
 from open_workflow_agent_langgraph.native_state import state_reference
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 @pytest.mark.parametrize("policy", ["read_only", "reexecute"])
-@pytest.mark.parametrize("continuation", ["direct", "restarted"])
+@pytest.mark.parametrize(
+    "continuation",
+    [
+        "direct",
+        "restarted",
+        "coordinator",
+        "crash_reserved",
+        "crash_admitted",
+        "crash_forked",
+        "crash_bound",
+        "crash_effect",
+    ],
+)
 async def test_historical_replay_binds_original_receipt_and_enforces_effect_policy(
     tmp_path, backend, policy, continuation
 ):
+    if (
+        continuation.startswith("crash_")
+        and policy == "read_only"
+        and continuation != "crash_bound"
+    ):
+        pytest.skip("read-only crash coverage is exercised at the bound boundary")
     config = configuration()
     config.observability.native_streams = None
     config.execution_authorization.policy.rules[0].actions.append("state.replay")
@@ -122,6 +145,87 @@ async def test_historical_replay_binds_original_receipt_and_enforces_effect_poli
         reference = state_reference(
             parent.invocation_id, plan.fingerprint, selected.checkpoint["id"]
         )
+        if continuation.startswith("crash_"):
+            command = uuid4().hex * 2
+            phase = continuation.removeprefix("crash_")
+            worker = Path(__file__).with_name("native_replay_crash_worker.py")
+            environment = os.environ.copy()
+            if backend == "sqlite":
+                environment.pop("OWA_TEST_POSTGRES_URL", None)
+            process = subprocess.Popen(
+                [
+                    sys.executable,
+                    str(worker),
+                    str(tmp_path),
+                    parent.invocation_id,
+                    command,
+                    reference,
+                    policy,
+                    phase,
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                env=environment,
+            )
+            output = []
+            try:
+
+                async def read_phase():
+                    while True:
+                        line = await asyncio.to_thread(process.stdout.readline)
+                        if not line:
+                            raise AssertionError(
+                                "worker exited before crash phase: " + "".join(output)
+                            )
+                        output.append(line)
+                        if line.startswith("CRASH_PHASE "):
+                            return line.strip().split()
+
+                marker = await asyncio.wait_for(read_phase(), timeout=120)
+                assert marker[1] == phase
+                process.kill()
+                await asyncio.to_thread(process.wait, timeout=10)
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                    await asyncio.to_thread(process.wait, timeout=10)
+                process.stdout.close()
+            await asyncio.sleep(13 if phase == "effect" else 3)
+            coordinator = NativeReplayCoordinator(engine, NativeStateConfig(timeout_seconds=30))
+            options = {
+                "request_id": command,
+                "source_reference": reference,
+                "acknowledge_reexecution": policy == "reexecute",
+            }
+            result = await coordinator.run(parent, actor, **options)
+            assert result.invocation_id == marker[2]
+            expected = "faulted" if policy == "read_only" or phase == "effect" else "completed"
+            expected_calls = 2 if expected == "faulted" else 3
+            assert result.status == expected
+            assert len(services.model.calls) == expected_calls
+            repeated = await coordinator.run(parent, actor, **options)
+            assert repeated.status == result.status
+            assert len(services.model.calls) == expected_calls
+            return
+        if continuation == "coordinator":
+            coordinator = NativeReplayCoordinator(engine, NativeStateConfig(timeout_seconds=30))
+            command = uuid4().hex * 2
+            phases = []
+            options = {
+                "request_id": command,
+                "source_reference": reference,
+                "acknowledge_reexecution": policy == "reexecute",
+                "_phase": lambda name, target_id: phases.append((name, target_id)),
+            }
+            result = await coordinator.run(parent, actor, **options)
+            assert result.status == ("faulted" if policy == "read_only" else "completed")
+            assert len(services.model.calls) == (2 if policy == "read_only" else 3)
+            assert [name for name, _ in phases] == ["reserved", "admitted", "forked", "bound"]
+            repeated = await coordinator.run(parent, actor, **options)
+            assert repeated.status == result.status
+            assert len(services.model.calls) == (2 if policy == "read_only" else 3)
+            return
         reserved = str(uuid4())
         prepared = await prepare_native_lineage(
             services,

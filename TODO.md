@@ -235,8 +235,12 @@ treated as a deferred task or as additional feature completion.
   a manually staged root replay under either effect policy on SQLite and
   PostgreSQL. The development branch also atomically records a private target
   reservation, reopens its request, reconstructs the historical basis, and
-  recognizes an already committed fork. Coordinator crash recovery and the
-  public recovery path are still capability-gated. Broader checkpoint/scope remapping, full
+  recognizes an already committed fork. A private coordinator now reconciles
+  reservation, admission, native fork, lineage binding and continuation; 14
+  SQLite/PostgreSQL coordinator and real process-interruption cases pass.
+  A separate SQLite/PostgreSQL process-kill test during a model call fails closed
+  without repeating the uncertain effect. Public admission, broader
+  checkpoint/scope remapping, full
   lifecycle gate installation, branch attribution and public
   replay/branch admission remain open. Storage atomicity alone does not make a
   business fork safe to resume. Frozen `479906c`
