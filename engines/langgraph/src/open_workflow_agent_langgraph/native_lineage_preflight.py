@@ -110,15 +110,29 @@ async def prepare_native_lineage(
     task_reference: str | None = None,
     values: Any = None,
     bounds: NativeStateConfig | None = None,
+    _reserved_request: StateLineageRequest | None = None,
 ) -> NativeLineagePreflight:
     try:
         if type(kind) is not str or kind not in {"replay", "branch"}:
             raise lineage_error("kind_invalid")
         _owner(services, source, authority, kind)
+        if _reserved_request is not None:
+            from .native_lineage_reservation import NativeReplayReservations
+
+            if authority is None:
+                raise lineage_error("original_owner_required")
+            recovered, target = NativeReplayReservations(services).recover(
+                source, authority, request_id
+            )
+            if recovered != _reserved_request or target.invocation_id != target_invocation_id:
+                raise lineage_error("reservation_request_invalid")
         if (
             not _valid_bounded_reference(target_invocation_id, maximum_bytes=256)
             or target_invocation_id == source.invocation_id
-            or services.invocations.get(target_invocation_id) is not None
+            or (
+                _reserved_request is None
+                and services.invocations.get(target_invocation_id) is not None
+            )
         ):
             raise lineage_error("new_business_identity_required")
         plan = await services.recovery_definitions.resolve_inspection(source)
@@ -275,10 +289,20 @@ async def prepare_native_lineage(
             if services.engine_database_path("langgraph", create_namespace=False) != path:
                 raise lineage_error("storage_binding_changed")
             _owner(services, source, authority, kind)
-            if services.invocations.get(target_invocation_id) is not None:
+            if (
+                _reserved_request is None
+                and services.invocations.get(target_invocation_id) is not None
+            ):
                 raise lineage_error("new_business_identity_required")
+            completed = replace(request, source_basis_digest=basis_digest(input_json, ordered))
+            if _reserved_request is not None:
+                recovered, target = NativeReplayReservations(services).recover(
+                    source, authority, request_id
+                )
+                if recovered != completed or target.invocation_id != target_invocation_id:
+                    raise lineage_error("reservation_request_invalid")
             return NativeLineagePreflight(
-                replace(request, source_basis_digest=basis_digest(input_json, ordered)),
+                completed,
                 input_json,
                 ordered,
                 node,

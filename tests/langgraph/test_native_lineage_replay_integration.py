@@ -28,6 +28,7 @@ from open_workflow_agent_langgraph.native_lineage_fork import (
 )
 from open_workflow_agent_langgraph.native_lineage_inspection import inspect_native_lineage
 from open_workflow_agent_langgraph.native_lineage_preflight import prepare_native_lineage
+from open_workflow_agent_langgraph.native_lineage_reservation import NativeReplayReservations
 from open_workflow_agent_langgraph.native_lineage_transition import stage_root_replay
 from open_workflow_agent_langgraph.native_state import state_reference
 
@@ -133,19 +134,10 @@ async def test_historical_replay_binds_original_receipt_and_enforces_effect_poli
             acknowledge_reexecution=policy == "reexecute",
             bounds=NativeStateConfig(timeout_seconds=30),
         )
-        target = services.invocations.create_in_transaction(
-            services.invocations.connection,
-            engine="langgraph",
-            session_id=parent.session_id,
-            user_id=parent.user_id,
-            owner_principal="alice",
-            workflow_name=plan.name,
-            workflow_version=plan.version,
-            workflow_fingerprint=plan.fingerprint,
-            input_data={},
-            reserved_invocation_id=reserved,
-        )
-        services.invocations.connection.commit()
+        reservations = NativeReplayReservations(services)
+        target = reservations.reserve(parent, actor, plan, prepared)
+        assert target.invocation_id == reserved
+        assert reservations.reserve(parent, actor, plan, prepared).invocation_id == reserved
         target._execution_lease = services.execution_ownership.acquire(target, seconds=300)
         services.execution_authorizations.reserve_invocation(target, actor, input_data={})
         with authority_scope(actor):
@@ -200,6 +192,31 @@ async def test_historical_replay_binds_original_receipt_and_enforces_effect_poli
             await restarted._timer_dispatcher.stop()
             recovered = reopened.invocations.get(target.invocation_id)
             assert recovered is not None and recovered._execution_lease is None
+            reservation = NativeReplayReservations(reopened)
+            recovered_request, reserved_target = reservation.recover(
+                parent, actor, prepared.request.request_id
+            )
+            assert (
+                recovered_request == prepared.request
+                and reserved_target.invocation_id == target.invocation_id
+            )
+            rebuilt = await prepare_native_lineage(
+                reopened,
+                parent,
+                actor,
+                kind="replay",
+                target_invocation_id=target.invocation_id,
+                request_id=recovered_request.request_id,
+                source_reference=recovered_request.source_reference,
+                acknowledge_reexecution=policy == "reexecute",
+                bounds=bounds,
+                _reserved_request=recovered_request,
+            )
+            assert rebuilt == prepared
+            assert (
+                reservation.reserve(parent, actor, plan, rebuilt).invocation_id
+                == target.invocation_id
+            )
             recovered_registry = restarted._resume_lineage(recovered)
             assert recovered_registry is not None
             await restarted.native.admit_resume(
@@ -215,6 +232,25 @@ async def test_historical_replay_binds_original_receipt_and_enforces_effect_poli
                 services.execution_ownership.release(target._execution_lease)
                 target._execution_lease = None
                 async with restarted._own_execution(recovered):
+                    replay_proposal, replay_dependencies = stage_root_replay(
+                        reopened, plan, rebuilt, recovered
+                    )
+
+                    async def no_duplicate_write(_saver, _configs):
+                        raise AssertionError("recovery must not repeat a committed fork")
+
+                    await apply_native_lineage_fork(
+                        database,
+                        reopened.execution_ownership.native_fence(recovered._execution_lease),
+                        recovered,
+                        plan,
+                        replay_proposal,
+                        no_duplicate_write,
+                        bounds=bounds,
+                    )
+                    recovered_registry.bind(
+                        rebuilt.request, recovered, actor, digest, replay_dependencies
+                    )
                     result = await restarted._resume_owned(recovered, None, plan)
                     assert result.status == ("faulted" if policy == "read_only" else "completed")
                     assert len(reopened.model.calls) == (0 if policy == "read_only" else 1)

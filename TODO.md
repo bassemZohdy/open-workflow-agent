@@ -233,8 +233,10 @@ treated as a deferred task or as additional feature completion.
   replay under both effect policies; this is not public invocation admission.
   A newly initialized engine can reconstruct the private binding and continue
   a manually staged root replay under either effect policy on SQLite and
-  PostgreSQL. The public recovery path is still capability-gated. Durable common
-  target reservation/recovery, broader checkpoint/scope remapping, full
+  PostgreSQL. The development branch also atomically records a private target
+  reservation, reopens its request, reconstructs the historical basis, and
+  recognizes an already committed fork. Coordinator crash recovery and the
+  public recovery path are still capability-gated. Broader checkpoint/scope remapping, full
   lifecycle gate installation, branch attribution and public
   replay/branch admission remain open. Storage atomicity alone does not make a
   business fork safe to resume. Frozen `479906c`

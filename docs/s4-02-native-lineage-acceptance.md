@@ -96,6 +96,19 @@ proof, receipt-history and admission regression passes 20 cases, both with
 SQLite and PostgreSQL and no skips. Formatting, lint, strict typing, task
 tracking and Markdown-link checks also pass for this development state.
 
+The current branch adds a private reservation in common storage: the target,
+its original input and the request binding commit together. Repeated requests
+validate the target identity and input, and a newly initialized runtime can
+recover the request and re-read the selected native basis. A six-case selection
+passes on SQLite/PostgreSQL for transaction interruption, changed reservation,
+restart-style continuation and recognition of an already committed native fork.
+This still manually coordinates the stages in the tests; it does not establish
+process-crash reconciliation or a public replay API. A simultaneous regression
+run had one failure because two suites counted and changed shared PostgreSQL
+receipt tables concurrently; its result is retained rather than counted green.
+The same preflight and admission selection subsequently passes 40 cases when
+run serially against that database, with no skips.
+
 The private fenced SDK fork unit below precedes durable common
 lineage/idempotency and recovery, checkpoint/scope binding remapping, branch data
 attribution and effect enforcement before exposing controls. Prove read-only

@@ -87,7 +87,11 @@ target reservation/recovery, broader checkpoint/scope remapping and public repla
 admission remain open. A new engine can reconstruct the private lineage binding
 before ownership and continue a manually staged root target; four restart-style
 SQLite/PostgreSQL cases pass for both effect policies. Normal public admission
-still rejects this profile, and process-crash recovery has not been proven.
+still rejects this profile. The development branch adds atomic private target
+reservation, request recovery, historical basis reconstruction and idempotent
+native fork recognition; a six-case SQLite/PostgreSQL selection passes for
+restart-style replay and reservation rollback. A durable coordinator and
+process-crash recovery have not been proven.
 No task or research row is promoted.
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
