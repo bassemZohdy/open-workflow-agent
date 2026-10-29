@@ -231,8 +231,11 @@ treated as a deferred task or as additional feature completion.
   replay projection with source-backed receipt remapping and scoped effect
   checks. A focused SQLite/PostgreSQL run passes 16 cases, including real native
   replay under both effect policies; this is not public invocation admission.
-  Durable common target reservation/recovery, broader checkpoint/scope
-  remapping, automatic gate installation, branch attribution and public
+  A newly initialized engine can reconstruct the private binding and continue
+  a manually staged root replay under either effect policy on SQLite and
+  PostgreSQL. The public recovery path is still capability-gated. Durable common
+  target reservation/recovery, broader checkpoint/scope remapping, full
+  lifecycle gate installation, branch attribution and public
   replay/branch admission remain open. Storage atomicity alone does not make a
   business fork safe to resume. Frozen `479906c`
   passes 538 native combined cases per platform, zero skips and 1,288 unchanged

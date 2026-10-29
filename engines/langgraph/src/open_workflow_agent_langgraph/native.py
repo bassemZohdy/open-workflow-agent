@@ -313,6 +313,8 @@ class LangGraphFunctionalAdapter:
         *,
         effect_journal: Any = None,
         child_waits: Any = None,
+        lineage_registry: Any = None,
+        lineage_target: Any = None,
     ) -> None:
         from .graph import LangGraphScopeExecutor
 
@@ -324,6 +326,8 @@ class LangGraphFunctionalAdapter:
                 resume=True,
                 effect_journal=effect_journal,
                 child_waits=child_waits,
+                lineage_registry=lineage_registry,
+                lineage_target=lineage_target,
             )
             await scopes.original_input(workflow_input)
 

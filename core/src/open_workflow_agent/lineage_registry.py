@@ -130,7 +130,6 @@ class LineageRegistry:
         if (
             source is None
             or saved is None
-            or target._execution_lease is None
             or source.owner_principal is None
             or source.owner_principal != target.owner_principal
             or saved._persisted_payload is None
@@ -159,6 +158,7 @@ class LineageRegistry:
         if (
             not self.authorizations.config_provider().enabled
             or target.status != "running"
+            or target._execution_lease is None
             or authority is None
             or authority.principal.identity != source.owner_principal
             or type(native_proof_digest) is not str
@@ -296,7 +296,8 @@ class LineageRegistry:
         request, _, _ = self.read(target)
         if target.status != "running":
             raise lineage_error("effect_invocation_not_running")
-        assert target._execution_lease is not None
+        if target._execution_lease is None:
+            raise lineage_error("effect_ownership_lost")
         guard, parameters = execution_write_guard(self.journal.connection, target._execution_lease)
         if self.journal.connection.execute(guard, parameters).fetchone() is None:
             raise lineage_error("effect_ownership_lost")

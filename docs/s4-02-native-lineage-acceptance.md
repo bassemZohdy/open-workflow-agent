@@ -81,6 +81,21 @@ or prove restart recovery. An earlier combined run had one recovery-profile
 failure after a runtime file changed during testing; a fresh database and stable
 source passed. Broader regression and frozen cross-platform qualification remain.
 
+On the development branch, native resume reconstructs a registry from retained
+common and native proof before ownership, then reinstalls the scoped gate when
+continuing the target under ownership. Four restart-style tests use a newly
+initialized engine and common services on SQLite and PostgreSQL. Both effect
+policies are checked, including repeated continuation. These tests manually
+stage the target and call the internal owned continuation; they do not prove
+public admission, crash recovery or durable target creation. Read-only registry
+inspection can run without a lease, but binding or authorizing an effect still
+requires target ownership. Two PostgreSQL runs were interrupted when the WSL
+test container exited; the passing run used a fresh Docker Desktop database.
+The common registry and reserved-identity selection passes 30 cases; a native
+proof, receipt-history and admission regression passes 20 cases, both with
+SQLite and PostgreSQL and no skips. Formatting, lint, strict typing, task
+tracking and Markdown-link checks also pass for this development state.
+
 The private fenced SDK fork unit below precedes durable common
 lineage/idempotency and recovery, checkpoint/scope binding remapping, branch data
 attribution and effect enforcement before exposing controls. Prove read-only

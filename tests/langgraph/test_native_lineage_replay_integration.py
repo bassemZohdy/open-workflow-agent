@@ -35,8 +35,9 @@ from open_workflow_agent_langgraph.native_state import state_reference
 @pytest.mark.asyncio
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 @pytest.mark.parametrize("policy", ["read_only", "reexecute"])
+@pytest.mark.parametrize("continuation", ["direct", "restarted"])
 async def test_historical_replay_binds_original_receipt_and_enforces_effect_policy(
-    tmp_path, backend, policy
+    tmp_path, backend, policy, continuation
 ):
     config = configuration()
     config.observability.native_streams = None
@@ -188,6 +189,42 @@ async def test_historical_replay_binds_original_receipt_and_enforces_effect_poli
             lambda request, value: inspect_native_lineage(database, request, bounds) == value,
         )
         registry.bind(prepared.request, target, actor, digest, dependencies)
+        # Recovery admission must reconstruct evidence from storage even before
+        # the new worker acquires the target's execution lease.
+        reopened = RuntimeServices(
+            config, model=FakeModel(), database_root=None if backend == "postgresql" else tmp_path
+        )
+        restarted = LangGraphWorkflowEngine()
+        try:
+            await restarted.initialize(reopened)
+            await restarted._timer_dispatcher.stop()
+            recovered = reopened.invocations.get(target.invocation_id)
+            assert recovered is not None and recovered._execution_lease is None
+            recovered_registry = restarted._resume_lineage(recovered)
+            assert recovered_registry is not None
+            await restarted.native.admit_resume(
+                plan,
+                recovered.invocation_id,
+                {},
+                effect_journal=reopened.effect_journal,
+                lineage_registry=recovered_registry,
+                lineage_target=recovered,
+            )
+            assert reopened.model.calls == []
+            if continuation == "restarted":
+                services.execution_ownership.release(target._execution_lease)
+                target._execution_lease = None
+                async with restarted._own_execution(recovered):
+                    result = await restarted._resume_owned(recovered, None, plan)
+                    assert result.status == ("faulted" if policy == "read_only" else "completed")
+                    assert len(reopened.model.calls) == (0 if policy == "read_only" else 1)
+                    repeat = await restarted._resume_owned(recovered, None, plan)
+                    assert repeat.status == result.status
+                    assert len(reopened.model.calls) == (0 if policy == "read_only" else 1)
+                return
+        finally:
+            await restarted.shutdown()
+            reopened.close()
         metadata = {
             "invocation_id": target.invocation_id,
             "_invocation_handle": target,
