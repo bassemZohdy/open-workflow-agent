@@ -246,9 +246,28 @@ class LangGraphFunctionalAdapter:
         """Run each derived task as a native node with private scope checkpoints."""
         if _stream_observer is not None and _stream_observer.invocation_id != invocation_id:
             raise InvocationStateError("native observation belongs to another invocation")
-        if not self.task_nodes_available:
-            return await executor.execute(plan, input_data, metadata=metadata)
+        from contextlib import nullcontext
+
+        from open_workflow_agent.lineage_registry import LineageRegistry, lineage_scope
+        from open_workflow_agent.persistence import ExecutionHandle
+
         from .graph import LangGraphScopeExecutor
+
+        lineage = metadata.get("_lineage_registry")
+        target = metadata.get("_invocation_handle")
+        if not self.task_nodes_available:
+            if lineage is not None:
+                raise InvocationStateError("native lineage continuation is unavailable")
+            return await executor.execute(plan, input_data, metadata=metadata)
+        if lineage is not None and (
+            not isinstance(lineage, LineageRegistry)
+            or executor.services is None
+            or lineage.journal is not executor.services.effect_journal
+            or not isinstance(target, ExecutionHandle)
+            or target.invocation_id != invocation_id
+            or not resume
+        ):
+            raise InvocationStateError("native lineage continuation is invalid")
 
         await self.prepare_storage()
 
@@ -264,15 +283,21 @@ class LangGraphFunctionalAdapter:
                 child_wakes=metadata.get("_child_wakes"),
                 child_waits=getattr(executor.services, "child_waits", None),
                 stream_observer=_stream_observer,
+                lineage_registry=lineage,
+                lineage_target=target if lineage is not None else None,
             )
-            raw_input = await scopes.original_input(input_data) if resume else input_data
             try:
-                return await executor.execute(
-                    plan,
-                    raw_input,
-                    metadata={**metadata, "_effect_receipt_observer": scopes.record_effect_receipt},
-                    scope_executor=scopes,
-                )
+                with lineage_scope(lineage) if lineage is not None else nullcontext():
+                    raw_input = await scopes.original_input(input_data) if resume else input_data
+                    return await executor.execute(
+                        plan,
+                        raw_input,
+                        metadata={
+                            **metadata,
+                            "_effect_receipt_observer": scopes.record_effect_receipt,
+                        },
+                        scope_executor=scopes,
+                    )
             except OwaError:
                 raise
             except Exception:

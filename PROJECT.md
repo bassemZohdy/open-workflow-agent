@@ -80,10 +80,13 @@ scope limits. A private common registry now records source-backed receipt
 mappings and provides an explicit scoped effect gate. Frozen `6532346` passes
 92 combined and 26 ADK cases on Docker/Linux; Windows has 91/92 and 25/26
 passes with both PostgreSQL connection failures passing individually on retry.
-All 1,290 Linux inputs remain unchanged. Native proof inspection, target
-reservation/recovery, checkpoint/scope remapping, mandatory scope installation
-and public replay admission remain open; the existing native storage unit is
-not yet a business fork safe to resume. No task or research row is promoted.
+All 1,290 Linux inputs remain unchanged. The current development branch adds
+native proof inspection and a private root-only replay continuation; a focused
+SQLite/PostgreSQL run passes 16 cases. Normal lifecycle integration, durable
+target reservation/recovery, broader checkpoint/scope remapping, automatic
+scope installation and public replay admission remain open. The private test
+path does not yet establish a business fork safe to resume through the normal
+engine. No task or research row is promoted.
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior

@@ -69,6 +69,18 @@ follows separately. No task checkbox or research row is promoted by these checks
 
 ## Remaining implementation and acceptance
 
+Development work on the current branch adds bounded native proof inspection and
+a private root-only replay projection. A target checkpoint carries a lineage
+binding and source-backed receipt coordinates, and continuation with that
+binding installs the common effect gate. Actual SQLite and PostgreSQL replay
+tests cover historical receipt selection, read-only denial, acknowledged
+re-execution, repeated continuation, missing lineage context and damaged native
+proof. A focused run passes 16 cases with no skips. The test constructs and
+binds its target explicitly; it does not exercise the normal invocation lifecycle
+or prove restart recovery. An earlier combined run had one recovery-profile
+failure after a runtime file changed during testing; a fresh database and stable
+source passed. Broader regression and frozen cross-platform qualification remain.
+
 The private fenced SDK fork unit below precedes durable common
 lineage/idempotency and recovery, checkpoint/scope binding remapping, branch data
 attribution and effect enforcement before exposing controls. Prove read-only
