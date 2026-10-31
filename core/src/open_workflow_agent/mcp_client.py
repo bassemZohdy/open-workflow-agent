@@ -299,7 +299,8 @@ class _CommonHttpDispatcher:
 async def _typed_call(session: ClientSession, payload: Mapping[str, Any], method: str) -> Any:
     request = _request(payload, method)
     result: types.Result = await session.send_request(
-        request, TypeAdapter[types.Result](methods.MONOLITH_RESULTS[method])
+        request,
+        TypeAdapter[types.Result](methods.MONOLITH_RESULTS[method]),  # type: ignore[arg-type]
     )
     if isinstance(result, types.InputRequiredResult):
         raise _uncertain("unsupported_interaction")
