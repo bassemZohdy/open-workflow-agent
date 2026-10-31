@@ -1,6 +1,6 @@
 # S4-04 value, bound, type, composition and closed-object schema-constraint execution
 
-Recorded 2026-11-01 on `main` at `e863ba0` plus the change that extends
+Recorded 2026-11-01 on `main` at `4c1d3b7` plus the change that extends
 `tests/contract/test_schema_value_constraints.py` with `pattern`, composition and
 `$ref` rows. This is a local development run, not hosted CI and not a conformance
 result.
@@ -51,7 +51,7 @@ by hand.
 | `pattern` | 9 | 9 |
 | `then` | 0 | 3 |
 | `type` | 237 | 294 |
-| `unevaluatedProperties` | 53 | 76 |
+| `unevaluatedProperties` | 68 | 76 |
 
 ## Not claimed
 
@@ -87,4 +87,4 @@ by hand.
 - `not`: `SC0255`
 - `then`: `SC0077`, `SC0418`, `SC0727`
 - `type`: `SC0096`, `SC0101`, `SC0103`, `SC0108`, `SC0119`, `SC0124`, `SC0143`, `SC0148`, `SC0164`, `SC0169`, `SC0174`, `SC0182`, `SC0187`, `SC0192`, `SC0197`, `SC0206`, `SC0211`, `SC0216`, `SC0223`, `SC0246`, `SC0249`, `SC0259`, `SC0270`, `SC0276`, `SC0288`, `SC0297`, `SC0303`, `SC0311`, `SC0316`, `SC0327`, `SC0332`, `SC0336`, `SC0352`, `SC0356`, `SC0393`, `SC0403`, `SC0420`, `SC0437`, `SC0444`, `SC0460`, `SC0485`, `SC0489`, `SC0503`, `SC0512`, `SC0519`, `SC0523`, `SC0539`, `SC0556`, `SC0574`, `SC0579`, `SC0602`, `SC0616`, `SC0644`, `SC0678`, `SC0699`, `SC0720`, `SC0756`
-- `unevaluatedProperties`: `SC0081`, `SC0098`, `SC0118`, `SC0120`, `SC0144`, `SC0170`, `SC0188`, `SC0207`, `SC0250`, `SC0260`, `SC0271`, `SC0278`, `SC0290`, `SC0305`, `SC0318`, `SC0329`, `SC0395`, `SC0405`, `SC0422`, `SC0439`, `SC0486`, `SC0504`, `SC0632`
+- `unevaluatedProperties`: `SC0081`, `SC0098`, `SC0118`, `SC0207`, `SC0405`, `SC0486`, `SC0504`, `SC0632`

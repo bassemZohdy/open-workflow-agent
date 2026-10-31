@@ -21,8 +21,8 @@ Draft 2020-12 validator. A row is credited only if both the valid instance and e
 single-property rejection are demonstrated, so the credit set is derived rather than
 asserted.
 
-Result: 67 rows credited (`executed` in
-[the coverage bridge](../../resources/compatibility/coverage-bridge.json)); 22 rows
+Result: 82 rows credited (`executed` in
+[the coverage bridge](../../resources/compatibility/coverage-bridge.json)); 7 rows
 could not be credited because no valid instance of the enclosing subschema could be
 generated, and they stay `unmapped` with that reason recorded. No row was found
 where a listed property could be removed without rejection.
@@ -37,24 +37,9 @@ where a listed property could be removed without rejection.
 ## Uncredited rows
 
 - `SC0097` `/$defs/callTask/oneOf/0/required`
-- `SC0121` `/$defs/callTask/oneOf/1/required`
-- `SC0145` `/$defs/callTask/oneOf/2/required`
-- `SC0171` `/$defs/callTask/oneOf/3/required`
-- `SC0189` `/$defs/callTask/oneOf/4/required`
 - `SC0208` `/$defs/callTask/oneOf/5/required`
 - `SC0248` `/$defs/callTask/oneOf/5/allOf/1/properties/with/required`
-- `SC0251` `/$defs/callTask/oneOf/6/required`
-- `SC0261` `/$defs/forkTask/required`
-- `SC0272` `/$defs/doTask/required`
-- `SC0277` `/$defs/emitTask/required`
 - `SC0285` `/$defs/emitTask/allOf/1/properties/emit/properties/event/properties/with/required`
-- `SC0289` `/$defs/forTask/required`
-- `SC0304` `/$defs/listenTask/required`
-- `SC0317` `/$defs/raiseTask/required`
-- `SC0328` `/$defs/runTask/required`
-- `SC0394` `/$defs/setTask/required`
 - `SC0404` `/$defs/switchTask/required`
-- `SC0421` `/$defs/tryTask/required`
-- `SC0438` `/$defs/waitTask/required`
 - `SC0630` `/$defs/eventConsumptionStrategy/oneOf/2/required`
 - `SC0641` `/$defs/eventFilter/required`

@@ -59,6 +59,19 @@ def merge(a, b):
     return b
 
 
+def _properties(sub, depth=0):
+    """Property definitions declared by a subschema and, transitively, its allOf branches."""
+    if depth > 8:
+        return {}
+    if "$ref" in sub and sub["$ref"].startswith("#/"):
+        return _properties(resolve(sub["$ref"][1:]), depth + 1)
+    merged = {}
+    for part in sub.get("allOf", []):
+        merged.update(_properties(part, depth + 1))
+    merged.update(sub.get("properties", {}))
+    return merged
+
+
 def gen(sub, depth=0):
     if depth > 12:
         return None
@@ -87,7 +100,7 @@ def gen(sub, depth=0):
     t = sub.get("type")
     if t == "object" or "properties" in sub or "required" in sub:
         obj = result if isinstance(result, dict) else {}
-        props = sub.get("properties", {})
+        props = _properties(sub)
         for name in sub.get("required", []):
             if name not in obj:
                 v = gen(props.get(name, {}), depth + 1)
