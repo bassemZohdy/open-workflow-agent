@@ -66,8 +66,15 @@ def _beyond(row, sub):
     keyword, value = row["keyword"], row["value"]
     if keyword in {"unevaluatedProperties", "additionalProperties"}:
         base = gen(sub)
-        if value is not False or not isinstance(base, dict):
+        if not isinstance(base, dict):
             return [], []
+        if value is True:
+            # An open object has no rejection to isolate; it must accept an unknown property.
+            return [], [{**base, "__unknown__": 1}]
+        if value is not False:
+            return [{**base, "__unknown__": probe} for probe in ("x", 1, [], {}, None, True)], [
+                base
+            ]
         return [{**base, "__unknown__": 1}], [base]
     if keyword == "pattern":
         compiled = re.compile(value)
@@ -122,6 +129,8 @@ def _probe(row):
         accepted = [item for item in within if valid(sub, item)]
         if len(accepted) != len(within):
             return None, [], "an in-bounds value is not accepted by the enclosing subschema"
+        if row["keyword"] == "additionalProperties" and row["value"] is True:
+            return (None, accepted, "") if accepted else (None, [], "no valid instance to extend")
         for candidate in beyond:
             if valid(control, candidate) and not valid(sub, candidate):
                 return candidate, accepted, ""
@@ -132,7 +141,7 @@ def _probe(row):
 
 ROWS = [row for row in BRIDGE["schema_constraint_inventory"] if row["keyword"] in KEYWORDS]
 PROBES = {row["id"]: _probe(row) for row in ROWS}
-CREDITED = [row["id"] for row in ROWS if PROBES[row["id"]][0] is not None]
+CREDITED = [row["id"] for row in ROWS if not PROBES[row["id"]][2]]
 
 
 @pytest.mark.parametrize("row_id", CREDITED)
@@ -141,8 +150,13 @@ def test_keyword_is_the_isolated_cause_of_rejection(row_id):
     sub = enclosing(row, row["keyword"])
     control = without(sub, row["keyword"])
     rejected, accepted, _ = PROBES[row_id]
-    assert valid(control, rejected)
-    assert not valid(sub, rejected)
+    if rejected is None:
+        # Open object: no rejection exists to isolate, so it must accept an unknown property.
+        assert row["keyword"] == "additionalProperties" and row["value"] is True
+        assert accepted and all("__unknown__" in item for item in accepted)
+    else:
+        assert valid(control, rejected)
+        assert not valid(sub, rejected)
     assert all(valid(sub, item) for item in accepted)
 
 
