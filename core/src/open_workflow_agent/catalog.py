@@ -247,7 +247,7 @@ class LiteLLMModel:
         kwargs["num_retries"] = 0
         kwargs["max_retries"] = 0
         try:
-            from litellm import acompletion  # type: ignore[import-not-found]
+            from litellm import acompletion  # type: ignore[import-not-found,unused-ignore]
         except ImportError as exc:
             raise ModelError(
                 "LiteLLM is not installed; install the optional model dependency"
