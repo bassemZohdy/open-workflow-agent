@@ -97,7 +97,7 @@ public admission. Two additional process-kill cases interrupt a model call and
 verify that its uncertain outcome faults without a second call.
 No task or research row is promoted.
 
-S4-03 has bounded literal set/do/raise and literal try/catch execution with 29 shared
+S4-03 has bounded literal set/do/raise, try/catch and non-competing fork execution with 38 shared
 success/fault cases (local, not hosted-qualified); public identity, durable services, expressions and full engine behavior
 remain missing. S4-04 has a new 13-case actual native outcome comparison with
 source/SDK/runtime/fixture/schema checks; its finite hosted comparison passes
@@ -150,7 +150,7 @@ JavaScript conformance.
 | S3-08 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s3-08-selected-adapter-acceptance.md#exact-source-qualification-d72781f) |
 | S4-01 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s4-01-native-extension-acceptance.md#exact-source-qualification-d72781f) |
 | S4-02 | Bounded channels/reducers, Command/Send and configured filtered/semantic memory have finite native/store evidence. Broader memory, streams, state updates, replay and time travel remain open. | [Native scope](docs/s4-02-native-channels-acceptance.md), [memory qualification](docs/s4-02-native-memory-acceptance.md#semantic-workflow-profile--2026-10-26) |
-| S4-03 | TypeScript admission and literal set/do/raise/try-catch execution are implemented. Full public identity, durability, expressions, calls and independent engine parity remain open. | [JavaScript execution scope](docs/s4-03-javascript-execution-acceptance.md) |
+| S4-03 | TypeScript admission and literal set/do/raise/try-catch/fork execution are implemented. Full public identity, durability, expressions, calls and independent engine parity remain open. | [JavaScript execution scope](docs/s4-03-javascript-execution-acceptance.md) |
 | S4-04 | Thirteen actual native literal outcomes match locally. All 443 proposed and 774 schema rows remain unmapped/unexecuted; full conformance remains open. | [Literal comparison](docs/s4-04-literal-parity-acceptance.md), [coverage bridge](resources/compatibility/README.md) |
 | S4-05 | Finite bounded history/tracing/metrics/provenance profile verified at `f66cd23`; incoming propagation, durable spans and vendor exporters remain excluded. | [Observability acceptance](docs/s4-05-observability-acceptance.md#exact-source-qualification-f66cd23) |
 | S4-06 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/benchmarks.md#exact-source-qualification-d72781f) |

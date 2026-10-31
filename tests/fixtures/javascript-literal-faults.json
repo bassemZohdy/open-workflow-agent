@@ -33,5 +33,10 @@
     "id": "catch-every-filter-must-match",
     "tasks": [{"guard": {"try": [{"fail": {"raise": {"error": {"status": 422, "type": "https://errors.test/z", "title": "Z"}}}}], "catch": {"errors": {"with": {"status": 422, "title": "other"}}, "do": [{"r": {"set": {"m": "wrong"}}}]}}}],
     "expected": {"code": "workflow_execution_error", "message": "Z", "details": {"instance": "/do/0/guard/try/0/fail", "status": 422, "title": "Z", "type": "https://errors.test/z"}}
+  },
+  {
+    "id": "fork-branch-fault-propagates",
+    "tasks": [{"par": {"fork": {"branches": [{"a": {"set": {"v": "A"}}}, {"b": {"raise": {"error": {"status": 400, "type": "https://errors.test/a"}}}}]}}}],
+    "expected": {"code": "workflow_execution_error", "message": "https://errors.test/a", "details": {"instance": "/do/0/par/fork/branches/1/b", "status": 400, "type": "https://errors.test/a"}}
   }
 ]

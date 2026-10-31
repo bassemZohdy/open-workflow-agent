@@ -13,6 +13,7 @@ type Task = Readonly<{
   problem?: Readonly<Record<string, Json>>;
   children?: readonly Task[];
   attempt?: readonly Task[];
+  branches?: readonly (readonly Task[])[];
   handler?: Readonly<{
     filter: Readonly<Record<string, Json>>;
     children: readonly Task[];
@@ -135,15 +136,17 @@ function catchMatches(filter: Readonly<Record<string, Json>>, error: WorkflowExe
   return Object.entries(filter).every(([key, expected]) => values[key] === expected);
 }
 
-function compileScope(value: unknown, reference: string, budget: { tasks: number }, depth = 0): readonly Task[] {
+function compileScope(
+  value: unknown, reference: string, budget: { tasks: number }, depth = 0, offset = 0,
+): readonly Task[] {
   if (!Array.isArray(value) || value.length === 0 || depth > MAX_SCOPE_DEPTH) reject(reference);
   const entries: { name: string; body: Record<string, unknown>; reference: string; key: string }[] = [];
   const names = new Map<string, string>();
   for (const [index, entry] of value.entries()) {
     if (!object(entry) || Object.keys(entry).length !== 1) reject(reference);
     const [name, body] = Object.entries(entry)[0];
-    if (name.length === 0 || Buffer.byteLength(name, "utf8") > 256) reject(`${reference}/${index}`);
-    const taskReference = `${reference}/${index}/${pointer(name)}`;
+    if (name.length === 0 || Buffer.byteLength(name, "utf8") > 256) reject(`${reference}/${index + offset}`);
+    const taskReference = `${reference}/${index + offset}/${pointer(name)}`;
     if (names.has(name)) {
       throw new WorkflowExecutionError("workflow_semantic_error", "duplicate task name in scope", taskReference);
     }
@@ -154,8 +157,8 @@ function compileScope(value: unknown, reference: string, budget: { tasks: number
   }
   return freeze(entries.map((entry, index): Task => {
     const { name, body, reference: taskReference, key } = entry;
-    if (Object.keys(body).some((field) => !["set", "do", "raise", "try", "catch", "then", "metadata"].includes(field))) reject(taskReference);
-    if (["set", "do", "raise", "try"].filter((kind) => Object.hasOwn(body, kind)).length !== 1) reject(taskReference);
+    if (Object.keys(body).some((field) => !["set", "do", "raise", "try", "catch", "fork", "then", "metadata"].includes(field))) reject(taskReference);
+    if (["set", "do", "raise", "try", "fork"].filter((kind) => Object.hasOwn(body, kind)).length !== 1) reject(taskReference);
     if (Object.hasOwn(body, "catch") !== Object.hasOwn(body, "try")) reject(taskReference);
     const resolve = (transition: unknown, at: string): { next: string; ends: boolean } => {
       if (typeof transition !== "string") reject(at);
@@ -168,10 +171,23 @@ function compileScope(value: unknown, reference: string, budget: { tasks: number
       return { next: target, ends: false };
     };
     const { next, ends } = resolve(body.then ?? "continue", `${taskReference}/then`);
-    let operation: Pick<Task, "value" | "children" | "problem" | "attempt" | "handler">;
+    let operation: Pick<Task, "value" | "children" | "problem" | "attempt" | "handler" | "branches">;
     if (Object.hasOwn(body, "set")) operation = { value: bounded(body.set, `${taskReference}/set`, true) };
     else if (Object.hasOwn(body, "do")) operation = { children: compileScope(body.do, `${taskReference}/do`, budget, depth + 1) };
-    else if (Object.hasOwn(body, "try")) {
+    else if (Object.hasOwn(body, "fork")) {
+      const at = `${taskReference}/fork`;
+      const fork = body.fork;
+      if (!object(fork) || !Array.isArray(fork.branches) || fork.branches.length === 0
+        || Object.keys(fork).some((field) => field !== "branches" && field !== "compete")
+        || (fork.compete !== undefined && fork.compete !== false)) reject(at);
+      operation = {
+        branches: fork.branches.map((branch: unknown, slot: number) => {
+          // A branch is one named task; its transitions would be outside the proven profile.
+          if (object(branch) && Object.values(branch).some((task) => object(task) && Object.hasOwn(task, "then"))) reject(`${at}/branches/${slot}`);
+          return compileScope([branch], `${at}/branches`, budget, depth + 1, slot);
+        }),
+      };
+    } else if (Object.hasOwn(body, "try")) {
       const handlerBody = body.catch;
       const at = `${taskReference}/catch`;
       if (!object(handlerBody) || !Object.hasOwn(handlerBody, "do")
@@ -224,6 +240,11 @@ async function runScope(tasks: readonly Task[], input: Json, budget: { steps: nu
             endsWorkflow = handler.endsWorkflow === true;
           }
         }
+      } else if (task.branches !== undefined) {
+        const settled = await Promise.allSettled(task.branches.map((branch) => runScope(branch, structuredClone(state.data), budget)));
+        const failed = settled.find((outcome): outcome is PromiseRejectedResult => outcome.status === "rejected");
+        if (failed !== undefined) throw failed.reason;
+        result = { data: settled.map((outcome) => (outcome as PromiseFulfilledResult<{ data: Json }>).value.data), ended: false };
       } else {
         result = task.children !== undefined
           ? await runScope(task.children, structuredClone(state.data), budget)
@@ -249,7 +270,7 @@ const DEFAULT_WORKFLOW = {
 export function literalExecutionCapabilities() {
   return {
     engine: "langgraph-js", experimental: true, dsl: "1.0.3",
-    tasks: ["set", "do", "raise", "try"], transitions: ["continue", "exit", "end", "scope_task_name"],
+    tasks: ["set", "do", "raise", "try", "fork"], transitions: ["continue", "exit", "end", "scope_task_name"],
     expressions: false, catalogCalls: false, nativeExtensions: [],
     persistence: false, recovery: false, publicInvocationIdentity: false,
     maxTasks: MAX_TASKS, maxSteps: MAX_STEPS, maxScopeDepth: MAX_SCOPE_DEPTH, maxValueBytes: MAX_VALUE_BYTES,

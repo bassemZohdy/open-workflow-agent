@@ -131,6 +131,30 @@ test("try/catch outside the literal profile rejects before constructing a native
   }
 });
 
+test("fork outside the literal profile rejects before constructing a native graph", async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(StateGraph.prototype, "compile")!;
+  Object.defineProperty(StateGraph.prototype, "compile", { ...descriptor, value() { throw new Error("must-not-compile"); } });
+  const branch = { a: { set: { v: 1 } } };
+  try {
+    for (const fork of [
+      { compete: true, branches: [branch] },
+      { branches: [{ a: { set: { v: 1 }, then: "end" } }] },
+      { branches: [{ a: { set: { v: 1 }, then: "continue" } }] },
+      { branches: [{ a: { call: "agent:1.0.0@default" } }] },
+      { branches: [{ a: { set: { v: "${ .x }" } } }] },
+    ]) {
+      await assert.rejects(executeLiteralWorkflow(workflow([{ par: { fork } }]), {}), (error: unknown) => {
+        assert.ok(error instanceof WorkflowExecutionError);
+        assert.equal(error.code, "unsupported_workflow_feature");
+        assert.ok(!error.message.includes("must-not-compile"));
+        return true;
+      });
+    }
+  } finally {
+    Object.defineProperty(StateGraph.prototype, "compile", descriptor);
+  }
+});
+
 test("unsupported late tasks reject before constructing a native graph", async () => {
   const descriptor = Object.getOwnPropertyDescriptor(StateGraph.prototype, "compile")!;
   Object.defineProperty(StateGraph.prototype, "compile", { ...descriptor, value() { throw new Error("must-not-compile"); } });
