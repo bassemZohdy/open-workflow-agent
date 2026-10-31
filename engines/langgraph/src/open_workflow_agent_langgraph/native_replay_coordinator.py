@@ -141,9 +141,14 @@ class NativeReplayCoordinator:
                 notify("admitted", target.invocation_id)
                 proposal, dependencies = stage_root_replay(self.services, plan, prepared, target)
                 snapshot = json.loads(json.loads(proposal.packets[0].native_json)["snapshot"])
-                first = plan.scopes[0].tasks[0]
-                if snapshot["task_visits"] != {first.execution_reference or first.reference: 1}:
+                tasks = plan.scopes[0].tasks
+                visits = snapshot["task_visits"]
+                completed = len(visits)
+                if not 0 < completed <= len(tasks) or visits != {
+                    (item.execution_reference or item.reference): 1 for item in tasks[:completed]
+                }:
                     raise lineage_error("replay_profile_unsupported")
+                last = tasks[completed - 1]
 
                 async def write(saver: Any, configs: Any) -> tuple[Any, ...]:
                     driver = LangGraphScopeExecutor(plan, saver, target.invocation_id)
@@ -153,7 +158,7 @@ class NativeReplayCoordinator:
                     result = await graph.aupdate_state(
                         configs[0],
                         json.loads(proposal.packets[0].native_json),
-                        as_node=_node_name(first),
+                        as_node=_node_name(last),
                     )
                     return (result,)
 

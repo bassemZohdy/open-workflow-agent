@@ -239,7 +239,9 @@ treated as a deferred task or as additional feature completion.
   reservation, admission, native fork, lineage binding and continuation; 14
   SQLite/PostgreSQL coordinator and real process-interruption cases pass.
   A separate SQLite/PostgreSQL process-kill test during a model call fails closed
-  without repeating the uncertain effect. Public admission, broader
+  without repeating the uncertain effect.
+  The private root coordinator also replays from a later completed-task prefix
+  (SQLite-verified; PostgreSQL for that profile is not yet run). Public admission, broader
   checkpoint/scope remapping, full
   lifecycle gate installation, branch attribution and public
   replay/branch admission remain open. Storage atomicity alone does not make a
