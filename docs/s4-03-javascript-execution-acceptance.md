@@ -80,3 +80,32 @@ unchanged. Python's annotation-only default accepts the former URI format,
 while the pinned JS validator rejects it. This known format-validation
 difference remains an S4-04 parity gap, with no full criterion promoted.
 Current-source Docker and coherent hosted qualification remain required.
+
+## Literal `try`/`catch` (local development result)
+
+The Node component now executes `try` with a literal `catch`. The profile was
+derived from actual ADK and LangGraph Python behavior on the same inputs, which
+agreed on every probe, and 16 new shared fixtures (13 success, 3 fault; 29 in
+total with the earlier 13) are consumed byte-for-byte by Node and both Python
+engines.
+
+Supported: `catch.errors.with` filters over `type`, `status`, `instance`, `title`
+and `detail` (all must match by equality; `title` falls back to the error code and
+`detail` to the message, as in Python), a required `catch.do`, `catch.then`
+(`continue`, `exit`, `end` or a scope-local name), nested `try` and a handler
+fault propagating with its own instance. Unmatched errors propagate unchanged.
+
+Rejected before any native graph is constructed: `catch.when`, `catch.exceptWhen`,
+`catch.retry`, a `catch` without `do` (the partially updated data it would expose
+is not matched), an empty `catch`, `catch.then` together with a task-level `then`
+(precedence not proven), unknown filter keys or wrongly typed filter values, and
+expressions. The official schema separately rejects a `try` without `catch` and
+malformed `as`/`with` values. Only errors raised by literal `raise` are catchable;
+the step-limit bound is deliberately not. Because expressions are unsupported,
+the data a handler would see after a partial failure is not observable here.
+
+Local evidence: Node 66/66 passes; the shared-fixture contract selection passes on
+ADK and LangGraph with the literal-parity checks (297 passed in the combined CI
+selection). This is not hosted qualification, does not promote any proposed
+criterion or schema-constraint row, and S4-03 remains open.
+

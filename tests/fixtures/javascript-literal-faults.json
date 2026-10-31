@@ -18,5 +18,20 @@
     "id": "literal-escaped-fault-reference",
     "tasks": [{"slash/tilde~": {"raise": {"error": {"status": 422, "type": "https://errors.test/escaped", "title": "Invalid"}}}}],
     "expected": {"code": "workflow_execution_error", "message": "Invalid", "details": {"status": 422, "type": "https://errors.test/escaped", "title": "Invalid", "instance": "/do/0/slash~1tilde~0"}}
+  },
+  {
+    "id": "catch-filter-mismatch-propagates",
+    "tasks": [{"guard": {"try": [{"fail": {"raise": {"error": {"status": 400, "type": "https://errors.test/a"}}}}], "catch": {"errors": {"with": {"status": 500}}, "do": [{"recover": {"set": {"wrong": true}}}]}}}],
+    "expected": {"code": "workflow_execution_error", "message": "https://errors.test/a", "details": {"instance": "/do/0/guard/try/0/fail", "status": 400, "type": "https://errors.test/a"}}
+  },
+  {
+    "id": "catch-handler-fault",
+    "tasks": [{"guard": {"try": [{"fail": {"raise": {"error": {"status": 400, "type": "https://errors.test/a"}}}}], "catch": {"do": [{"fail2": {"raise": {"error": {"status": 500, "type": "https://errors.test/b"}}}}]}}}],
+    "expected": {"code": "workflow_execution_error", "message": "https://errors.test/b", "details": {"instance": "/do/0/guard/catch/do/0/fail2", "status": 500, "type": "https://errors.test/b"}}
+  },
+  {
+    "id": "catch-every-filter-must-match",
+    "tasks": [{"guard": {"try": [{"fail": {"raise": {"error": {"status": 422, "type": "https://errors.test/z", "title": "Z"}}}}], "catch": {"errors": {"with": {"status": 422, "title": "other"}}, "do": [{"r": {"set": {"m": "wrong"}}}]}}}],
+    "expected": {"code": "workflow_execution_error", "message": "Z", "details": {"instance": "/do/0/guard/try/0/fail", "status": 422, "title": "Z", "type": "https://errors.test/z"}}
   }
 ]

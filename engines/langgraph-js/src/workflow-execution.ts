@@ -12,6 +12,13 @@ type Task = Readonly<{
   value?: Json;
   problem?: Readonly<Record<string, Json>>;
   children?: readonly Task[];
+  attempt?: readonly Task[];
+  handler?: Readonly<{
+    filter: Readonly<Record<string, Json>>;
+    children: readonly Task[];
+    next?: string;
+    endsWorkflow?: boolean;
+  }>;
 }>;
 
 const MAX_TASKS = 256;
@@ -29,7 +36,7 @@ export class WorkflowExecutionError extends Error {
     readonly code: "unsupported_workflow_feature" | "workflow_semantic_error" | "workflow_execution_error",
     message: string,
     readonly reference: string,
-    private readonly problem?: Readonly<Record<string, Json>>,
+    readonly problem?: Readonly<Record<string, Json>>,
   ) {
     super(message);
     this.name = "WorkflowExecutionError";
@@ -101,6 +108,33 @@ function pointer(value: string): string {
   return value.replaceAll("~", "~0").replaceAll("/", "~1");
 }
 
+const FILTER_KEYS = ["type", "status", "instance", "title", "detail"] as const;
+
+function compileFilter(catchBody: Record<string, unknown>, reference: string): Readonly<Record<string, Json>> {
+  if (catchBody.errors === undefined) return {};
+  const errors = catchBody.errors;
+  if (!object(errors) || Object.keys(errors).length !== 1 || !object(errors.with)) reject(`${reference}/errors`);
+  const filter = errors.with;
+  const keys = Object.keys(filter);
+  if (keys.length === 0 || keys.some((key) => !(FILTER_KEYS as readonly string[]).includes(key))) reject(`${reference}/errors/with`);
+  for (const key of keys) {
+    const value = filter[key];
+    const valid = key === "status" ? typeof value === "number" && Number.isSafeInteger(value) : typeof value === "string";
+    if (!valid) reject(`${reference}/errors/with/${key}`);
+  }
+  return bounded(filter, `${reference}/errors/with`, true) as Record<string, Json>;
+}
+
+function catchMatches(filter: Readonly<Record<string, Json>>, error: WorkflowExecutionError): boolean {
+  const problem = error.problem ?? {};
+  const message = problem.detail || problem.title || problem.type;
+  const values: Record<string, Json | undefined> = {
+    type: problem.type, status: problem.status, instance: error.reference,
+    title: problem.title ?? error.code, detail: problem.detail ?? String(message),
+  };
+  return Object.entries(filter).every(([key, expected]) => values[key] === expected);
+}
+
 function compileScope(value: unknown, reference: string, budget: { tasks: number }, depth = 0): readonly Task[] {
   if (!Array.isArray(value) || value.length === 0 || depth > MAX_SCOPE_DEPTH) reject(reference);
   const entries: { name: string; body: Record<string, unknown>; reference: string; key: string }[] = [];
@@ -120,28 +154,45 @@ function compileScope(value: unknown, reference: string, budget: { tasks: number
   }
   return freeze(entries.map((entry, index): Task => {
     const { name, body, reference: taskReference, key } = entry;
-    if (Object.keys(body).some((field) => !["set", "do", "raise", "then", "metadata"].includes(field))) reject(taskReference);
-    if (["set", "do", "raise"].filter((kind) => Object.hasOwn(body, kind)).length !== 1) reject(taskReference);
-    const transition = body.then ?? "continue";
-    if (typeof transition !== "string") reject(`${taskReference}/then`);
-    let next = entries[index + 1]?.key ?? END;
-    if (transition === "exit" || transition === "end") next = END;
-    else if (transition !== "continue") {
+    if (Object.keys(body).some((field) => !["set", "do", "raise", "try", "catch", "then", "metadata"].includes(field))) reject(taskReference);
+    if (["set", "do", "raise", "try"].filter((kind) => Object.hasOwn(body, kind)).length !== 1) reject(taskReference);
+    if (Object.hasOwn(body, "catch") !== Object.hasOwn(body, "try")) reject(taskReference);
+    const resolve = (transition: unknown, at: string): { next: string; ends: boolean } => {
+      if (typeof transition !== "string") reject(at);
+      if (transition === "exit" || transition === "end") return { next: END, ends: transition === "end" };
+      if (transition === "continue") return { next: entries[index + 1]?.key ?? END, ends: false };
       const target = names.get(transition);
       if (target === undefined) {
-        throw new WorkflowExecutionError("workflow_semantic_error", "transition target must belong to the current scope", `${taskReference}/then`);
+        throw new WorkflowExecutionError("workflow_semantic_error", "transition target must belong to the current scope", at);
       }
-      next = target;
-    }
-    let operation: Pick<Task, "value" | "children" | "problem">;
+      return { next: target, ends: false };
+    };
+    const { next, ends } = resolve(body.then ?? "continue", `${taskReference}/then`);
+    let operation: Pick<Task, "value" | "children" | "problem" | "attempt" | "handler">;
     if (Object.hasOwn(body, "set")) operation = { value: bounded(body.set, `${taskReference}/set`, true) };
     else if (Object.hasOwn(body, "do")) operation = { children: compileScope(body.do, `${taskReference}/do`, budget, depth + 1) };
-    else {
+    else if (Object.hasOwn(body, "try")) {
+      const handlerBody = body.catch;
+      const at = `${taskReference}/catch`;
+      if (!object(handlerBody) || !Object.hasOwn(handlerBody, "do")
+        || Object.keys(handlerBody).some((field) => !["errors", "as", "do", "then"].includes(field))
+        || (handlerBody.as !== undefined && typeof handlerBody.as !== "string")
+        || (handlerBody.then !== undefined && body.then !== undefined)) reject(at);
+      const after = handlerBody.then === undefined ? undefined : resolve(handlerBody.then, `${at}/then`);
+      operation = {
+        attempt: compileScope(body.try, `${taskReference}/try`, budget, depth + 1),
+        handler: {
+          filter: compileFilter(handlerBody, at),
+          children: compileScope(handlerBody.do, `${at}/do`, budget, depth + 1),
+          ...(after === undefined ? {} : { next: after.next, endsWorkflow: after.ends }),
+        },
+      };
+    } else {
       if (!object(body.raise) || Object.keys(body.raise).length !== 1 || !object(body.raise.error)) reject(`${taskReference}/raise`);
       operation = { problem: bounded(body.raise.error, `${taskReference}/raise/error`, true) as Record<string, Json> };
     }
     return {
-      name, key, reference: taskReference, next, endsWorkflow: transition === "end",
+      name, key, reference: taskReference, next, endsWorkflow: ends,
       ...operation,
     };
   }));
@@ -158,11 +209,28 @@ async function runScope(tasks: readonly Task[], input: Json, budget: { steps: nu
         const message = task.problem.detail || task.problem.title || task.problem.type;
         throw new WorkflowExecutionError("workflow_execution_error", String(message), task.reference, task.problem);
       }
-      const result = task.children !== undefined
-        ? await runScope(task.children, structuredClone(state.data), budget)
-        : { data: structuredClone(task.value!), ended: false };
-      const ended = result.ended || task.endsWorkflow;
-      return { data: result.data, ended, next: ended ? END : task.next };
+      let next = task.next;
+      let endsWorkflow = task.endsWorkflow;
+      let result: { data: Json; ended: boolean };
+      if (task.attempt !== undefined) {
+        try {
+          result = await runScope(task.attempt, structuredClone(state.data), budget);
+        } catch (error) {
+          const handler = task.handler!;
+          if (!(error instanceof WorkflowExecutionError) || error.problem === undefined || !catchMatches(handler.filter, error)) throw error;
+          result = await runScope(handler.children, structuredClone(state.data), budget);
+          if (handler.next !== undefined) {
+            next = handler.next;
+            endsWorkflow = handler.endsWorkflow === true;
+          }
+        }
+      } else {
+        result = task.children !== undefined
+          ? await runScope(task.children, structuredClone(state.data), budget)
+          : { data: structuredClone(task.value!), ended: false };
+      }
+      const ended = result.ended || endsWorkflow;
+      return { data: result.data, ended, next: ended ? END : next };
     });
     builder.addConditionalEdges(task.key, (state) => state.next,
       Object.fromEntries([...tasks.map((item) => item.key), END].map((key) => [key, key])));
@@ -181,7 +249,7 @@ const DEFAULT_WORKFLOW = {
 export function literalExecutionCapabilities() {
   return {
     engine: "langgraph-js", experimental: true, dsl: "1.0.3",
-    tasks: ["set", "do", "raise"], transitions: ["continue", "exit", "end", "scope_task_name"],
+    tasks: ["set", "do", "raise", "try"], transitions: ["continue", "exit", "end", "scope_task_name"],
     expressions: false, catalogCalls: false, nativeExtensions: [],
     persistence: false, recovery: false, publicInvocationIdentity: false,
     maxTasks: MAX_TASKS, maxSteps: MAX_STEPS, maxScopeDepth: MAX_SCOPE_DEPTH, maxValueBytes: MAX_VALUE_BYTES,
