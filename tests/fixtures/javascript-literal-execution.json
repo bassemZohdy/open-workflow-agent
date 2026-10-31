@@ -327,5 +327,53 @@
     "tasks": [{"outer": {"do": [{"guard": {"try": [{"fail": {"raise": {"error": {"status": 400, "type": "https://errors.test/a"}}}}], "catch": {"do": [{"r": {"set": {"r": 1}}}], "then": "exit"}}}, {"skipped": {"set": {"wrong": true}}}]}}, {"after": {"set": {"after": true}}}],
     "input": null,
     "expected": {"after": true}
+  },
+  {
+    "id": "fork-collects-branch-outputs",
+    "tasks": [{"par": {"fork": {"branches": [{"a": {"set": {"v": "A"}}}, {"b": {"set": {"v": "B"}}}]}}}],
+    "input": {"in": 1},
+    "expected": [{"v": "A"}, {"v": "B"}]
+  },
+  {
+    "id": "fork-explicit-no-compete",
+    "tasks": [{"par": {"fork": {"compete": false, "branches": [{"a": {"set": {"v": "A"}}}, {"b": {"set": {"v": "B"}}}]}}}],
+    "input": null,
+    "expected": [{"v": "A"}, {"v": "B"}]
+  },
+  {
+    "id": "fork-single-branch",
+    "tasks": [{"par": {"fork": {"branches": [{"a": {"set": {"v": "A"}}}]}}}],
+    "input": null,
+    "expected": [{"v": "A"}]
+  },
+  {
+    "id": "fork-branch-do-returns-last",
+    "tasks": [{"par": {"fork": {"branches": [{"a": {"do": [{"a1": {"set": {"v": 1}}}, {"a2": {"set": {"v": 2}}}]}}, {"b": {"set": {"v": "B"}}}]}}}],
+    "input": null,
+    "expected": [{"v": 2}, {"v": "B"}]
+  },
+  {
+    "id": "fork-then-continue",
+    "tasks": [{"par": {"fork": {"branches": [{"a": {"set": {"v": "A"}}}, {"b": {"set": {"v": "B"}}}]}}}, {"after": {"set": {"after": true}}}],
+    "input": null,
+    "expected": {"after": true}
+  },
+  {
+    "id": "fork-nested",
+    "tasks": [{"outer": {"fork": {"branches": [{"inner": {"fork": {"branches": [{"x": {"set": {"v": "X"}}}, {"y": {"set": {"v": "Y"}}}]}}}, {"z": {"set": {"v": "Z"}}}]}}}],
+    "input": null,
+    "expected": [[{"v": "X"}, {"v": "Y"}], {"v": "Z"}]
+  },
+  {
+    "id": "fork-branch-try-catch",
+    "tasks": [{"par": {"fork": {"branches": [{"g": {"try": [{"f": {"raise": {"error": {"status": 400, "type": "https://errors.test/a"}}}}], "catch": {"do": [{"r": {"set": {"m": "c"}}}]}}}, {"b": {"set": {"v": "B"}}}]}}}],
+    "input": null,
+    "expected": [{"m": "c"}, {"v": "B"}]
+  },
+  {
+    "id": "fork-fault-caught-by-try",
+    "tasks": [{"guard": {"try": [{"par": {"fork": {"branches": [{"a": {"set": {"v": "A"}}}, {"b": {"raise": {"error": {"status": 400, "type": "https://errors.test/a"}}}}]}}}], "catch": {"do": [{"r": {"set": {"m": "caught"}}}]}}}],
+    "input": null,
+    "expected": {"m": "caught"}
   }
 ]

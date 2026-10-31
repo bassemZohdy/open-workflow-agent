@@ -264,9 +264,9 @@ treated as a deferred task or as additional feature completion.
 
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
   The optional TypeScript package admits official OWS definitions and executes
-  literal set/do/raise and try/catch (literal error filters) through actual
-  native graphs. Twenty-nine shared success/fault fixtures match locally across
-  ADK, LangGraph Python and Node; the Node package has 66 tests. This remains a component, not a complete engine adapter.
+  literal set/do/raise, try/catch (literal error filters) and non-competing
+  fork through actual native graphs. Thirty-eight shared success/fault fixtures
+  match locally across ADK, LangGraph Python and Node; the Node package has 76 tests. This remains a component, not a complete engine adapter.
   Public identity, durable services, expressions, calls and full runtime behavior
   remain missing. Keep the format-validation difference explicit. See the
   [execution scope](docs/s4-03-javascript-execution-acceptance.md),

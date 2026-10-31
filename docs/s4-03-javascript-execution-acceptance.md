@@ -109,3 +109,28 @@ ADK and LangGraph with the literal-parity checks (297 passed in the combined CI
 selection). This is not hosted qualification, does not promote any proposed
 criterion or schema-constraint row, and S4-03 remains open.
 
+## Literal non-competing `fork` (local development result)
+
+`fork` with literal branches executes in Node. Behavior was probed on actual ADK
+and LangGraph Python, which agreed on every case, and nine more shared fixtures
+(eight success, one fault; 38 in total) are consumed identically by Node and both
+Python engines.
+
+Supported: `fork.branches` where each branch is one named task (`set`, `do`,
+`raise`, `try` or a nested `fork`), optionally with an explicit `compete: false`.
+The output is the array of branch outputs in branch order; a `do` branch yields its
+last output. Each branch receives the fork task's input, runs as its own native
+graph, and a branch fault keeps the branch task's own instance
+(for example `/do/0/par/fork/branches/1/b`) and is catchable by an enclosing `try`.
+The shared step and task bounds apply across all branches.
+
+Rejected before any native graph is constructed: `compete: true` (the winner is
+timing-dependent), any other `fork` field, a `then` on a branch task (branch-local
+transitions are not proven), non-literal values and unsupported task types.
+When several branches fault, the one reported is the first in branch order; Python's
+choice for that case is not probed, so it is not claimed as matching.
+
+Local evidence: Node 76/76 passes; the shared-fixture contract and CI selection
+passes on ADK and LangGraph (315 passed). This is not hosted qualification and
+promotes no proposed-test or schema-constraint row; S4-03 remains open.
+
