@@ -1,6 +1,6 @@
 # S4-04 value, bound, type, composition and closed-object schema-constraint execution
 
-Recorded 2026-11-01 on `main` at `b7b76da` plus the change that extends
+Recorded 2026-11-01 on `main` at `315b954` plus the change that extends
 `tests/contract/test_schema_value_constraints.py` with `pattern`, composition and
 `$ref` rows. This is a local development run, not hosted CI and not a conformance
 result.
@@ -22,7 +22,8 @@ shows the keyword is operative: it alone causes the rejection. Probes: an added 
 property for `unevaluatedProperties: false`; a non-member for `enum`; a different value
 for `const`; a value of another JSON type for `type`; a non-matching string for
 `pattern`; one step beyond the limit for `minimum`, `maximum`, `minLength`, `minItems`,
-`minProperties` and `maxProperties`; and, for `oneOf`, `anyOf`, `allOf`, `not` and
+`minProperties` and `maxProperties`; for a schema-valued `additionalProperties`, an unknown
+property whose value the schema rejects; and, for `oneOf`, `anyOf`, `allOf`, `not` and
 `$ref`, scalars, an unknown object and single-property edits of a generated valid
 instance. In-bounds values must also be accepted where the probe defines them. The
 credit set is derived at collection time and checked against the bridge, not asserted
@@ -31,7 +32,7 @@ by hand.
 | Keyword | Credited | Rows |
 | --- | ---: | ---: |
 | `$ref` | 139 | 139 |
-| `additionalProperties` | 0 | 30 |
+| `additionalProperties` | 26 | 30 |
 | `allOf` | 2 | 20 |
 | `anyOf` | 4 | 5 |
 | `const` | 7 | 7 |
@@ -58,9 +59,9 @@ by hand.
   exclusive.
 - `$ref` rows show the reference is operative (its target rejects a probe the
   unreferenced subschema accepts). The target's own constraints are separate rows.
-- `additionalProperties` credits nothing: none of its 30 rows is `false`, so the
-  closed-object probe does not apply, and the open (`true`) and schema-valued forms
-  need a different proof.
+- `additionalProperties: true` rows show only that an unknown property is accepted;
+  an open object has no rejection to isolate, so this is weaker than the other probes.
+  Schema-valued rows are isolated like the rest.
 - Four `type` rows are properties named `type` and two have extracted pointers that do
   not resolve in the schema tree; they are extraction artifacts, not type constraints.
 - The remaining uncredited rows could not be isolated or generated and stay `unmapped`
@@ -68,7 +69,7 @@ by hand.
 
 ## Uncredited rows
 
-- `additionalProperties`: `SC0018`, `SC0020`, `SC0026`, `SC0029`, `SC0035`, `SC0038`, `SC0041`, `SC0046`, `SC0049`, `SC0066`, `SC0080`, `SC0140`, `SC0155`, `SC0160`, `SC0163`, `SC0180`, `SC0202`, `SC0220`, `SC0227`, `SC0235`, `SC0239`, `SC0258`, `SC0286`, `SC0363`, `SC0380`, `SC0390`, `SC0401`, `SC0413`, `SC0615`, `SC0636`
+- `additionalProperties`: `SC0035`, `SC0066`, `SC0163`, `SC0413`
 - `allOf`: `SC0099`, `SC0122`, `SC0146`, `SC0172`, `SC0190`, `SC0209`, `SC0252`, `SC0262`, `SC0273`, `SC0279`, `SC0291`, `SC0306`, `SC0319`, `SC0330`, `SC0396`, `SC0406`, `SC0423`, `SC0440`
 - `anyOf`: `SC0613`
 - `maxProperties`: `SC0034`, `SC0065`, `SC0412`
