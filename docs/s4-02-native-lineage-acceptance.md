@@ -126,6 +126,18 @@ PostgreSQL case passed independently, but the interrupted run retained no failur
 details and is not green evidence. The subsequent complete selection is recorded
 in `tmp/merge-20261025/lineage-coordinator-crash-dev2.xml`.
 
+The private root coordinator now accepts a contiguous completed-task prefix
+of the root scope, not only the first task: the target resumes after the last
+completed task and re-executes only the remaining ones. A new SQLite test
+(`tests/langgraph/test_native_replay_later_checkpoint.py`) replays a three-task
+workflow from the checkpoint after the first and after the second task, checks
+that only the remaining model calls repeat, and checks that a repeated
+coordinator call repeats nothing. The existing replay integration selection
+still passes on SQLite (12 passed, 4 PostgreSQL cases skipped). PostgreSQL was
+not run for this change, and nested scopes, native channels, timing and
+Command/Send remain excluded by the staging profile. This is private and is not
+public admission.
+
 The private fenced SDK fork unit below precedes durable common
 lineage/idempotency and recovery, checkpoint/scope binding remapping, branch data
 attribution and effect enforcement before exposing controls. Prove read-only
