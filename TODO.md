@@ -287,7 +287,8 @@ treated as a deferred task or as additional feature completion.
   checks are not conformance evidence. See the
   [comparison scope](docs/s4-04-literal-parity-acceptance.md) and
   [coverage bridge](resources/compatibility/README.md) and
-  [schema-constraint worklist](docs/s4-04-schema-constraint-worklist.md).
+  [schema-constraint worklist](docs/s4-04-schema-constraint-worklist.md) and
+  [proposed-test feasibility](docs/s4-04-proposed-test-feasibility.md).
 
 - [x] **S4-05** (M) — Complete execution history, tracing, lifecycle metrics, correlation, provenance and replay diagnostics.
   Verified finite profile at `f66cd23`: Bounded persistent sanitized lifecycle history/replay, opt-in invocation/task spans and generated contexts, optional HTTP propagation, low-cardinality metrics and authorized common provenance/recovery diagnostics.
