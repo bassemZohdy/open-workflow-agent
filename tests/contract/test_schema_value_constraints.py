@@ -34,8 +34,12 @@ KEYWORDS = {
     "allOf",
     "not",
     "$ref",
+    "if",
+    "then",
+    "else",
+    "default",
 }
-GENERIC = {"oneOf", "anyOf", "allOf", "not", "$ref"}
+GENERIC = {"oneOf", "anyOf", "allOf", "not", "$ref", "if", "then", "else"}
 PATTERN_SAMPLES = ["", "!", " ", "x", "X", "1", "1.0.0", "a.b", "https://example.com/", "-"]
 WRONG_TYPES = {
     "string": ["x"],
@@ -47,6 +51,13 @@ WRONG_TYPES = {
     "object": [{}],
 }
 SENTINELS = ["__not-in-enum__", 0, True, None, [], {}]
+
+
+def ACCEPTANCE_ONLY(row):
+    """Rows with no rejection to isolate: an open object or an annotation default."""
+    return row["keyword"] == "default" or (
+        row["keyword"] == "additionalProperties" and row["value"] is True
+    )
 
 
 def _mutations(sub):
@@ -82,6 +93,9 @@ def _beyond(row, sub):
             [item for item in PATTERN_SAMPLES if not compiled.search(item)],
             [item for item in PATTERN_SAMPLES if compiled.search(item) and valid(sub, item)][:1],
         )
+    if keyword == "default":
+        # An annotation has no rejection to isolate; its value must itself conform.
+        return [], [value]
     if keyword in GENERIC:
         return _mutations(sub), []
     if keyword == "type":
@@ -129,8 +143,8 @@ def _probe(row):
         accepted = [item for item in within if valid(sub, item)]
         if len(accepted) != len(within):
             return None, [], "an in-bounds value is not accepted by the enclosing subschema"
-        if row["keyword"] == "additionalProperties" and row["value"] is True:
-            return (None, accepted, "") if accepted else (None, [], "no valid instance to extend")
+        if ACCEPTANCE_ONLY(row):
+            return (None, accepted, "") if accepted else (None, [], "no accepted instance")
         for candidate in beyond:
             if valid(control, candidate) and not valid(sub, candidate):
                 return candidate, accepted, ""
@@ -151,9 +165,9 @@ def test_keyword_is_the_isolated_cause_of_rejection(row_id):
     control = without(sub, row["keyword"])
     rejected, accepted, _ = PROBES[row_id]
     if rejected is None:
-        # Open object: no rejection exists to isolate, so it must accept an unknown property.
-        assert row["keyword"] == "additionalProperties" and row["value"] is True
-        assert accepted and all("__unknown__" in item for item in accepted)
+        # No rejection exists to isolate: an open object accepts an unknown property and a
+        # default value conforms to the subschema that declares it.
+        assert ACCEPTANCE_ONLY(row) and accepted
     else:
         assert valid(control, rejected)
         assert not valid(sub, rejected)

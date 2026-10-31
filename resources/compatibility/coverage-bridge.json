@@ -8,9 +8,9 @@
       "blocker": "The proposed test rows specify multi-runtime acceptance (including Python and JS/TS, with reference/runtime comparison where applicable). No local selector has been demonstrated to assert every criterion across the row's complete backend scope; shared-fixture overlap is insufficient."
     },
     "schema_constraint_inventory": {
-      "mapped_count": 610,
-      "unmapped_count": 164,
-      "blocker": "The inventory is a structural extraction. 610 rows (`required`, closed-object, additionalProperties, enum, const, bound, type, pattern, composition and `$ref` rows) are executed in isolation against the packaged schema with Python's validator only; every other row, and the runtime-admission and JavaScript contexts for all rows, still needs a selector and retained evidence for the exact constraint in its enclosing operation/property context; generic schema-validation coverage is insufficient."
+      "mapped_count": 628,
+      "unmapped_count": 146,
+      "blocker": "The inventory is a structural extraction. 628 rows (`required`, closed-object, additionalProperties, default, enum, const, bound, type, pattern, composition and `$ref` rows) are executed in isolation against the packaged schema with Python's validator only; every other row, and the runtime-admission and JavaScript contexts for all rows, still needs a selector and retained evidence for the exact constraint in its enclosing operation/property context; generic schema-validation coverage is insufficient."
     }
   },
   "status_definitions": {
@@ -4230,7 +4230,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated value-constraint probe could not credit this row: no probe value isolates this keyword from the rest of its subschema.",
       "value": {
         "type": "string",
         "title": "TaskBaseIf",
@@ -4369,7 +4369,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated value-constraint probe could not credit this row: no probe value isolates this keyword from the rest of its subschema.",
       "value": {
         "$ref": "#/$defs/flowDirective",
         "title": "TaskBaseThen",
@@ -7827,10 +7827,14 @@
       "pointer": "/$defs/callTask/oneOf/5/allOf/1/properties/with/properties/protocolVersion/default",
       "keyword": "default",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_value_constraints.py::test_keyword_is_the_isolated_cause_of_rejection"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-value-constraints.md#schema-value-run"
+      ],
+      "reason": "Executed in isolation: the keyword alone rejects a probe the rest of its subschema accepts. Python's Draft 2020-12 validator on the packaged schema only; not runtime admission, not JavaScript, not verified.",
       "value": "2025-06-18",
       "verification": "Structural extraction only; applicable enclosing-operation/property fixture required"
     },
@@ -8761,10 +8765,14 @@
       "pointer": "/$defs/forkTask/allOf/1/properties/fork/properties/compete/default",
       "keyword": "default",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_value_constraints.py::test_keyword_is_the_isolated_cause_of_rejection"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-value-constraints.md#schema-value-run"
+      ],
+      "reason": "Executed in isolation: the keyword alone rejects a probe the rest of its subschema accepts. Python's Draft 2020-12 validator on the packaged schema only; not runtime admission, not JavaScript, not verified.",
       "value": false,
       "verification": "Structural extraction only; applicable enclosing-operation/property fixture required"
     },
@@ -9243,10 +9251,14 @@
       "pointer": "/$defs/forTask/allOf/1/properties/for/properties/each/default",
       "keyword": "default",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_value_constraints.py::test_keyword_is_the_isolated_cause_of_rejection"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-value-constraints.md#schema-value-run"
+      ],
+      "reason": "Executed in isolation: the keyword alone rejects a probe the rest of its subschema accepts. Python's Draft 2020-12 validator on the packaged schema only; not runtime admission, not JavaScript, not verified.",
       "value": "item",
       "verification": "Structural extraction only; applicable enclosing-operation/property fixture required"
     },
@@ -9283,10 +9295,14 @@
       "pointer": "/$defs/forTask/allOf/1/properties/for/properties/at/default",
       "keyword": "default",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_value_constraints.py::test_keyword_is_the_isolated_cause_of_rejection"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-value-constraints.md#schema-value-run"
+      ],
+      "reason": "Executed in isolation: the keyword alone rejects a probe the rest of its subschema accepts. Python's Draft 2020-12 validator on the packaged schema only; not runtime admission, not JavaScript, not verified.",
       "value": "index",
       "verification": "Structural extraction only; applicable enclosing-operation/property fixture required"
     },
@@ -9531,10 +9547,14 @@
       "pointer": "/$defs/listenTask/allOf/1/properties/listen/properties/read/default",
       "keyword": "default",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_value_constraints.py::test_keyword_is_the_isolated_cause_of_rejection"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-value-constraints.md#schema-value-run"
+      ],
+      "reason": "Executed in isolation: the keyword alone rejects a probe the rest of its subschema accepts. Python's Draft 2020-12 validator on the packaged schema only; not runtime admission, not JavaScript, not verified.",
       "value": "data",
       "verification": "Structural extraction only; applicable enclosing-operation/property fixture required"
     },
@@ -10173,10 +10193,14 @@
       "pointer": "/$defs/runTask/allOf/1/properties/run/properties/await/default",
       "keyword": "default",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_value_constraints.py::test_keyword_is_the_isolated_cause_of_rejection"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-value-constraints.md#schema-value-run"
+      ],
+      "reason": "Executed in isolation: the keyword alone rejects a probe the rest of its subschema accepts. Python's Draft 2020-12 validator on the packaged schema only; not runtime admission, not JavaScript, not verified.",
       "value": true,
       "verification": "Structural extraction only; applicable enclosing-operation/property fixture required"
     },
@@ -10219,10 +10243,14 @@
       "pointer": "/$defs/runTask/allOf/1/properties/run/properties/return/default",
       "keyword": "default",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_value_constraints.py::test_keyword_is_the_isolated_cause_of_rejection"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-value-constraints.md#schema-value-run"
+      ],
+      "reason": "Executed in isolation: the keyword alone rejects a probe the rest of its subschema accepts. Python's Draft 2020-12 validator on the packaged schema only; not runtime admission, not JavaScript, not verified.",
       "value": "stdout",
       "verification": "Structural extraction only; applicable enclosing-operation/property fixture required"
     },
@@ -11297,10 +11325,14 @@
       "pointer": "/$defs/runTask/allOf/1/properties/run/oneOf/3/properties/workflow/properties/version/default",
       "keyword": "default",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_value_constraints.py::test_keyword_is_the_isolated_cause_of_rejection"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-value-constraints.md#schema-value-run"
+      ],
+      "reason": "Executed in isolation: the keyword alone rejects a probe the rest of its subschema accepts. Python's Draft 2020-12 validator on the packaged schema only; not runtime admission, not JavaScript, not verified.",
       "value": "latest",
       "verification": "Structural extraction only; applicable enclosing-operation/property fixture required"
     },
@@ -11836,7 +11868,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated value-constraint probe could not credit this row: no probe value isolates this keyword from the rest of its subschema.",
       "value": {
         "$ref": "#/$defs/flowDirective",
         "title": "SwitchCaseOutcome",
@@ -12357,10 +12389,14 @@
       "pointer": "/$defs/flowDirective/anyOf/0/default",
       "keyword": "default",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_value_constraints.py::test_keyword_is_the_isolated_cause_of_rejection"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-value-constraints.md#schema-value-run"
+      ],
+      "reason": "Executed in isolation: the keyword alone rejects a probe the rest of its subschema accepts. Python's Draft 2020-12 validator on the packaged schema only; not runtime admission, not JavaScript, not verified.",
       "value": "continue",
       "verification": "Structural extraction only; applicable enclosing-operation/property fixture required"
     },
@@ -13451,10 +13487,14 @@
       "pointer": "/$defs/authenticationPolicy/oneOf/3/properties/oauth2/oneOf/0/properties/endpoints/properties/token/default",
       "keyword": "default",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_value_constraints.py::test_keyword_is_the_isolated_cause_of_rejection"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-value-constraints.md#schema-value-run"
+      ],
+      "reason": "Executed in isolation: the keyword alone rejects a probe the rest of its subschema accepts. Python's Draft 2020-12 validator on the packaged schema only; not runtime admission, not JavaScript, not verified.",
       "value": "/oauth2/token",
       "verification": "Structural extraction only; applicable enclosing-operation/property fixture required"
     },
@@ -13491,10 +13531,14 @@
       "pointer": "/$defs/authenticationPolicy/oneOf/3/properties/oauth2/oneOf/0/properties/endpoints/properties/revocation/default",
       "keyword": "default",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_value_constraints.py::test_keyword_is_the_isolated_cause_of_rejection"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-value-constraints.md#schema-value-run"
+      ],
+      "reason": "Executed in isolation: the keyword alone rejects a probe the rest of its subschema accepts. Python's Draft 2020-12 validator on the packaged schema only; not runtime admission, not JavaScript, not verified.",
       "value": "/oauth2/revoke",
       "verification": "Structural extraction only; applicable enclosing-operation/property fixture required"
     },
@@ -13531,10 +13575,14 @@
       "pointer": "/$defs/authenticationPolicy/oneOf/3/properties/oauth2/oneOf/0/properties/endpoints/properties/introspection/default",
       "keyword": "default",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_value_constraints.py::test_keyword_is_the_isolated_cause_of_rejection"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-value-constraints.md#schema-value-run"
+      ],
+      "reason": "Executed in isolation: the keyword alone rejects a probe the rest of its subschema accepts. Python's Draft 2020-12 validator on the packaged schema only; not runtime admission, not JavaScript, not verified.",
       "value": "/oauth2/introspect",
       "verification": "Structural extraction only; applicable enclosing-operation/property fixture required"
     },
@@ -13875,10 +13923,14 @@
       "pointer": "/$defs/oauth2AuthenticationProperties/properties/client/properties/authentication/default",
       "keyword": "default",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_value_constraints.py::test_keyword_is_the_isolated_cause_of_rejection"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-value-constraints.md#schema-value-run"
+      ],
+      "reason": "Executed in isolation: the keyword alone rejects a probe the rest of its subschema accepts. Python's Draft 2020-12 validator on the packaged schema only; not runtime admission, not JavaScript, not verified.",
       "value": "client_secret_post",
       "verification": "Structural extraction only; applicable enclosing-operation/property fixture required"
     },
@@ -13934,10 +13986,14 @@
       "pointer": "/$defs/oauth2AuthenticationProperties/properties/request/properties/encoding/default",
       "keyword": "default",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_value_constraints.py::test_keyword_is_the_isolated_cause_of_rejection"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-value-constraints.md#schema-value-run"
+      ],
+      "reason": "Executed in isolation: the keyword alone rejects a probe the rest of its subschema accepts. Python's Draft 2020-12 validator on the packaged schema only; not runtime admission, not JavaScript, not verified.",
       "value": "application/x-www-form-urlencoded",
       "verification": "Structural extraction only; applicable enclosing-operation/property fixture required"
     },
@@ -17136,10 +17192,14 @@
       "pointer": "/$defs/schema/properties/format/default",
       "keyword": "default",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_value_constraints.py::test_keyword_is_the_isolated_cause_of_rejection"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-value-constraints.md#schema-value-run"
+      ],
+      "reason": "Executed in isolation: the keyword alone rejects a probe the rest of its subschema accepts. Python's Draft 2020-12 validator on the packaged schema only; not runtime admission, not JavaScript, not verified.",
       "value": "json",
       "verification": "Structural extraction only; applicable enclosing-operation/property fixture required"
     },
@@ -17469,10 +17529,14 @@
       "pointer": "/$defs/containerLifetime/properties/cleanup/default",
       "keyword": "default",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_value_constraints.py::test_keyword_is_the_isolated_cause_of_rejection"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-value-constraints.md#schema-value-run"
+      ],
+      "reason": "Executed in isolation: the keyword alone rejects a probe the rest of its subschema accepts. Python's Draft 2020-12 validator on the packaged schema only; not runtime admission, not JavaScript, not verified.",
       "value": "never",
       "verification": "Structural extraction only; applicable enclosing-operation/property fixture required"
     },
@@ -17518,7 +17582,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated value-constraint probe could not credit this row: no probe value isolates this keyword from the rest of its subschema.",
       "value": {
         "properties": {
           "cleanup": {
@@ -17552,7 +17616,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated value-constraint probe could not credit this row: no probe value isolates this keyword from the rest of its subschema.",
       "value": {
         "required": [
           "after"
@@ -17586,7 +17650,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated value-constraint probe could not credit this row: no probe value isolates this keyword from the rest of its subschema.",
       "value": {
         "not": {
           "required": [
@@ -18291,10 +18355,14 @@
       "pointer": "/$defs/subscriptionIterator/properties/item/default",
       "keyword": "default",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_value_constraints.py::test_keyword_is_the_isolated_cause_of_rejection"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-value-constraints.md#schema-value-run"
+      ],
+      "reason": "Executed in isolation: the keyword alone rejects a probe the rest of its subschema accepts. Python's Draft 2020-12 validator on the packaged schema only; not runtime admission, not JavaScript, not verified.",
       "value": "item",
       "verification": "Structural extraction only; applicable enclosing-operation/property fixture required"
     },
@@ -18319,10 +18387,14 @@
       "pointer": "/$defs/subscriptionIterator/properties/at/default",
       "keyword": "default",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_value_constraints.py::test_keyword_is_the_isolated_cause_of_rejection"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-value-constraints.md#schema-value-run"
+      ],
+      "reason": "Executed in isolation: the keyword alone rejects a probe the rest of its subschema accepts. Python's Draft 2020-12 validator on the packaged schema only; not runtime admission, not JavaScript, not verified.",
       "value": "index",
       "verification": "Structural extraction only; applicable enclosing-operation/property fixture required"
     },
