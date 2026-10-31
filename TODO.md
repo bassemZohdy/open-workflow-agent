@@ -277,12 +277,13 @@ treated as a deferred task or as additional feature completion.
   The 13-case actual native outcome comparison requires one source, exact SDK/
   runtime versions and matching fixture/schema bytes; all 13 outcomes pass the
   hosted aggregate at `5310f5a`. Existing selected Portable Profile CTK automation does not
-  cover the full proposed inventory. All 443 proposed tests remain unmapped; 391 of the
-  774 schema constraints (required, closed-object, enum, const, bound and type rows) are
+  cover the full proposed inventory. All 443 proposed tests remain unmapped; 584 of the
+  774 schema constraints (required, closed-object, enum, const, bound, type, pattern,
+  composition and `$ref` rows) are
   executed in isolation against the packaged schema with Python only
   ([required](docs/validation-history/s4-04-schema-required-constraints.md) and
   [value](docs/validation-history/s4-04-schema-value-constraints.md) evidence),
-  the other 383 remain unmapped, and none is verified. Its integrity
+  the other 190 remain unmapped, and none is verified. Its integrity
   checks are not conformance evidence. See the
   [comparison scope](docs/s4-04-literal-parity-acceptance.md) and
   [coverage bridge](resources/compatibility/README.md) and
