@@ -7,6 +7,8 @@ against the packaged OWS 1.0.3 schema only: not runtime admission, not JavaScrip
 any multi-runtime proposed test, and no row is verified.
 """
 
+import re
+
 import pytest
 from schema_constraint_support import BRIDGE, enclosing, gen, valid, without
 
@@ -26,7 +28,15 @@ KEYWORDS = {
     "minProperties",
     "maxProperties",
     "type",
+    "pattern",
+    "oneOf",
+    "anyOf",
+    "allOf",
+    "not",
+    "$ref",
 }
+GENERIC = {"oneOf", "anyOf", "allOf", "not", "$ref"}
+PATTERN_SAMPLES = ["", "!", " ", "x", "X", "1", "1.0.0", "a.b", "https://example.com/", "-"]
 WRONG_TYPES = {
     "string": ["x"],
     "integer": [1],
@@ -39,6 +49,18 @@ WRONG_TYPES = {
 SENTINELS = ["__not-in-enum__", 0, True, None, [], {}]
 
 
+def _mutations(sub):
+    """Generic probes: scalars, an unknown object and single-property edits of a valid instance."""
+    probes = [*SENTINELS, "x", 1, {"__unknown__": 1}]
+    base = gen(sub)
+    if isinstance(base, dict):
+        for name in base:
+            probes.append({key: item for key, item in base.items() if key != name})
+            for replacement in ("x", 1, [], {}, None, True):
+                probes.append({**base, name: replacement})
+    return probes
+
+
 def _beyond(row, sub):
     """Candidate values that violate only the row's keyword, plus values it must accept."""
     keyword, value = row["keyword"], row["value"]
@@ -47,6 +69,14 @@ def _beyond(row, sub):
         if value is not False or not isinstance(base, dict):
             return [], []
         return [{**base, "__unknown__": 1}], [base]
+    if keyword == "pattern":
+        compiled = re.compile(value)
+        return (
+            [item for item in PATTERN_SAMPLES if not compiled.search(item)],
+            [item for item in PATTERN_SAMPLES if compiled.search(item) and valid(sub, item)][:1],
+        )
+    if keyword in GENERIC:
+        return _mutations(sub), []
     if keyword == "type":
         declared = [value] if isinstance(value, str) else list(value)
         probes = [
