@@ -17,8 +17,8 @@ invocation identity or a production-qualified engine adapter.
 
 `executeLiteralWorkflow(source, input)` is an experimental execution component.
 It validates the complete official definition, derives a typed immutable private
-program, and builds actual LangGraph nodes for literal `set`, inline `raise` and nested `do`
-tasks. Fixed `continue`, scope-local named transitions, `exit`, and workflow `end`
+program, and builds actual LangGraph nodes for literal `set`, inline `raise`, nested `do` and
+`try`/`catch` tasks (literal error filters only). Fixed `continue`, scope-local named transitions, `exit`, and workflow `end`
 are supported. Whole-definition admission precedes native graph construction.
 Missing source generates the canonical one-task `agent:1.0.0@default` workflow,
 which explicitly rejects because catalog calls are outside this component.

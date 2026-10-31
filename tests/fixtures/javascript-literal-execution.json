@@ -249,5 +249,83 @@
       },
       "value": "literal"
     }
+  },
+  {
+    "id": "catch-all",
+    "tasks": [{"guard": {"try": [{"fail": {"raise": {"error": {"status": 400, "type": "https://errors.test/a", "title": "A"}}}}], "catch": {"do": [{"recover": {"set": {"recovered": true}}}]}}}],
+    "input": {"in": 1},
+    "expected": {"recovered": true}
+  },
+  {
+    "id": "catch-status-filter",
+    "tasks": [{"guard": {"try": [{"fail": {"raise": {"error": {"status": 400, "type": "https://errors.test/a"}}}}], "catch": {"errors": {"with": {"status": 400}}, "do": [{"recover": {"set": {"matched": "status"}}}]}}}],
+    "input": null,
+    "expected": {"matched": "status"}
+  },
+  {
+    "id": "catch-type-title-filter",
+    "tasks": [{"guard": {"try": [{"fail": {"raise": {"error": {"status": 409, "type": "https://errors.test/c", "title": "Conflict"}}}}], "catch": {"errors": {"with": {"type": "https://errors.test/c", "title": "Conflict"}}, "do": [{"recover": {"set": {"matched": "type-title"}}}]}}}],
+    "input": null,
+    "expected": {"matched": "type-title"}
+  },
+  {
+    "id": "try-success-skips-catch",
+    "tasks": [{"guard": {"try": [{"ok": {"set": {"ok": true}}}], "catch": {"do": [{"recover": {"set": {"wrong": true}}}]}}}],
+    "input": {"in": 1},
+    "expected": {"ok": true}
+  },
+  {
+    "id": "catch-then-named-jump",
+    "tasks": [{"guard": {"try": [{"fail": {"raise": {"error": {"status": 400, "type": "https://errors.test/a"}}}}], "catch": {"do": [{"r": {"set": {"r": 1}}}], "then": "last"}}}, {"skipped": {"set": {"wrong": true}}}, {"last": {"set": {"done": true}}}],
+    "input": null,
+    "expected": {"done": true}
+  },
+  {
+    "id": "catch-instance-filter",
+    "tasks": [{"guard": {"try": [{"fail": {"raise": {"error": {"status": 400, "type": "https://errors.test/a"}}}}], "catch": {"errors": {"with": {"instance": "/do/0/guard/try/0/fail"}}, "do": [{"r": {"set": {"m": "instance"}}}]}}}],
+    "input": null,
+    "expected": {"m": "instance"}
+  },
+  {
+    "id": "catch-detail-falls-back-to-title",
+    "tasks": [{"guard": {"try": [{"fail": {"raise": {"error": {"status": 400, "type": "https://errors.test/a", "title": "T"}}}}], "catch": {"errors": {"with": {"detail": "T"}}, "do": [{"r": {"set": {"m": "detail-from-title"}}}]}}}],
+    "input": null,
+    "expected": {"m": "detail-from-title"}
+  },
+  {
+    "id": "catch-detail-falls-back-to-type",
+    "tasks": [{"guard": {"try": [{"fail": {"raise": {"error": {"status": 400, "type": "https://errors.test/a"}}}}], "catch": {"errors": {"with": {"detail": "https://errors.test/a"}}, "do": [{"r": {"set": {"m": "detail-from-type"}}}]}}}],
+    "input": null,
+    "expected": {"m": "detail-from-type"}
+  },
+  {
+    "id": "catch-title-falls-back-to-code",
+    "tasks": [{"guard": {"try": [{"fail": {"raise": {"error": {"status": 400, "type": "https://errors.test/a"}}}}], "catch": {"errors": {"with": {"title": "workflow_execution_error"}}, "do": [{"r": {"set": {"m": "title-from-code"}}}]}}}],
+    "input": null,
+    "expected": {"m": "title-from-code"}
+  },
+  {
+    "id": "catch-all-five-filters",
+    "tasks": [{"guard": {"try": [{"fail": {"raise": {"error": {"status": 422, "type": "https://errors.test/z", "title": "Z", "detail": "D"}}}}], "catch": {"errors": {"with": {"status": 422, "type": "https://errors.test/z", "title": "Z", "detail": "D", "instance": "/do/0/guard/try/0/fail"}}, "do": [{"r": {"set": {"m": "all"}}}]}}}],
+    "input": null,
+    "expected": {"m": "all"}
+  },
+  {
+    "id": "catch-nested-try-outer-handles",
+    "tasks": [{"outer": {"try": [{"inner": {"try": [{"fail": {"raise": {"error": {"status": 400, "type": "https://errors.test/a"}}}}], "catch": {"errors": {"with": {"status": 500}}, "do": [{"r": {"set": {"m": "inner-wrong"}}}]}}}], "catch": {"errors": {"with": {"status": 400}}, "do": [{"r": {"set": {"m": "outer"}}}]}}}],
+    "input": null,
+    "expected": {"m": "outer"}
+  },
+  {
+    "id": "catch-then-end",
+    "tasks": [{"guard": {"try": [{"fail": {"raise": {"error": {"status": 400, "type": "https://errors.test/a"}}}}], "catch": {"do": [{"r": {"set": {"r": 1}}}], "then": "end"}}}, {"skipped": {"set": {"wrong": true}}}],
+    "input": null,
+    "expected": {"r": 1}
+  },
+  {
+    "id": "catch-then-nested-exit",
+    "tasks": [{"outer": {"do": [{"guard": {"try": [{"fail": {"raise": {"error": {"status": 400, "type": "https://errors.test/a"}}}}], "catch": {"do": [{"r": {"set": {"r": 1}}}], "then": "exit"}}}, {"skipped": {"set": {"wrong": true}}}]}}, {"after": {"set": {"after": true}}}],
+    "input": null,
+    "expected": {"after": true}
   }
 ]

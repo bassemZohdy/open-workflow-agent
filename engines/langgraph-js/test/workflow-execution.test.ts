@@ -84,6 +84,53 @@ test("raise admission rejects references and expressions before native construct
   }
 });
 
+test("try/catch outside the literal profile rejects before constructing a native graph", async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(StateGraph.prototype, "compile")!;
+  Object.defineProperty(StateGraph.prototype, "compile", { ...descriptor, value() { throw new Error("must-not-compile"); } });
+  const raise = { fail: { raise: { error: { status: 400, type: "https://errors.test/a" } } } };
+  const handler = [{ recover: { set: { ok: true } } }];
+  try {
+    // The official schema rejects these before the literal profile is consulted.
+    for (const body of [
+      { try: [raise] },
+      { catch: { do: handler } },
+      { try: [raise], catch: { do: handler, as: 7 } },
+      { try: [raise], catch: { errors: { with: {} }, do: handler } },
+      { try: [raise], catch: { errors: { with: { status: "400" } }, do: handler } },
+    ]) {
+      await assert.rejects(executeLiteralWorkflow(workflow([{ guard: body }]), {}), (error: unknown) => {
+        assert.ok(error instanceof Error && error.name === "WorkflowDefinitionError");
+        assert.ok(!error.message.includes("must-not-compile"));
+        return true;
+      });
+    }
+    // Schema-valid shapes outside the profile reject before graph construction.
+    for (const body of [
+      { try: [raise], catch: {} },
+      { try: [raise], catch: { errors: { with: { status: 400 } } } },
+      { try: [raise], catch: { do: handler, when: "${ true }" } },
+      { try: [raise], catch: { do: handler, exceptWhen: "${ false }" } },
+      { try: [raise], catch: { do: handler, retry: { limit: { attempt: { count: 2 } } } } },
+      { try: [raise], catch: { do: handler, then: "end" }, then: "end" },
+      { try: [raise], catch: { errors: { with: { code: "x" } }, do: handler } },
+      { try: [raise], catch: { errors: { with: { type: "${ .x }" } }, do: handler } },
+    ]) {
+      await assert.rejects(executeLiteralWorkflow(workflow([{ guard: body }]), {}), (error: unknown) => {
+        assert.ok(error instanceof WorkflowExecutionError);
+        assert.equal(error.code, "unsupported_workflow_feature");
+        assert.ok(!error.message.includes("must-not-compile"));
+        return true;
+      });
+    }
+    await assert.rejects(
+      executeLiteralWorkflow(workflow([{ guard: { try: [raise], catch: { do: handler, then: "missing" } } }]), {}),
+      (error: unknown) => error instanceof WorkflowExecutionError && error.code === "workflow_semantic_error",
+    );
+  } finally {
+    Object.defineProperty(StateGraph.prototype, "compile", descriptor);
+  }
+});
+
 test("unsupported late tasks reject before constructing a native graph", async () => {
   const descriptor = Object.getOwnPropertyDescriptor(StateGraph.prototype, "compile")!;
   Object.defineProperty(StateGraph.prototype, "compile", { ...descriptor, value() { throw new Error("must-not-compile"); } });
