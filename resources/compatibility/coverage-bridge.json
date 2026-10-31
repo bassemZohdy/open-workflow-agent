@@ -8,9 +8,9 @@
       "blocker": "The proposed test rows specify multi-runtime acceptance (including Python and JS/TS, with reference/runtime comparison where applicable). No local selector has been demonstrated to assert every criterion across the row's complete backend scope; shared-fixture overlap is insufficient."
     },
     "schema_constraint_inventory": {
-      "mapped_count": 0,
-      "unmapped_count": 774,
-      "blocker": "The inventory is a structural extraction. Each mapping still needs a selector and retained evidence for the exact constraint in its enclosing operation/property context; generic schema-validation coverage is insufficient."
+      "mapped_count": 67,
+      "unmapped_count": 707,
+      "blocker": "The inventory is a structural extraction. 67 `required` rows are executed in isolation against the packaged schema with Python's validator only; every other row, and the runtime-admission and JavaScript contexts for all rows, still needs a selector and retained evidence for the exact constraint in its enclosing operation/property context; generic schema-validation coverage is insufficient."
     }
   },
   "status_definitions": {
@@ -3164,10 +3164,14 @@
       "pointer": "/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "document",
         "do"
@@ -3371,10 +3375,14 @@
       "pointer": "/properties/document/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "dsl",
         "namespace",
@@ -5035,7 +5043,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "call",
         "with"
@@ -5399,10 +5407,14 @@
       "pointer": "/$defs/callTask/oneOf/0/allOf/1/properties/with/oneOf/0/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "document",
         "operation",
@@ -5415,10 +5427,14 @@
       "pointer": "/$defs/callTask/oneOf/0/allOf/1/properties/with/oneOf/1/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "document",
         "operation",
@@ -5431,10 +5447,14 @@
       "pointer": "/$defs/callTask/oneOf/0/allOf/1/properties/with/oneOf/2/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "document",
         "channel",
@@ -5447,10 +5467,14 @@
       "pointer": "/$defs/callTask/oneOf/0/allOf/1/properties/with/oneOf/3/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "document",
         "channel",
@@ -5502,7 +5526,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "call",
         "with"
@@ -5769,10 +5793,14 @@
       "pointer": "/$defs/callTask/oneOf/1/allOf/1/properties/with/properties/service/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "name",
         "host"
@@ -5820,10 +5848,14 @@
       "pointer": "/$defs/callTask/oneOf/1/allOf/1/properties/with/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "proto",
         "service",
@@ -5875,7 +5907,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "call",
         "with"
@@ -6251,10 +6283,14 @@
       "pointer": "/$defs/callTask/oneOf/2/allOf/1/properties/with/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "method",
         "endpoint"
@@ -6305,7 +6341,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "call",
         "with"
@@ -6537,10 +6573,14 @@
       "pointer": "/$defs/callTask/oneOf/3/allOf/1/properties/with/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "document",
         "operationId"
@@ -6591,7 +6631,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "call",
         "with"
@@ -6857,10 +6897,14 @@
       "pointer": "/$defs/callTask/oneOf/4/allOf/1/properties/with/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "method"
       ],
@@ -6910,7 +6954,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "call",
         "with"
@@ -7341,10 +7385,14 @@
       "pointer": "/$defs/callTask/oneOf/5/allOf/1/properties/with/properties/transport/properties/http/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "endpoint"
       ],
@@ -7441,10 +7489,14 @@
       "pointer": "/$defs/callTask/oneOf/5/allOf/1/properties/with/properties/transport/properties/stdio/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "command"
       ],
@@ -7516,10 +7568,14 @@
       "pointer": "/$defs/callTask/oneOf/5/allOf/1/properties/with/properties/transport/oneOf/0/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "http"
       ],
@@ -7530,10 +7586,14 @@
       "pointer": "/$defs/callTask/oneOf/5/allOf/1/properties/with/properties/transport/oneOf/1/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "stdio"
       ],
@@ -7580,10 +7640,14 @@
       "pointer": "/$defs/callTask/oneOf/5/allOf/1/properties/with/properties/client/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "name",
         "version"
@@ -7598,7 +7662,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "method",
         "transport"
@@ -7637,7 +7701,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "call"
       ],
@@ -7803,7 +7867,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "fork"
       ],
@@ -7891,10 +7955,14 @@
       "pointer": "/$defs/forkTask/allOf/1/properties/fork/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "branches"
       ],
@@ -7968,7 +8036,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "do"
       ],
@@ -8043,7 +8111,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "emit"
       ],
@@ -8177,7 +8245,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "source",
         "type"
@@ -8201,10 +8269,14 @@
       "pointer": "/$defs/emitTask/allOf/1/properties/emit/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "event"
       ],
@@ -8230,7 +8302,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "for",
         "do"
@@ -8407,10 +8479,14 @@
       "pointer": "/$defs/forTask/allOf/1/properties/for/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "in"
       ],
@@ -8460,7 +8536,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "listen"
       ],
@@ -8623,10 +8699,14 @@
       "pointer": "/$defs/listenTask/allOf/1/properties/listen/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "to"
       ],
@@ -8664,7 +8744,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "raise"
       ],
@@ -8816,10 +8896,14 @@
       "pointer": "/$defs/raiseTask/allOf/1/properties/raise/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "error"
       ],
@@ -8845,7 +8929,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "run"
       ],
@@ -9684,10 +9768,14 @@
       "pointer": "/$defs/runTask/allOf/1/properties/run/oneOf/0/properties/container/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "image"
       ],
@@ -9698,10 +9786,14 @@
       "pointer": "/$defs/runTask/allOf/1/properties/run/oneOf/0/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "container"
       ],
@@ -9873,10 +9965,14 @@
       "pointer": "/$defs/runTask/allOf/1/properties/run/oneOf/1/properties/script/oneOf/0/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "code"
       ],
@@ -9911,10 +10007,14 @@
       "pointer": "/$defs/runTask/allOf/1/properties/run/oneOf/1/properties/script/oneOf/1/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "source"
       ],
@@ -9925,10 +10025,14 @@
       "pointer": "/$defs/runTask/allOf/1/properties/run/oneOf/1/properties/script/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "language"
       ],
@@ -9939,10 +10043,14 @@
       "pointer": "/$defs/runTask/allOf/1/properties/run/oneOf/1/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "script"
       ],
@@ -10049,10 +10157,14 @@
       "pointer": "/$defs/runTask/allOf/1/properties/run/oneOf/2/properties/shell/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "command"
       ],
@@ -10063,10 +10175,14 @@
       "pointer": "/$defs/runTask/allOf/1/properties/run/oneOf/2/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "shell"
       ],
@@ -10173,10 +10289,14 @@
       "pointer": "/$defs/runTask/allOf/1/properties/run/oneOf/3/properties/workflow/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "namespace",
         "name",
@@ -10189,10 +10309,14 @@
       "pointer": "/$defs/runTask/allOf/1/properties/run/oneOf/3/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "workflow"
       ],
@@ -10218,7 +10342,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "set"
       ],
@@ -10371,7 +10495,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "switch"
       ],
@@ -10575,10 +10699,14 @@
       "pointer": "/$defs/switchTask/allOf/1/properties/switch/items/additionalProperties/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "then"
       ],
@@ -10644,7 +10772,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "try",
         "catch"
@@ -10927,7 +11055,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "wait"
       ],
@@ -11156,10 +11284,14 @@
       "pointer": "/$defs/referenceableAuthenticationPolicy/oneOf/0/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "use"
       ],
@@ -11230,10 +11362,14 @@
       "pointer": "/$defs/secretBasedAuthenticationPolicy/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "use"
       ],
@@ -11555,10 +11691,14 @@
       "pointer": "/$defs/authenticationPolicy/oneOf/0/properties/basic/oneOf/0/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "username",
         "password"
@@ -11582,10 +11722,14 @@
       "pointer": "/$defs/authenticationPolicy/oneOf/0/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "basic"
       ],
@@ -11663,10 +11807,14 @@
       "pointer": "/$defs/authenticationPolicy/oneOf/1/properties/bearer/oneOf/0/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "token"
       ],
@@ -11689,10 +11837,14 @@
       "pointer": "/$defs/authenticationPolicy/oneOf/1/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "bearer"
       ],
@@ -11787,10 +11939,14 @@
       "pointer": "/$defs/authenticationPolicy/oneOf/2/properties/digest/oneOf/0/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "username",
         "password"
@@ -11814,10 +11970,14 @@
       "pointer": "/$defs/authenticationPolicy/oneOf/2/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "digest"
       ],
@@ -12075,10 +12235,14 @@
       "pointer": "/$defs/authenticationPolicy/oneOf/3/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "oauth2"
       ],
@@ -12173,10 +12337,14 @@
       "pointer": "/$defs/authenticationPolicy/oneOf/4/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "oidc"
       ],
@@ -12578,10 +12746,14 @@
       "pointer": "/$defs/oauth2Token/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "token",
         "type"
@@ -13043,10 +13215,14 @@
       "pointer": "/$defs/error/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "type",
         "status"
@@ -13411,10 +13587,14 @@
       "pointer": "/$defs/endpoint/oneOf/2/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "uri"
       ],
@@ -13818,10 +13998,14 @@
       "pointer": "/$defs/eventConsumptionStrategy/oneOf/0/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "all"
       ],
@@ -13934,10 +14118,14 @@
       "pointer": "/$defs/eventConsumptionStrategy/oneOf/1/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "any"
       ],
@@ -13963,7 +14151,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "one"
       ],
@@ -14099,10 +14287,14 @@
       "pointer": "/$defs/eventFilter/properties/correlate/additionalProperties/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "from"
       ],
@@ -14116,7 +14308,7 @@
       "status": "unmapped",
       "runner_selectors": [],
       "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "reason": "Structural extraction only; the isolated required-property generator could not credit this row: no valid instance could be generated for the enclosing subschema.",
       "value": [
         "with"
       ],
@@ -14224,10 +14416,14 @@
       "pointer": "/$defs/extension/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "extend"
       ],
@@ -14286,10 +14482,14 @@
       "pointer": "/$defs/externalResource/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "endpoint"
       ],
@@ -14682,10 +14882,14 @@
       "pointer": "/$defs/retryPolicy/properties/backoff/oneOf/0/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "constant"
       ],
@@ -14708,10 +14912,14 @@
       "pointer": "/$defs/retryPolicy/properties/backoff/oneOf/1/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "exponential"
       ],
@@ -14734,10 +14942,14 @@
       "pointer": "/$defs/retryPolicy/properties/backoff/oneOf/2/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "linear"
       ],
@@ -14880,10 +15092,14 @@
       "pointer": "/$defs/retryPolicy/properties/jitter/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "from",
         "to"
@@ -14997,10 +15213,14 @@
       "pointer": "/$defs/schema/oneOf/0/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "document"
       ],
@@ -15023,10 +15243,14 @@
       "pointer": "/$defs/schema/oneOf/1/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "resource"
       ],
@@ -15073,10 +15297,14 @@
       "pointer": "/$defs/timeout/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "after"
       ],
@@ -15123,10 +15351,14 @@
       "pointer": "/$defs/catalog/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "endpoint"
       ],
@@ -15237,10 +15469,14 @@
       "pointer": "/$defs/containerLifetime/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "cleanup"
       ],
@@ -15297,10 +15533,14 @@
       "pointer": "/$defs/containerLifetime/then/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "after"
       ],
@@ -15345,10 +15585,14 @@
       "pointer": "/$defs/containerLifetime/else/not/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "after"
       ],
@@ -15419,10 +15663,14 @@
       "pointer": "/$defs/processResult/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "code",
         "stdout",
@@ -15483,10 +15731,14 @@
       "pointer": "/$defs/asyncApiServer/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "name"
       ],
@@ -15654,10 +15906,14 @@
       "pointer": "/$defs/asyncApiSubscription/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "consume"
       ],
@@ -15765,10 +16021,14 @@
       "pointer": "/$defs/asyncApiMessageConsumptionPolicy/oneOf/0/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "amount"
       ],
@@ -15791,10 +16051,14 @@
       "pointer": "/$defs/asyncApiMessageConsumptionPolicy/oneOf/1/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "while"
       ],
@@ -15817,10 +16081,14 @@
       "pointer": "/$defs/asyncApiMessageConsumptionPolicy/oneOf/2/required",
       "keyword": "required",
       "reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/schema/workflow.yaml",
-      "status": "unmapped",
-      "runner_selectors": [],
-      "evidence_references": [],
-      "reason": "Structural extraction only; no selector is yet mapped to a fixture that proves this row in its applicable enclosing operation/property.",
+      "status": "executed",
+      "runner_selectors": [
+        "tests/contract/test_schema_required_constraints.py::test_required_property_removal_is_rejected"
+      ],
+      "evidence_references": [
+        "docs/validation-history/s4-04-schema-required-constraints.md#schema-required-run"
+      ],
+      "reason": "Executed in isolation against the packaged schema with Python's Draft 2020-12 validator; not runtime admission, not JavaScript, not verified.",
       "value": [
         "until"
       ],
