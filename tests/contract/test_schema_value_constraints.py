@@ -25,6 +25,16 @@ KEYWORDS = {
     "minItems",
     "minProperties",
     "maxProperties",
+    "type",
+}
+WRONG_TYPES = {
+    "string": ["x"],
+    "integer": [1],
+    "number": [1.5, 1],
+    "boolean": [True],
+    "null": [None],
+    "array": [[]],
+    "object": [{}],
 }
 SENTINELS = ["__not-in-enum__", 0, True, None, [], {}]
 
@@ -37,6 +47,16 @@ def _beyond(row, sub):
         if value is not False or not isinstance(base, dict):
             return [], []
         return [{**base, "__unknown__": 1}], [base]
+    if keyword == "type":
+        declared = [value] if isinstance(value, str) else list(value)
+        probes = [
+            probe
+            for kind, items in WRONG_TYPES.items()
+            if kind not in declared and not (kind == "number" and "integer" in declared)
+            for probe in items
+            if not (isinstance(probe, int) and not isinstance(probe, bool) and "number" in declared)
+        ]
+        return probes, []
     if keyword == "enum":
         return [item for item in SENTINELS if item not in value], list(value)
     if keyword == "const":
@@ -58,15 +78,25 @@ def _beyond(row, sub):
 
 def _probe(row):
     """Return (rejected_candidate, accepted_candidates, reason); candidate is None if uncredited."""
-    sub = enclosing(row, row["keyword"])
+    try:
+        sub = enclosing(row, row["keyword"])
+    except (KeyError, IndexError, ValueError):
+        return None, [], "the extracted pointer does not resolve in the packaged schema tree"
+    if row["keyword"] == "type":
+        declared = [row["value"]] if isinstance(row["value"], str) else row["value"]
+        if not isinstance(declared, list) or any(item not in WRONG_TYPES for item in declared):
+            return None, [], "the row names a property called `type`, not a type keyword"
     control = without(sub, row["keyword"])
-    beyond, within = _beyond(row, sub)
-    accepted = [item for item in within if valid(sub, item)]
-    if len(accepted) != len(within):
-        return None, [], "an in-bounds value is not accepted by the enclosing subschema"
-    for candidate in beyond:
-        if valid(control, candidate) and not valid(sub, candidate):
-            return candidate, accepted, ""
+    try:
+        beyond, within = _beyond(row, sub)
+        accepted = [item for item in within if valid(sub, item)]
+        if len(accepted) != len(within):
+            return None, [], "an in-bounds value is not accepted by the enclosing subschema"
+        for candidate in beyond:
+            if valid(control, candidate) and not valid(sub, candidate):
+                return candidate, accepted, ""
+    except Exception as error:  # an unusable extracted subschema is an exclusion, not a failure
+        return None, [], f"the enclosing subschema is not a usable schema ({type(error).__name__})"
     return None, [], "no probe value isolates this keyword from the rest of its subschema"
 
 
