@@ -232,6 +232,25 @@ def test_expired_target_owner_cannot_authorize_reexecution(lineage):
     assert failure.value.details["reason"] == "effect_ownership_lost"
 
 
+def test_unowned_recovery_is_read_only_and_cannot_dispatch_effects(lineage):
+    _, registry, _, target, actor, request, dependency = lineage
+    request = replace(request, effect_policy="reexecute", acknowledge_reexecution=True)
+    registry.bind(request, target, actor, "e" * 64, (dependency,))
+    lease = target._execution_lease
+    target._execution_lease = None
+    try:
+        assert registry.read(target)[0] == request
+        with pytest.raises(OwaError) as failure:
+            registry.authorize_effect(
+                target, replace(dependency.identity, invocation_id=target.invocation_id)
+            )
+        assert failure.value.details["reason"] == "effect_ownership_lost"
+        with pytest.raises(OwaError):
+            registry.bind(request, target, actor, "e" * 64, (dependency,))
+    finally:
+        target._execution_lease = lease
+
+
 @pytest.mark.asyncio
 async def test_lineage_scope_rejects_actions_without_invocation_context(lineage):
     services, registry, *_ = lineage

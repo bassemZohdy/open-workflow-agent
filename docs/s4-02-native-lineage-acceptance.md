@@ -69,6 +69,63 @@ follows separately. No task checkbox or research row is promoted by these checks
 
 ## Remaining implementation and acceptance
 
+Development work on the current branch adds bounded native proof inspection and
+a private root-only replay projection. A target checkpoint carries a lineage
+binding and source-backed receipt coordinates, and continuation with that
+binding installs the common effect gate. Actual SQLite and PostgreSQL replay
+tests cover historical receipt selection, read-only denial, acknowledged
+re-execution, repeated continuation, missing lineage context and damaged native
+proof. A focused run passes 16 cases with no skips. The test constructs and
+binds its target explicitly; it does not exercise the normal invocation lifecycle
+or prove restart recovery. An earlier combined run had one recovery-profile
+failure after a runtime file changed during testing; a fresh database and stable
+source passed. Broader regression and frozen cross-platform qualification remain.
+
+On the development branch, native resume reconstructs a registry from retained
+common and native proof before ownership, then reinstalls the scoped gate when
+continuing the target under ownership. Four restart-style tests use a newly
+initialized engine and common services on SQLite and PostgreSQL. Both effect
+policies are checked, including repeated continuation. These tests manually
+stage the target and call the internal owned continuation; they do not prove
+public admission, crash recovery or durable target creation. Read-only registry
+inspection can run without a lease, but binding or authorizing an effect still
+requires target ownership. Two PostgreSQL runs were interrupted when the WSL
+test container exited; the passing run used a fresh Docker Desktop database.
+The common registry and reserved-identity selection passes 30 cases; a native
+proof, receipt-history and admission regression passes 20 cases, both with
+SQLite and PostgreSQL and no skips. Formatting, lint, strict typing, task
+tracking and Markdown-link checks also pass for this development state.
+
+The current branch adds a private reservation in common storage: the target,
+its original input and the request binding commit together. Repeated requests
+validate the target identity and input, and a newly initialized runtime can
+recover the request and re-read the selected native basis. A six-case selection
+passes on SQLite/PostgreSQL for transaction interruption, changed reservation,
+restart-style continuation and recognition of an already committed native fork.
+This still manually coordinates the stages in the tests; it does not establish
+process-crash reconciliation or a public replay API. A simultaneous regression
+run had one failure because two suites counted and changed shared PostgreSQL
+receipt tables concurrently; its result is retained rather than counted green.
+The same preflight and admission selection subsequently passes 40 cases when
+run serially against that database, with no skips.
+
+The private root replay coordinator now reconciles the reservation, original
+authority admission, native fork, lineage binding and owned continuation. A
+14-case SQLite/PostgreSQL selection passes with no skips, including externally
+terminating an independent worker after reservation, admission, fork and
+binding, then resuming the same target. Both read-only and re-execution policies
+are covered, including repeated calls. A separate two-case SQLite/PostgreSQL
+selection terminates a worker inside a model call; continuation faults without
+another model call. An initial PostgreSQL attempt lost the deliberately short
+test lease before reaching that call; a longer test lease passed on both stores.
+These tests do not qualify a public replay API or broader replay profiles.
+The associated proof, reservation, receipt-history and admission regression
+passes 22 cases across SQLite and PostgreSQL, with no skips.
+An earlier expanded run was interrupted after an observed failure; the apparent
+PostgreSQL case passed independently, but the interrupted run retained no failure
+details and is not green evidence. The subsequent complete selection is recorded
+in `tmp/merge-20261025/lineage-coordinator-crash-dev2.xml`.
+
 The private fenced SDK fork unit below precedes durable common
 lineage/idempotency and recovery, checkpoint/scope binding remapping, branch data
 attribution and effect enforcement before exposing controls. Prove read-only

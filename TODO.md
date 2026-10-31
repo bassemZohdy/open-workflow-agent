@@ -227,8 +227,21 @@ treated as a deferred task or as additional feature completion.
   that closure and native proof atomically under a pre-reserved target lease.
   A private common registry records lineage and source-backed receipt mappings;
   an explicit scoped gate checks effect policy at the common action boundary.
-  Native proof inspection, common target reservation/recovery, checkpoint/scope
-  remapping, mandatory gate installation, branch attribution and public
+  The current development branch adds proof inspection and a root-only private
+  replay projection with source-backed receipt remapping and scoped effect
+  checks. A focused SQLite/PostgreSQL run passes 16 cases, including real native
+  replay under both effect policies; this is not public invocation admission.
+  A newly initialized engine can reconstruct the private binding and continue
+  a manually staged root replay under either effect policy on SQLite and
+  PostgreSQL. The development branch also atomically records a private target
+  reservation, reopens its request, reconstructs the historical basis, and
+  recognizes an already committed fork. A private coordinator now reconciles
+  reservation, admission, native fork, lineage binding and continuation; 14
+  SQLite/PostgreSQL coordinator and real process-interruption cases pass.
+  A separate SQLite/PostgreSQL process-kill test during a model call fails closed
+  without repeating the uncertain effect. Public admission, broader
+  checkpoint/scope remapping, full
+  lifecycle gate installation, branch attribution and public
   replay/branch admission remain open. Storage atomicity alone does not make a
   business fork safe to resume. Frozen `479906c`
   passes 538 native combined cases per platform, zero skips and 1,288 unchanged

@@ -253,6 +253,8 @@ class LangGraphScopeExecutor:
         child_wakes: dict[str, dict[str, Any]] | None = None,
         child_waits: Any = None,
         stream_observer: NativeStreamLog | None = None,
+        lineage_registry: Any = None,
+        lineage_target: Any = None,
     ) -> None:
         self.plan = plan
         self.saver = saver
@@ -263,6 +265,8 @@ class LangGraphScopeExecutor:
         self.child_wakes = child_wakes
         self.child_waits = child_waits
         self.stream_observer = stream_observer
+        self.lineage_registry = lineage_registry
+        self.lineage_target = lineage_target
         if child_wakes is not None:
             validate_expression_data(child_wakes)
             if not isinstance(child_wakes, dict) or any(
@@ -879,6 +883,8 @@ class LangGraphScopeExecutor:
             value.insert(3, native["native_channels"])
         if bindings.get("version") == 3:
             value.append(bindings["controls"])
+        if bindings.get("version") == 4:
+            value.append(bindings["lineage"])
         return hashlib.sha256(_json_identity(value).encode()).hexdigest()
 
     def _validate_receipts(
@@ -891,15 +897,26 @@ class LangGraphScopeExecutor:
             != (
                 {"version", "state_digest", "receipts", "scopes"}
                 | ({"controls"} if bindings.get("version") == 3 else set())
+                | ({"lineage"} if bindings.get("version") == 4 else set())
             )
             or type(bindings["version"]) is not int
-            or bindings["version"] not in {2, 3}
+            or bindings["version"] not in {2, 3, 4}
             or bindings["state_digest"] != self._state_digest(native)
             or not isinstance(bindings["receipts"], list)
         ):
             raise ValueError("native receipt bindings disagree with saved state")
         if bindings["version"] == 3:
             self._validate_state_controls(bindings["controls"], reference, occurrence)
+        mappings = {}
+        if bindings["version"] == 4:
+            if self.lineage_registry is None or self.lineage_target is None:
+                raise ValueError("native lineage binding is required")
+            request, mapped, _ = self.lineage_registry.read(self.lineage_target)
+            if bindings["lineage"] != request.request_digest:
+                raise ValueError("native lineage binding changed")
+            mappings = {item.target.key: item for item in mapped}
+        elif self.lineage_registry is not None:
+            raise ValueError("native lineage marker is absent")
         seen: set[str] = set()
         for value in bindings["receipts"]:
             dependency = ReceiptDependency.from_value(value)
@@ -923,7 +940,11 @@ class LangGraphScopeExecutor:
             seen.add(identity.key)
             existing = self.receipts.get(identity.key)
             if existing is None:
-                dependency.verify(self.effect_journal)
+                mapped = mappings.get(identity.key)
+                if mapped is None:
+                    dependency.verify(self.effect_journal)
+                elif dependency.receipt_digest != mapped.source.receipt_digest:
+                    raise ValueError("native mapped receipt changed")
             elif existing != dependency:
                 raise ValueError("native receipt dependency changed")
             self.receipts[identity.key] = dependency
@@ -1212,6 +1233,13 @@ class LangGraphScopeExecutor:
         if reference == "/do" and self.state_controls:
             bindings["version"] = 3
             bindings["controls"] = list(self.state_controls)
+            native["receipt_bindings"] = json.dumps(bindings, allow_nan=False)
+        if self.lineage_registry is not None:
+            if self.state_controls or self.lineage_target is None:
+                raise WorkflowExecutionError("native lineage controls are unsupported")
+            request, _, _ = self.lineage_registry.read(self.lineage_target)
+            bindings["version"] = 4
+            bindings["lineage"] = request.request_digest
             native["receipt_bindings"] = json.dumps(bindings, allow_nan=False)
         digest_native = dict(native)
         if self.native_channels is not None:

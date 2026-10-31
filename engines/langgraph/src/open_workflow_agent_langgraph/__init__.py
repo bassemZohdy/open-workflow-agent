@@ -424,11 +424,15 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         try:
             self.services.engine_database_path("langgraph")
             await self.native.prepare_storage()
+            metadata = self._metadata(plan, handle, active)
+            lineage = self._resume_lineage(handle)
+            if lineage is not None:
+                metadata["_lineage_registry"] = lineage
             output = await self.native.execute_plan(
                 self.executor,
                 plan,
                 workflow_input,
-                metadata=self._metadata(plan, handle, active),
+                metadata=metadata,
                 invocation_id=handle.invocation_id,
                 resume=True,
                 _stream_observer=(
@@ -477,6 +481,33 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             else:
                 self._abandon_active(handle)
 
+    def _resume_lineage(self, handle: ExecutionHandle) -> Any:
+        """Reconstruct the verifier from durable evidence before native recovery."""
+        from open_workflow_agent.config import NativeStateConfig
+        from open_workflow_agent.lineage_registry import LineageRegistry, lineage_identity
+
+        from .native_lineage_inspection import inspect_native_lineage
+
+        journal = self.services.effect_journal
+        identity = lineage_identity(handle)
+        indexed = journal.connection.execute(
+            "SELECT 1 FROM workflow_effect_invocations WHERE identity=?", (identity.key,)
+        ).fetchone()
+        if indexed is None and journal.get(identity) is None:
+            return None
+        database = self.services.engine_database_path("langgraph", create_namespace=False)
+        bounds = NativeStateConfig.model_validate(
+            (self.services.config.native_state or NativeStateConfig()).model_dump()
+        )
+        registry = LineageRegistry(
+            journal,
+            self.services.invocations,
+            self.services.execution_authorizations,
+            lambda request, digest: inspect_native_lineage(database, request, bounds) == digest,
+        )
+        registry.read(handle)
+        return registry
+
     async def _verify_resume_state(self, handle: ExecutionHandle, plan: WorkflowPlan) -> Any:
         if self.state_controller is not None and plan.native_state_updates is not None:
             self.state_controller.bind(plan)
@@ -486,12 +517,15 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 "native execution state is unavailable; recovery is required"
             )
         if self.native.task_nodes_available:
+            lineage = self._resume_lineage(handle)
             await self.native.admit_resume(
                 plan,
                 handle.invocation_id,
                 workflow_input,
                 effect_journal=self.services.effect_journal,
                 child_waits=self.services.child_waits,
+                lineage_registry=lineage,
+                lineage_target=handle if lineage is not None else None,
             )
         return workflow_input
 

@@ -34,7 +34,11 @@ async def preflight(request, tmp_path):
     config = configuration()
     config.observability.native_streams = None
     config.execution_authorization.policy.rules[0].actions.extend(["state.update", "state.resolve"])
-    lineage = isinstance(request.param, tuple) and request.param[1] == "lineage"
+    effect_mode = isinstance(request.param, tuple) and request.param[1] == "lineage-effects"
+    lineage = isinstance(request.param, tuple) and request.param[1] in {
+        "lineage",
+        "lineage-effects",
+    }
     if lineage:
         config.execution_authorization.policy.rules[0].actions.extend(
             ["state.replay", "state.branch"]
@@ -57,12 +61,14 @@ async def preflight(request, tmp_path):
         {"pause": {"wait": {"seconds": 300}}},
         {"last": {"set": {"value": "${ .value + 1 }"}}},
     ]
+    if effect_mode:
+        source["do"].insert(2, {"effect": {"call": "agent:1.0.0@default"}})
     source["document"]["metadata"] = {
         "owa": {
             "nativeExtensions": [{"name": "langgraph.state.update", "version": "1.0.0"}],
             "nativeExtensionData": {
                 CAPABILITY: {
-                    "allowedTaskRefs": ["/do/0", "/do/3"],
+                    "allowedTaskRefs": ["/do/0", "/do/4" if effect_mode else "/do/3"],
                     "updateSchema": {
                         "type": "object",
                         "properties": {"value": {"type": "integer"}},

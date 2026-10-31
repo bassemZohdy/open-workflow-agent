@@ -205,6 +205,7 @@ class InvocationStore:
         parent_task_reference: str | None = None,
         owner_principal: str | None = None,
         input_data: Any = _UNBOUND_INPUT,
+        reserved_invocation_id: str | None = None,
     ) -> ExecutionHandle:
         """Insert common identity/input as a participant; the caller owns commit.
 
@@ -215,8 +216,17 @@ class InvocationStore:
         if input_data is not _UNBOUND_INPUT:
             validate_expression_data(input_data)
             encoded_input = json.dumps(input_data, ensure_ascii=False, allow_nan=False)
+        if reserved_invocation_id is not None:
+            try:
+                if (
+                    type(reserved_invocation_id) is not str
+                    or str(uuid.UUID(reserved_invocation_id)) != reserved_invocation_id
+                ):
+                    raise ValueError("invalid reserved invocation identity")
+            except (ValueError, AttributeError):
+                raise InvocationStateError("reserved invocation identity is invalid") from None
         handle = ExecutionHandle(
-            invocation_id=str(uuid.uuid4()),
+            invocation_id=reserved_invocation_id or str(uuid.uuid4()),
             engine=engine,
             engine_execution_reference=str(uuid.uuid4()),
             user_id=user_id,
