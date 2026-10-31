@@ -3,11 +3,11 @@
 Updated 2026-11-01. This is planning input for S4-04, not evidence or a
 conformance claim. The table below describes the original extraction of 774 rows in
 [the coverage bridge](../resources/compatibility/coverage-bridge.json). Since it was
-written, 610 rows are executed in isolation with Python only (67 `required`, see
-[its run record](validation-history/s4-04-schema-required-constraints.md); 543 closed-object,
-additionalProperties, enum, const, bound, type, pattern, composition and `$ref` rows, see
+written, 628 rows are executed in isolation with Python only (67 `required`, see
+[its run record](validation-history/s4-04-schema-required-constraints.md); 561 closed-object,
+additionalProperties, default, enum, const, bound, type, pattern, composition and `$ref` rows, see
 [the value run record](validation-history/s4-04-schema-value-constraints.md)); the
-other 164 remain `unmapped` and none is verified.
+other 146 remain `unmapped` and none is verified.
 
 The composition (`oneOf`, `anyOf`, `allOf`, `not`) and `$ref` rows executed so
 far prove only that the keyword is operative; the fuller per-branch proofs in the
