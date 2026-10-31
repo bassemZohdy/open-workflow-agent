@@ -3,9 +3,11 @@
 Updated 2026-11-01. This is planning input for S4-04, not evidence or a
 conformance claim. The table below describes the original extraction of 774 rows in
 [the coverage bridge](../resources/compatibility/coverage-bridge.json). Since it was
-written, 67 `required` rows are executed in isolation with Python only (see
-[the run record](validation-history/s4-04-schema-required-constraints.md)); the other
-707 remain `unmapped` and none is verified.
+written, 154 rows are executed in isolation with Python only (67 `required`, see
+[its run record](validation-history/s4-04-schema-required-constraints.md); 87 closed-object,
+enum, const and bound rows, see
+[the value run record](validation-history/s4-04-schema-value-constraints.md)); the
+other 620 remain `unmapped` and none is verified.
 
 ## Composition of the 774 extracted constraints
 
