@@ -62,3 +62,17 @@ Recommendation: leave all three dormant unless one of those requirements exists.
 (S5-01 to S5-04) sourced from an external report. It conflicts with the current
 `TODO.md`. Options: rebase and adopt it, adopt only the tasks that still apply, or
 drop it. Recommendation: decide after item 2, since both depend on the candidate runtime.
+
+## 6. Root coverage gate (hosted CI, found 2026-11-01)
+
+The root job's 90% line-coverage gate reports 89.12% with every test passing. The shortfall
+predates the replay work and comes from modules that only engine-environment tests exercise
+(see [the qualification record](validation-history/s4-02-public-replay-hosted-qualification.md)).
+
+| Option | Effect |
+| --- | --- |
+| A. Lower the gate to 89% | Fastest; weakens a gate to fit current code. |
+| B. Exclude engine-tested modules from root coverage | Keeps 90% meaningful for what root tests can reach; needs a reviewed omit list. |
+| C. Run the relevant engine suites under root coverage | Honest numbers; slower CI and a heavier root environment. |
+
+Recommendation: B, with the omit list reviewed in a pull request so every exclusion is explicit.

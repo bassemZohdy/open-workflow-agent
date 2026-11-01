@@ -263,7 +263,8 @@ treated as a deferred task or as additional feature completion.
   [opt-in replay route](docs/native-state-replay.md) (HTTP tests pass on SQLite and
   PostgreSQL, including per-source and depth limits; a configuration-only example, crash/restart through
   the route, cancellation of a running target, graceful shutdown, a changed policy and
-  revocation during a running replay; frozen qualification remains open),
+  revocation during a running replay; hosted Linux qualification at a frozen commit is
+  [recorded](docs/validation-history/s4-02-public-replay-hosted-qualification.md)),
   [retained component history](docs/validation-history/s4-02-component-notes.md)
   and the [integration record](docs/validation-history/main-integration-2026-10-25.md).
 

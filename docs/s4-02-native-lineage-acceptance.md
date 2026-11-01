@@ -368,4 +368,6 @@ running and a restarted runtime recovers it to faulted without repeating the cal
 changed execution policy refuses a new replay before anything is created (both on both
 backends). Revoking authority during a running replay fails the target closed
 (`execution_policy_changed` at the in-flight task, no later effect). This is not public
-qualification: frozen-source qualification is still open, and S4-02 remains open.
+qualification of S4-02: the replay profile's hosted Linux qualification is recorded
+[separately](validation-history/s4-02-public-replay-hosted-qualification.md), and S4-02 remains
+open.
