@@ -476,6 +476,12 @@ def create_app(
 
             if STATE_UPDATE_CAPABILITY in value["nativeExtensions"]:
                 value["features"]["nativeStateUpdates"] = state_control_capabilities()
+        if runtime_services.native_replay_controller is not None:
+            from .native_extensions import LANGGRAPH_STATE_REPLAY
+            from .replay_control_api import state_replay_capabilities
+
+            if LANGGRAPH_STATE_REPLAY in value["nativeExtensions"]:
+                value["features"]["nativeStateReplay"] = state_replay_capabilities()
         value.setdefault("features", {})["events"] = event_capabilities(runtime_services.event_bus)
         value.setdefault("features", {})["approvals"] = runtime_services.approvals.capabilities()
         value.setdefault("features", {})["catalogs"] = (
@@ -890,6 +896,11 @@ def create_app(
     from .state_control_api import mount_state_controls
 
     mount_state_controls(
+        app, runtime_services, runtime_engine, _authorize_request, authorized_invocation
+    )
+    from .replay_control_api import mount_state_replay
+
+    mount_state_replay(
         app, runtime_services, runtime_engine, _authorize_request, authorized_invocation
     )
 

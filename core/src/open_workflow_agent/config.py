@@ -1383,6 +1383,31 @@ class NativeStateUpdateConfig(StrictModel):
         return self
 
 
+class NativeStateReplayConfig(StrictModel):
+    """Opt-in public replay of a root checkpoint into a new, lineage-bound invocation."""
+
+    bounds: NativeStateConfig = Field(
+        default_factory=lambda: NativeStateConfig(max_concurrency=2, timeout_seconds=30)
+    )
+    max_active_replays: int = Field(default=2, ge=1, le=16, strict=True)
+
+    def verify_view_budget(self, views: NativeStateConfig) -> None:
+        if (
+            views.max_native_bytes * views.max_concurrency
+            + self.bounds.max_native_bytes * self.bounds.max_concurrency * 4
+            > 268_435_456
+        ):
+            raise ValueError("combined native state decoding and replay budget exceeds 256 MiB")
+
+    @model_validator(mode="after")
+    def validate_replay_capacity(self) -> NativeStateReplayConfig:
+        if self.bounds.max_response_bytes < 1024:
+            raise ValueError("native state replay responses require at least 1024 bytes")
+        if self.bounds.max_native_bytes * self.bounds.max_concurrency * 4 > 268_435_456:
+            raise ValueError("native state replay packet budget exceeds 256 MiB")
+        return self
+
+
 class RuntimeConfig(StrictModel):
     agent: AgentConfig = Field(default_factory=AgentConfig)
     model: ModelConfig = Field(default_factory=ModelConfig)
@@ -1408,6 +1433,7 @@ class RuntimeConfig(StrictModel):
     child_workflows: ChildWorkflowConfig = Field(default_factory=ChildWorkflowConfig)
     native_state: NativeStateConfig | None = None
     native_state_updates: NativeStateUpdateConfig | None = None
+    native_state_replay: NativeStateReplayConfig | None = None
 
     @model_serializer(mode="wrap")
     def serialized_runtime(self, handler: SerializerFunctionWrapHandler) -> Any:
@@ -1416,10 +1442,16 @@ class RuntimeConfig(StrictModel):
             value.pop("native_state", None)
         if self.native_state_updates is None:
             value.pop("native_state_updates", None)
+        if self.native_state_replay is None:
+            value.pop("native_state_replay", None)
         return value
 
     @model_validator(mode="after")
     def validate_native_state_security(self) -> RuntimeConfig:
+        if self.native_state_replay is not None and self.native_state is None:
+            raise ValueError("native state replay requires configured native state views")
+        if self.native_state_replay is not None and self.native_state is not None:
+            self.native_state_replay.verify_view_budget(self.native_state)
         if self.native_state_updates is not None and self.native_state is None:
             raise ValueError("native state updates require configured native state views")
         if self.native_state_updates is not None and self.native_state is not None:

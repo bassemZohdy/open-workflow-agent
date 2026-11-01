@@ -231,6 +231,9 @@ class RuntimeServices:
         from .state_control import NativeStateController
 
         self.native_state_controller: NativeStateController | None = None
+        from .native_replay import NativeReplayController
+
+        self.native_replay_controller: NativeReplayController | None = None
         memory_tools = (
             ("add_memory", "search_memory", "delete_memory") if self.memory_enabled else ()
         )
