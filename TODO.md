@@ -262,8 +262,8 @@ treated as a deferred task or as additional feature completion.
   [public replay admission design](docs/s4-02-public-replay-admission-design.md) and
   [opt-in replay route](docs/native-state-replay.md) (HTTP tests pass on SQLite and
   PostgreSQL, including per-source and depth limits; a configuration-only example, crash/restart through
-  the route and cancellation of a running target; frozen qualification and two untested
-  lifecycle cases remain open),
+  the route, cancellation of a running target, graceful shutdown and a changed policy;
+  frozen qualification and revocation during a running replay remain open),
   [retained component history](docs/validation-history/s4-02-component-notes.md)
   and the [integration record](docs/validation-history/main-integration-2026-10-25.md).
 

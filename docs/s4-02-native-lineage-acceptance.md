@@ -363,6 +363,9 @@ subprocess running the real app, recovers by repeating the identical request on 
 PostgreSQL (12 cases run; 8 skipped by design because read-only interruption is only
 meaningful at the bound boundary). Cancelling a running replay target through the public
 route also holds on both backends (the target ends cancelled, performs no late work and is
-not resurrected by a repeated request). This is not public qualification: frozen-source
-qualification is still open, graceful shutdown mid-continuation and original-authority
-revocation during a replay are not separately tested, and S4-02 remains open.
+not resurrected by a repeated request). Graceful shutdown mid-continuation leaves the target
+running and a restarted runtime recovers it to faulted without repeating the call, and a
+changed execution policy refuses a new replay before anything is created (both on both
+backends). This is not public qualification: frozen-source qualification is still open,
+revocation during an already-running replay is not separately tested, and S4-02 remains
+open.

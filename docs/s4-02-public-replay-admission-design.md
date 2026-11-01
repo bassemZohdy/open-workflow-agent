@@ -118,9 +118,11 @@ real app is stopped at each coordinator stage and the identical request recovers
 
 The continued target's lifecycle controls are tested for cancellation: a running replay
 target ends cancelled, does no late work and is not resurrected by a repeated request.
-Graceful shutdown mid-continuation and revocation of the original authority during a
-replay are not separately tested.
+Graceful shutdown mid-continuation is tested (the target stays running and a restarted
+runtime recovers it to faulted without repeating the call), as is a changed execution policy
+before the request (refused before anything is created). Revocation during an
+already-running replay is not separately tested.
 
-Not yet done, so S4-02 stays open: frozen-source qualification on both platforms, and the
-two untested lifecycle cases above. The remaining out-of-scope items above are
+Not yet done, so S4-02 stays open: frozen-source qualification on both platforms, and
+revocation during a running replay. The remaining out-of-scope items above are
 unchanged.
