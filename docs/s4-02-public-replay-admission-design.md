@@ -113,7 +113,9 @@ former atomically inside the reservation transaction.
 A configuration-only example (`examples/native-state-replay*.yaml`) boots the real app
 and replays through public requests only, tested on SQLite and PostgreSQL.
 
-Not yet done, so S4-02 stays open: crash and restart driven through the route,
-lifecycle gate installation for the continued target, and frozen-source qualification on
-both platforms. The remaining out-of-scope items above are
+Crash and restart driven through the route is tested as well: a subprocess running the
+real app is stopped at each coordinator stage and the identical request recovers it.
+
+Not yet done, so S4-02 stays open: lifecycle gate installation for the continued target and
+frozen-source qualification on both platforms. The remaining out-of-scope items above are
 unchanged.
