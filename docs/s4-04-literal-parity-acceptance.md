@@ -76,11 +76,11 @@ the reports and aggregate are retained under
 comparison only. Hosted Linux execution and the broader S4-04 criteria remain
 pending.
 
-## Case set grown to 64 (local, 2026-11-01)
+## Case set grown to 87 (local, 2026-11-01)
 
-The shared fixture set now has 64 cases (45 success, 19 fault) after adding literal
-`try`/`catch`, `fork` and jq `set` expression coverage (see
+The shared fixture set now has 87 cases (64 success, 23 fault) after adding literal
+`try`/`catch`, `fork`, jq `set` expression and `switch` coverage (see
 [the S4-03 scope](s4-03-javascript-execution-acceptance.md#literal-trycatch-local-development-result)).
-The CI aggregate test now expects 64 outcomes. The earlier hosted comparison covers
-only the original 13; the 64-case comparison has not been run on hosted CI, and no
+The CI aggregate test now expects 87 outcomes. The earlier hosted comparison covers
+only the original 13; the 87-case comparison has not been run on hosted CI, and no
 proposed-test or schema-constraint bridge row is promoted.

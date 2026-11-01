@@ -4,6 +4,7 @@ import { admitExpressions, evaluateExpression, ExpressionFailure, hasExpression,
 import { loadWorkflowDefinition } from "./workflow-definition.js";
 
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
+type SwitchCase = Readonly<{ name: string; when?: Json; next: string; endsWorkflow: boolean }>;
 type Task = Readonly<{
   reference: string;
   key: string;
@@ -12,6 +13,8 @@ type Task = Readonly<{
   endsWorkflow: boolean;
   value?: Json;
   dynamic?: boolean;
+  cases?: readonly SwitchCase[];
+  fallback?: SwitchCase;
   problem?: Readonly<Record<string, Json>>;
   children?: readonly Task[];
   attempt?: readonly Task[];
@@ -42,6 +45,8 @@ export class WorkflowExecutionError extends Error {
     readonly problem?: Readonly<Record<string, Json>>,
     /** Values a `catch` filter sees for errors that are catchable but not OWS `raise` problems. */
     readonly catchView?: Readonly<Record<string, Json>>,
+    /** Extra projected details for admission errors that carry more than a reference. */
+    private readonly admission?: Readonly<Record<string, Json>>,
   ) {
     super(message);
     this.name = "WorkflowExecutionError";
@@ -51,7 +56,7 @@ export class WorkflowExecutionError extends Error {
   asDict() {
     return {
       code: this.code, message: this.message,
-      details: this.problem === undefined ? { reference: this.reference }
+      details: this.problem === undefined ? { reference: this.reference, ...structuredClone(this.admission ?? {}) }
         : { ...structuredClone(this.problem), instance: this.reference },
     };
   }
@@ -152,9 +157,9 @@ function admitSetExpressions(value: Json, reference: string): void {
 
 const EXPRESSION_ERROR_TYPE = "https://serverlessworkflow.io/spec/1.0.0/errors/expression";
 
-function evaluateSet(task: Task, data: Json): Json {
+function evaluateSet(task: Task, data: Json, value: Json = task.value!): Json {
   try {
-    const result = evaluateExpression(task.value!, data);
+    const result = evaluateExpression(value, data);
     if (Buffer.byteLength(JSON.stringify(result), "utf8") > MAX_VALUE_BYTES) {
       throw new WorkflowExecutionError("workflow_execution_error", "expression result exceeds the value limit", task.reference);
     }
@@ -167,6 +172,15 @@ function evaluateSet(task: Task, data: Json): Json {
       { type: EXPRESSION_ERROR_TYPE, status: 400, title: "expression_error", detail: error.message },
     );
   }
+}
+
+/** First matching `when` wins; the default applies only when none matches; jq truthiness. */
+function selectCase(task: Task, data: Json): SwitchCase | undefined {
+  for (const item of task.cases ?? []) {
+    const outcome = hasExpression(item.when!) ? evaluateSet(task, data, item.when) : item.when;
+    if (outcome !== null && outcome !== false) return item;
+  }
+  return task.fallback;
 }
 
 function compileScope(
@@ -190,21 +204,24 @@ function compileScope(
   }
   return freeze(entries.map((entry, index): Task => {
     const { name, body, reference: taskReference, key } = entry;
-    if (Object.keys(body).some((field) => !["set", "do", "raise", "try", "catch", "fork", "then", "metadata"].includes(field))) reject(taskReference);
-    if (["set", "do", "raise", "try", "fork"].filter((kind) => Object.hasOwn(body, kind)).length !== 1) reject(taskReference);
+    if (Object.keys(body).some((field) => !["set", "do", "raise", "try", "catch", "fork", "switch", "then", "metadata"].includes(field))) reject(taskReference);
+    if (["set", "do", "raise", "try", "fork", "switch"].filter((kind) => Object.hasOwn(body, kind)).length !== 1) reject(taskReference);
     if (Object.hasOwn(body, "catch") !== Object.hasOwn(body, "try")) reject(taskReference);
-    const resolve = (transition: unknown, at: string): { next: string; ends: boolean } => {
+    const resolve = (transition: unknown, at: string, withTarget = false): { next: string; ends: boolean } => {
       if (typeof transition !== "string") reject(at);
       if (transition === "exit" || transition === "end") return { next: END, ends: transition === "end" };
       if (transition === "continue") return { next: entries[index + 1]?.key ?? END, ends: false };
       const target = names.get(transition);
       if (target === undefined) {
-        throw new WorkflowExecutionError("workflow_semantic_error", "transition target must belong to the current scope", at);
+        throw new WorkflowExecutionError(
+          "workflow_semantic_error", "transition target must belong to the current scope", at,
+          undefined, undefined, withTarget ? { target: transition } : undefined,
+        );
       }
       return { next: target, ends: false };
     };
     const { next, ends } = resolve(body.then ?? "continue", `${taskReference}/then`);
-    let operation: Pick<Task, "value" | "dynamic" | "children" | "problem" | "attempt" | "handler" | "branches">;
+    let operation: Pick<Task, "value" | "dynamic" | "children" | "problem" | "attempt" | "handler" | "branches" | "cases" | "fallback">;
     if (Object.hasOwn(body, "set")) {
       const value = bounded(body.set, `${taskReference}/set`);
       const dynamic = hasExpression(value);
@@ -212,7 +229,32 @@ function compileScope(
       operation = { value, dynamic };
     }
     else if (Object.hasOwn(body, "do")) operation = { children: compileScope(body.do, `${taskReference}/do`, budget, depth + 1) };
-    else if (Object.hasOwn(body, "fork")) {
+    else if (Object.hasOwn(body, "switch")) {
+      const at = `${taskReference}/switch`;
+      if (!Array.isArray(body.switch) || body.switch.length === 0) reject(at);
+      const seen = new Set<string>();
+      const cases: SwitchCase[] = [];
+      let fallback: SwitchCase | undefined;
+      for (const [slot, entry] of body.switch.entries()) {
+        if (!object(entry) || Object.keys(entry).length !== 1) reject(`${at}/${slot}`);
+        const [caseName, caseBody] = Object.entries(entry)[0];
+        const caseReference = `${at}/${slot}/${pointer(caseName)}`;
+        if (caseName.length === 0 || Buffer.byteLength(caseName, "utf8") > 256 || !object(caseBody)) reject(caseReference);
+        if (seen.has(caseName)) throw new WorkflowExecutionError("workflow_semantic_error", "duplicate switch case name", caseReference);
+        seen.add(caseName);
+        if (Object.keys(caseBody).some((field) => field !== "when" && field !== "then")
+          || (caseBody.when !== undefined && typeof caseBody.when !== "string")) reject(caseReference);
+        const when = caseBody.when === undefined ? undefined : bounded(caseBody.when, `${caseReference}/when`);
+        if (when !== undefined && hasExpression(when)) admitSetExpressions(when, `${caseReference}/when`);
+        const target = resolve(caseBody.then, `${caseReference}/then`, true);
+        const item: SwitchCase = { name: caseName, ...(when === undefined ? {} : { when }), next: target.next, endsWorkflow: target.ends };
+        if (when === undefined) {
+          if (fallback !== undefined) throw new WorkflowExecutionError("workflow_semantic_error", "switch must have at most one default case", at);
+          fallback = item;
+        } else cases.push(item);
+      }
+      operation = { cases, ...(fallback === undefined ? {} : { fallback }) };
+    } else if (Object.hasOwn(body, "fork")) {
       const at = `${taskReference}/fork`;
       const fork = body.fork;
       if (!object(fork) || !Array.isArray(fork.branches) || fork.branches.length === 0
@@ -278,6 +320,13 @@ async function runScope(tasks: readonly Task[], input: Json, budget: { steps: nu
             endsWorkflow = handler.endsWorkflow === true;
           }
         }
+      } else if (task.cases !== undefined || task.fallback !== undefined) {
+        const chosen = selectCase(task, state.data);
+        if (chosen !== undefined) {
+          next = chosen.next;
+          endsWorkflow = chosen.endsWorkflow;
+        }
+        result = { data: structuredClone(state.data), ended: false };
       } else if (task.branches !== undefined) {
         const settled = await Promise.allSettled(task.branches.map((branch) => runScope(branch, structuredClone(state.data), budget)));
         const failed = settled.find((outcome): outcome is PromiseRejectedResult => outcome.status === "rejected");
@@ -308,7 +357,7 @@ const DEFAULT_WORKFLOW = {
 export function literalExecutionCapabilities() {
   return {
     engine: "langgraph-js", experimental: true, dsl: "1.0.3",
-    tasks: ["set", "do", "raise", "try", "fork"], transitions: ["continue", "exit", "end", "scope_task_name"],
+    tasks: ["set", "do", "raise", "try", "fork", "switch"], transitions: ["continue", "exit", "end", "scope_task_name"],
     expressions: true, expressionScope: ["set"], jq: "1.8.2", catalogCalls: false, nativeExtensions: [],
     persistence: false, recovery: false, publicInvocationIdentity: false,
     maxTasks: MAX_TASKS, maxSteps: MAX_STEPS, maxScopeDepth: MAX_SCOPE_DEPTH, maxValueBytes: MAX_VALUE_BYTES,

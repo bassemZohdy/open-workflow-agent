@@ -93,5 +93,25 @@
     "id": "expr-fault-catch-filter-status-422",
     "tasks": [{"guard": {"try": [{"a": {"set": "${ 1 / 0 }"}}], "catch": {"errors": {"with": {"status": 422}}, "do": [{"r": {"set": {"m": "caught"}}}]}}}],
     "expected": {"code": "expression_error", "message": "jq expression evaluation failed", "details": {"instance": "/do/0/guard/try/0/a"}}
+  },
+  {
+    "id": "switch-fault-when-error",
+    "tasks": [{"route": {"switch": [{"a": {"when": "${ 1 / 0 }", "then": "posT"}}, {"d": {"then": "zeroT"}}]}}, {"negT": {"set": {"r": "neg"}, "then": "end"}}, {"posT": {"set": {"r": "pos"}, "then": "end"}}, {"zeroT": {"set": {"r": "zero"}}}],
+    "expected": {"code": "expression_error", "message": "jq expression evaluation failed", "details": {"instance": "/do/0/route"}}
+  },
+  {
+    "id": "switch-fault-explicit-continue-ignores-task-then",
+    "tasks": [{"route": {"switch": [{"a": {"when": "${ true }", "then": "continue"}}], "then": "zeroT"}}, {"mid": {"raise": {"error": {"status": 400, "type": "https://errors.test/mid-ran"}}}}, {"zeroT": {"set": {"r": "zero"}, "then": "end"}}],
+    "expected": {"code": "workflow_execution_error", "message": "https://errors.test/mid-ran", "details": {"status": 400, "type": "https://errors.test/mid-ran", "instance": "/do/1/mid"}}
+  },
+  {
+    "id": "switch-fault-default-continue-ignores-task-then",
+    "tasks": [{"route": {"switch": [{"a": {"when": "${ false }", "then": "zeroT"}}, {"d": {"then": "continue"}}], "then": "zeroT"}}, {"mid": {"raise": {"error": {"status": 400, "type": "https://errors.test/mid-ran"}}}}, {"zeroT": {"set": {"r": "zero"}, "then": "end"}}],
+    "expected": {"code": "workflow_execution_error", "message": "https://errors.test/mid-ran", "details": {"status": 400, "type": "https://errors.test/mid-ran", "instance": "/do/1/mid"}}
+  },
+  {
+    "id": "switch-fault-plain-continue-runs-next-task",
+    "tasks": [{"route": {"switch": [{"a": {"when": "${ true }", "then": "continue"}}]}}, {"mid": {"raise": {"error": {"status": 400, "type": "https://errors.test/mid-ran"}}}}, {"zeroT": {"set": {"r": "zero"}, "then": "end"}}],
+    "expected": {"code": "workflow_execution_error", "message": "https://errors.test/mid-ran", "details": {"status": 400, "type": "https://errors.test/mid-ran", "instance": "/do/1/mid"}}
   }
 ]
