@@ -134,3 +134,40 @@ Local evidence: Node 76/76 passes; the shared-fixture contract and CI selection
 passes on ADK and LangGraph (315 passed). This is not hosted qualification and
 promotes no proposed-test or schema-constraint row; S4-03 remains open.
 
+## jq expressions in `set` values (local development result)
+
+The Node component evaluates `${ }` runtime expressions in `set` values with jq 1.8.2
+(`jq-wasm` 3.0.0-jq-1.8.2, pinned exactly; the owner approved this dependency on
+2026-11-01). The port in `engines/langgraph-js/src/expressions.ts` mirrors core's
+evaluator: identical prelude and postlude text (so `$__loc__` line numbers match),
+`env`, `input`, `debug`, `halt`, `now` and `$ENV` disabled, modules rejected,
+exactly one JSON result, finite output, safe integers and bounded depth, value-only
+evaluation (keys stay literal), whole-value expressions keeping their JSON type and
+mixed text interpolating compact JSON.
+
+Behavior was probed on actual ADK and LangGraph Python, which agreed on every case,
+and 26 more shared fixtures (15 success, 11 fault; 64 in total) are consumed
+identically by Node and both Python engines. Expression failures use the common
+`expression_error` code with `{instance}` details at run time. They are catchable
+like Python's: a `catch` filter sees `type` `.../errors/expression`, `status` 400 and
+`title` `expression_error`. Admission errors (invalid jq, undefined variables,
+unterminated expressions, `$ENV`, modules) are raised before any graph is built with
+`{reference}` details; Python raises the same messages from `compile_workflow`, which
+the shared fault harness cannot express, so they are covered by Node tests that
+quote core's values.
+
+Not supported and rejected as outside the profile: variables core binds from
+workflow state (`$workflow`, `$runtime`, `$context`, `$event`, `$input`, `$output`,
+`$secrets` and similar), and expressions anywhere except `set` values (`raise`,
+`catch` filters and transitions stay literal). `for`, `switch` and conditions are
+still unimplemented.
+
+Known limits: jq has no time or memory limit here, so a pathological expression such
+as unbounded recursion blocks the Node event loop; results are limited to the shared
+1 MiB value bound. The Node check of the bundled jq version guards dependency drift.
+
+Local evidence: Node 105/105 passes; the shared-fixture contract and CI selection
+passes on ADK and LangGraph (367 passed); `npm audit --omit=dev` reports no
+vulnerabilities. This is not hosted qualification and promotes no proposed-test or
+schema-constraint row; S4-03 remains open.
+

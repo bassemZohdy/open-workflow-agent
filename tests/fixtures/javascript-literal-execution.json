@@ -375,5 +375,95 @@
     "tasks": [{"guard": {"try": [{"par": {"fork": {"branches": [{"a": {"set": {"v": "A"}}}, {"b": {"raise": {"error": {"status": 400, "type": "https://errors.test/a"}}}}]}}}], "catch": {"do": [{"r": {"set": {"m": "caught"}}}]}}}],
     "input": null,
     "expected": {"m": "caught"}
+  },
+  {
+    "id": "expr-single-value",
+    "tasks": [{"a": {"set": {"n": "${ .a + 1 }"}}}],
+    "input": {"a": 1},
+    "expected": {"n": 2}
+  },
+  {
+    "id": "expr-whole-value-keeps-type",
+    "tasks": [{"a": {"set": "${ .a }"}}],
+    "input": {"a": {"k": [1, 2]}},
+    "expected": {"k": [1, 2]}
+  },
+  {
+    "id": "expr-padded-whole-value",
+    "tasks": [{"a": {"set": "  ${ .a }  "}}],
+    "input": {"a": 5},
+    "expected": 5
+  },
+  {
+    "id": "expr-interpolation",
+    "tasks": [{"a": {"set": {"m": "v=${ .a } end"}}}],
+    "input": {"a": 1},
+    "expected": {"m": "v=1 end"}
+  },
+  {
+    "id": "expr-adjacent-segments-concatenate",
+    "tasks": [{"a": {"set": {"m": "${ .a }${ .b }"}}}],
+    "input": {"a": 1, "b": "x"},
+    "expected": {"m": "1x"}
+  },
+  {
+    "id": "expr-interpolated-object-is-compact-json",
+    "tasks": [{"a": {"set": {"m": "o=${ .a }"}}}],
+    "input": {"a": {"k": [1, "z"]}},
+    "expected": {"m": "o={\"k\":[1,\"z\"]}"}
+  },
+  {
+    "id": "expr-nested-values",
+    "tasks": [{"a": {"set": {"l": ["${ .a }", {"d": "${ .a * 2 }"}], "k": "lit"}}}],
+    "input": {"a": 3},
+    "expected": {"k": "lit", "l": [3, {"d": 6}]}
+  },
+  {
+    "id": "expr-chained-tasks",
+    "tasks": [{"a": {"set": {"n": "${ .a }"}}}, {"b": {"set": {"m": "${ .n + 1 }"}}}],
+    "input": {"a": 1},
+    "expected": {"m": 2}
+  },
+  {
+    "id": "expr-null-and-missing",
+    "tasks": [{"a": {"set": {"v": "${ null }", "w": "${ .missing }"}}}],
+    "input": {"a": 1},
+    "expected": {"v": null, "w": null}
+  },
+  {
+    "id": "expr-builtins",
+    "tasks": [{"a": {"set": {"u": "${ .s | ascii_upcase }", "c": "${ [.xs[] | . * 2] }"}}}],
+    "input": {"s": "abc", "xs": [1, 2]},
+    "expected": {"c": [2, 4], "u": "ABC"}
+  },
+  {
+    "id": "expr-prelude-line-offset",
+    "tasks": [{"a": {"set": "${ $__loc__.line }"}}],
+    "input": {"a": 1},
+    "expected": 14
+  },
+  {
+    "id": "expr-catch-all-catches-expression-error",
+    "tasks": [{"guard": {"try": [{"a": {"set": "${ 1 / 0 }"}}], "catch": {"do": [{"r": {"set": {"m": "caught"}}}]}}}],
+    "input": {"a": 1},
+    "expected": {"m": "caught"}
+  },
+  {
+    "id": "expr-catch-filter-type",
+    "tasks": [{"guard": {"try": [{"a": {"set": "${ 1 / 0 }"}}], "catch": {"errors": {"with": {"type": "https://serverlessworkflow.io/spec/1.0.0/errors/expression"}}, "do": [{"r": {"set": {"m": "caught"}}}]}}}],
+    "input": {"a": 1},
+    "expected": {"m": "caught"}
+  },
+  {
+    "id": "expr-catch-filter-status-400",
+    "tasks": [{"guard": {"try": [{"a": {"set": "${ 1 / 0 }"}}], "catch": {"errors": {"with": {"status": 400}}, "do": [{"r": {"set": {"m": "caught"}}}]}}}],
+    "input": {"a": 1},
+    "expected": {"m": "caught"}
+  },
+  {
+    "id": "expr-catch-filter-title",
+    "tasks": [{"guard": {"try": [{"a": {"set": "${ 1 / 0 }"}}], "catch": {"errors": {"with": {"title": "expression_error"}}, "do": [{"r": {"set": {"m": "caught"}}}]}}}],
+    "input": {"a": 1},
+    "expected": {"m": "caught"}
   }
 ]

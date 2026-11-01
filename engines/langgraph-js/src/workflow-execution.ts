@@ -1,5 +1,6 @@
 import { Annotation, END, START, StateGraph } from "@langchain/langgraph";
 
+import { admitExpressions, evaluateExpression, ExpressionFailure, hasExpression, loadExpressions } from "./expressions.js";
 import { loadWorkflowDefinition } from "./workflow-definition.js";
 
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
@@ -10,6 +11,7 @@ type Task = Readonly<{
   next: string;
   endsWorkflow: boolean;
   value?: Json;
+  dynamic?: boolean;
   problem?: Readonly<Record<string, Json>>;
   children?: readonly Task[];
   attempt?: readonly Task[];
@@ -34,10 +36,12 @@ const State = Annotation.Root({
 
 export class WorkflowExecutionError extends Error {
   constructor(
-    readonly code: "unsupported_workflow_feature" | "workflow_semantic_error" | "workflow_execution_error",
+    readonly code: "unsupported_workflow_feature" | "workflow_semantic_error" | "workflow_execution_error" | "expression_error",
     message: string,
     readonly reference: string,
     readonly problem?: Readonly<Record<string, Json>>,
+    /** Values a `catch` filter sees for errors that are catchable but not OWS `raise` problems. */
+    readonly catchView?: Readonly<Record<string, Json>>,
   ) {
     super(message);
     this.name = "WorkflowExecutionError";
@@ -127,13 +131,42 @@ function compileFilter(catchBody: Record<string, unknown>, reference: string): R
 }
 
 function catchMatches(filter: Readonly<Record<string, Json>>, error: WorkflowExecutionError): boolean {
-  const problem = error.problem ?? {};
+  const problem = error.catchView ?? error.problem ?? {};
   const message = problem.detail || problem.title || problem.type;
   const values: Record<string, Json | undefined> = {
     type: problem.type, status: problem.status, instance: error.reference,
     title: problem.title ?? error.code, detail: problem.detail ?? String(message),
   };
   return Object.entries(filter).every(([key, expected]) => values[key] === expected);
+}
+
+function admitSetExpressions(value: Json, reference: string): void {
+  try {
+    admitExpressions(value);
+  } catch (error) {
+    if (!(error instanceof ExpressionFailure)) throw error;
+    if (error.reason === "unsupported_profile") reject(reference);
+    throw new WorkflowExecutionError("expression_error", error.message, reference);
+  }
+}
+
+const EXPRESSION_ERROR_TYPE = "https://serverlessworkflow.io/spec/1.0.0/errors/expression";
+
+function evaluateSet(task: Task, data: Json): Json {
+  try {
+    const result = evaluateExpression(task.value!, data);
+    if (Buffer.byteLength(JSON.stringify(result), "utf8") > MAX_VALUE_BYTES) {
+      throw new WorkflowExecutionError("workflow_execution_error", "expression result exceeds the value limit", task.reference);
+    }
+    return result;
+  } catch (error) {
+    if (!(error instanceof ExpressionFailure)) throw error;
+    throw new WorkflowExecutionError(
+      "expression_error", error.message, task.reference,
+      error.reason === undefined ? {} : { reason: error.reason },
+      { type: EXPRESSION_ERROR_TYPE, status: 400, title: "expression_error", detail: error.message },
+    );
+  }
 }
 
 function compileScope(
@@ -171,8 +204,13 @@ function compileScope(
       return { next: target, ends: false };
     };
     const { next, ends } = resolve(body.then ?? "continue", `${taskReference}/then`);
-    let operation: Pick<Task, "value" | "children" | "problem" | "attempt" | "handler" | "branches">;
-    if (Object.hasOwn(body, "set")) operation = { value: bounded(body.set, `${taskReference}/set`, true) };
+    let operation: Pick<Task, "value" | "dynamic" | "children" | "problem" | "attempt" | "handler" | "branches">;
+    if (Object.hasOwn(body, "set")) {
+      const value = bounded(body.set, `${taskReference}/set`);
+      const dynamic = hasExpression(value);
+      if (dynamic) admitSetExpressions(value, `${taskReference}/set`);
+      operation = { value, dynamic };
+    }
     else if (Object.hasOwn(body, "do")) operation = { children: compileScope(body.do, `${taskReference}/do`, budget, depth + 1) };
     else if (Object.hasOwn(body, "fork")) {
       const at = `${taskReference}/fork`;
@@ -233,7 +271,7 @@ async function runScope(tasks: readonly Task[], input: Json, budget: { steps: nu
           result = await runScope(task.attempt, structuredClone(state.data), budget);
         } catch (error) {
           const handler = task.handler!;
-          if (!(error instanceof WorkflowExecutionError) || error.problem === undefined || !catchMatches(handler.filter, error)) throw error;
+          if (!(error instanceof WorkflowExecutionError) || (error.problem === undefined && error.catchView === undefined) || !catchMatches(handler.filter, error)) throw error;
           result = await runScope(handler.children, structuredClone(state.data), budget);
           if (handler.next !== undefined) {
             next = handler.next;
@@ -248,7 +286,7 @@ async function runScope(tasks: readonly Task[], input: Json, budget: { steps: nu
       } else {
         result = task.children !== undefined
           ? await runScope(task.children, structuredClone(state.data), budget)
-          : { data: structuredClone(task.value!), ended: false };
+          : { data: task.dynamic ? evaluateSet(task, state.data) : structuredClone(task.value!), ended: false };
       }
       const ended = result.ended || endsWorkflow;
       return { data: result.data, ended, next: ended ? END : next };
@@ -271,7 +309,7 @@ export function literalExecutionCapabilities() {
   return {
     engine: "langgraph-js", experimental: true, dsl: "1.0.3",
     tasks: ["set", "do", "raise", "try", "fork"], transitions: ["continue", "exit", "end", "scope_task_name"],
-    expressions: false, catalogCalls: false, nativeExtensions: [],
+    expressions: true, expressionScope: ["set"], jq: "1.8.2", catalogCalls: false, nativeExtensions: [],
     persistence: false, recovery: false, publicInvocationIdentity: false,
     maxTasks: MAX_TASKS, maxSteps: MAX_STEPS, maxScopeDepth: MAX_SCOPE_DEPTH, maxValueBytes: MAX_VALUE_BYTES,
   } as const;
@@ -281,6 +319,7 @@ export function literalExecutionCapabilities() {
 export async function executeLiteralWorkflow(
   source: string | undefined, input: unknown,
 ): Promise<{ status: "completed"; output: Json }> {
+  await loadExpressions();
   const definition = await loadWorkflowDefinition(source ?? JSON.stringify(DEFAULT_WORKFLOW));
   // Admission of the complete definition precedes graph construction and execution.
   if (Object.keys(definition).some((field) => !["document", "do"].includes(field))) reject("/");
