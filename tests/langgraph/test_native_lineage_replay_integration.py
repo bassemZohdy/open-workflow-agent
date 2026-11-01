@@ -23,7 +23,7 @@ from open_workflow_agent.workflow import (
     generate_default_workflow,
 )
 
-pytest.importorskip("langgraph")
+pytest.importorskip("langgraph.graph")
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine, native
 from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor, _node_name
 from open_workflow_agent_langgraph.native_lineage_fork import (

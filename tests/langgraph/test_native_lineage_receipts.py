@@ -6,7 +6,7 @@ import pytest
 from open_workflow_agent.config import NativeStateConfig
 from test_native_state_preflight import preflight as _preflight
 
-pytest.importorskip("langgraph")
+pytest.importorskip("langgraph.graph")
 from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
 from open_workflow_agent_langgraph.native_lineage_inspection import selected_business_receipts
 from open_workflow_agent_langgraph.native_lineage_preflight import prepare_native_lineage

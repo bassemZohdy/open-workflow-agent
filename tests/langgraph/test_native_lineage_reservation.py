@@ -8,7 +8,7 @@ from open_workflow_agent.config import NativeStateConfig
 from open_workflow_agent.errors import OwaError
 from test_native_state_preflight import preflight as _preflight
 
-pytest.importorskip("langgraph")
+pytest.importorskip("langgraph.graph")
 from open_workflow_agent_langgraph.native_lineage_preflight import prepare_native_lineage
 from open_workflow_agent_langgraph.native_lineage_reservation import NativeReplayReservations
 

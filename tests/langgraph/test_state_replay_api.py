@@ -21,7 +21,7 @@ from open_workflow_agent.native_extensions import LANGGRAPH_STATE_REPLAY
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow, generate_default_workflow
 
-pytest.importorskip("langgraph")
+pytest.importorskip("langgraph.graph")
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 
 TERMINAL = {"completed", "faulted", "cancelled"}

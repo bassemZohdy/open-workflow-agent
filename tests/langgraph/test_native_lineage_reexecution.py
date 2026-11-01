@@ -7,7 +7,7 @@ from open_workflow_agent.errors import OwaError
 from test_native_state_preflight import counts
 from test_native_state_preflight import preflight as _preflight
 
-pytest.importorskip("langgraph")
+pytest.importorskip("langgraph.graph")
 from open_workflow_agent_langgraph import native_lineage_preflight as module
 
 preflight = _preflight
