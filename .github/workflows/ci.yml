@@ -520,7 +520,8 @@ jobs:
       - name: Type check
         run: |
           uv run --locked mypy ci
-          uv run --locked mypy \
+          # The native memory modules import psycopg lazily; mypy needs it installed.
+          uv run --locked --extra postgres mypy \
             --package open_workflow_agent \
             --package open_workflow_agent_adk \
             --package open_workflow_agent_langgraph \
