@@ -19,8 +19,8 @@ invocation identity or a production-qualified engine adapter.
 It validates the complete official definition, derives a typed immutable private
 program, and builds actual LangGraph nodes for literal `set`, inline `raise`, nested `do` and
 `try`/`catch` (literal error filters only), non-competing `fork` tasks and jq 1.8.2
-`${ }` expressions in `set` values `switch` with jq `when` conditions and `for` loops. Fixed `continue`, scope-local named transitions,
-`exit`, and workflow `end` are supported. Whole-definition admission precedes native graph construction.
+`${ }` expressions in `set` values, `switch` with jq `when` conditions and `for` loops.
+Fixed `continue`, scope-local named transitions, `exit`, and workflow `end` are supported. Whole-definition admission precedes native graph construction.
 Missing source generates the canonical one-task `agent:1.0.0@default` workflow,
 which explicitly rejects because catalog calls are outside this component.
 
