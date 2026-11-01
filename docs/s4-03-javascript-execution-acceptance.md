@@ -197,3 +197,41 @@ on ADK and LangGraph. This is not hosted qualification and promotes no proposed-
 schema-constraint row; S4-03 remains open (`for`, calls, durability and public identity
 are still unimplemented).
 
+## `for` loops (local development result)
+
+`for` executes in Node with jq `in` and `while` expressions and per-iteration variable
+bindings. Behavior was probed on actual ADK and LangGraph Python, which agreed on every
+case, and 24 more shared fixtures (16 success, 8 fault; 111 in total) are consumed
+identically by Node and both Python engines.
+
+Semantics, as observed: `in` must evaluate to an array (an object, number, null or
+string, including literal text such as `"[1,2]"`, is a `workflow_semantic_error`
+"for.in must evaluate to an array" at the loop task). The data threads through the
+iterations and the result is the last iteration's data; an empty array leaves the data
+unchanged. The item and index variables default to `$item` and `$index`, can be renamed
+with `each` and `at`, exist only inside `while` and the body, shadow outer loops of the
+same name, and are not visible to `in` or after the loop. `then: exit` in the body ends
+only that iteration, a named jump is local to the body and restarts each iteration, and
+`then: end` ends the whole workflow. Body failures keep the body task's instance and
+are catchable.
+
+`while` is a guard evaluated before each iteration with the loop variables bound. Its
+`.` is the data the loop task received and does not change between iterations, so a
+condition such as `.n < 2` over data the body updates never stops the loop. This is
+observed core behavior, probably not the specification's intent; Node reproduces it so
+the engines agree, and it is recorded as a fixture
+(`for-while-sees-the-data-the-loop-received`) so neither side can drift silently.
+
+Admission errors carry core's codes, messages and references: invalid or reserved
+binding names (`ENV`, non-identifiers) at `.../for/each` or `.../for/at`, equal item and
+index names at the loop task, and invalid `in`, `while` and body expressions at
+`.../for/in`, `.../while` and `.../set`. Not probed, so not claimed: the catch-filter
+values (`type`, `status`) that the "for.in must evaluate to an array" error presents,
+and loops combined with `fork` or `try` beyond the fixtures. Workflow-state variables
+remain rejected as outside the profile.
+
+Local evidence: Node 155/155 passes; the shared-fixture contract and CI selection passes
+on ADK and LangGraph. This is not hosted qualification and promotes no proposed-test or
+schema-constraint row; S4-03 remains open (calls, durability and public identity are
+still unimplemented).
+

@@ -1,6 +1,6 @@
 import { Annotation, END, START, StateGraph } from "@langchain/langgraph";
 
-import { admitExpressions, evaluateExpression, ExpressionFailure, hasExpression, loadExpressions } from "./expressions.js";
+import { admitExpressions, evaluateExpression, ExpressionFailure, hasExpression, loadExpressions, type Variables } from "./expressions.js";
 import { loadWorkflowDefinition } from "./workflow-definition.js";
 
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
@@ -14,6 +14,7 @@ type Task = Readonly<{
   value?: Json;
   dynamic?: boolean;
   cases?: readonly SwitchCase[];
+  loop?: Readonly<{ each: string; at: string; source: Json; guard?: Json; children: readonly Task[] }>;
   fallback?: SwitchCase;
   problem?: Readonly<Record<string, Json>>;
   children?: readonly Task[];
@@ -145,9 +146,9 @@ function catchMatches(filter: Readonly<Record<string, Json>>, error: WorkflowExe
   return Object.entries(filter).every(([key, expected]) => values[key] === expected);
 }
 
-function admitSetExpressions(value: Json, reference: string): void {
+function admitSetExpressions(value: Json, reference: string, scope: readonly string[] = []): void {
   try {
-    admitExpressions(value);
+    admitExpressions(value, scope);
   } catch (error) {
     if (!(error instanceof ExpressionFailure)) throw error;
     if (error.reason === "unsupported_profile") reject(reference);
@@ -157,9 +158,9 @@ function admitSetExpressions(value: Json, reference: string): void {
 
 const EXPRESSION_ERROR_TYPE = "https://serverlessworkflow.io/spec/1.0.0/errors/expression";
 
-function evaluateSet(task: Task, data: Json, value: Json = task.value!): Json {
+function evaluateSet(task: Task, data: Json, value: Json = task.value!, variables: Variables = {}): Json {
   try {
-    const result = evaluateExpression(value, data);
+    const result = evaluateExpression(value, data, variables);
     if (Buffer.byteLength(JSON.stringify(result), "utf8") > MAX_VALUE_BYTES) {
       throw new WorkflowExecutionError("workflow_execution_error", "expression result exceeds the value limit", task.reference);
     }
@@ -175,16 +176,16 @@ function evaluateSet(task: Task, data: Json, value: Json = task.value!): Json {
 }
 
 /** First matching `when` wins; the default applies only when none matches; jq truthiness. */
-function selectCase(task: Task, data: Json): SwitchCase | undefined {
+function selectCase(task: Task, data: Json, variables: Variables): SwitchCase | undefined {
   for (const item of task.cases ?? []) {
-    const outcome = hasExpression(item.when!) ? evaluateSet(task, data, item.when) : item.when;
+    const outcome = hasExpression(item.when!) ? evaluateSet(task, data, item.when, variables) : item.when;
     if (outcome !== null && outcome !== false) return item;
   }
   return task.fallback;
 }
 
 function compileScope(
-  value: unknown, reference: string, budget: { tasks: number }, depth = 0, offset = 0,
+  value: unknown, reference: string, budget: { tasks: number }, depth = 0, offset = 0, scope: readonly string[] = [],
 ): readonly Task[] {
   if (!Array.isArray(value) || value.length === 0 || depth > MAX_SCOPE_DEPTH) reject(reference);
   const entries: { name: string; body: Record<string, unknown>; reference: string; key: string }[] = [];
@@ -204,8 +205,12 @@ function compileScope(
   }
   return freeze(entries.map((entry, index): Task => {
     const { name, body, reference: taskReference, key } = entry;
-    if (Object.keys(body).some((field) => !["set", "do", "raise", "try", "catch", "fork", "switch", "then", "metadata"].includes(field))) reject(taskReference);
-    if (["set", "do", "raise", "try", "fork", "switch"].filter((kind) => Object.hasOwn(body, kind)).length !== 1) reject(taskReference);
+    if (Object.keys(body).some((field) => !["set", "do", "raise", "try", "catch", "fork", "switch", "for", "while", "then", "metadata"].includes(field))) reject(taskReference);
+    const isLoop = Object.hasOwn(body, "for");
+    const kinds = ["set", "do", "raise", "try", "fork", "switch"].filter((kind) => Object.hasOwn(body, kind));
+    // A loop is `for` with its `do` body; `while` is only meaningful on a loop.
+    if (isLoop ? kinds.length !== 1 || kinds[0] !== "do" : kinds.length !== 1) reject(taskReference);
+    if (Object.hasOwn(body, "while") && !isLoop) reject(taskReference);
     if (Object.hasOwn(body, "catch") !== Object.hasOwn(body, "try")) reject(taskReference);
     const resolve = (transition: unknown, at: string, withTarget = false): { next: string; ends: boolean } => {
       if (typeof transition !== "string") reject(at);
@@ -221,14 +226,37 @@ function compileScope(
       return { next: target, ends: false };
     };
     const { next, ends } = resolve(body.then ?? "continue", `${taskReference}/then`);
-    let operation: Pick<Task, "value" | "dynamic" | "children" | "problem" | "attempt" | "handler" | "branches" | "cases" | "fallback">;
-    if (Object.hasOwn(body, "set")) {
+    let operation: Pick<Task, "value" | "dynamic" | "children" | "problem" | "attempt" | "handler" | "branches" | "cases" | "fallback" | "loop">;
+    if (isLoop) {
+      const spec = body.for;
+      if (!object(spec) || typeof spec.in !== "string" || Object.keys(spec).some((field) => !["each", "in", "at"].includes(field))
+        || (spec.each !== undefined && typeof spec.each !== "string") || (spec.at !== undefined && typeof spec.at !== "string")) reject(`${taskReference}/for`);
+      if (body.while !== undefined && typeof body.while !== "string") reject(`${taskReference}/while`);
+      const each = (spec.each ?? "item") as string;
+      const position = (spec.at ?? "index") as string;
+      const binding = (name: string) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(name) && name !== "ENV";
+      if (!binding(each)) throw new WorkflowExecutionError("workflow_semantic_error", "invalid or reserved expression binding", `${taskReference}/for/each`);
+      if (!binding(position)) throw new WorkflowExecutionError("workflow_semantic_error", "invalid or reserved expression binding", `${taskReference}/for/at`);
+      if (each === position) throw new WorkflowExecutionError("workflow_semantic_error", "loop item and index bindings must differ", taskReference);
+      // `in` sees the enclosing scope only; `while` and the body also see the loop variables.
+      const source = bounded(spec.in, `${taskReference}/for/in`);
+      if (hasExpression(source)) admitSetExpressions(source, `${taskReference}/for/in`, scope);
+      const inner = [...scope, each, position];
+      const guard = body.while === undefined ? undefined : bounded(body.while, `${taskReference}/while`);
+      if (guard !== undefined && hasExpression(guard)) admitSetExpressions(guard, `${taskReference}/while`, inner);
+      operation = {
+        loop: {
+          each, at: position, source, ...(guard === undefined ? {} : { guard }),
+          children: compileScope(body.do, `${taskReference}/do`, budget, depth + 1, 0, inner),
+        },
+      };
+    } else if (Object.hasOwn(body, "set")) {
       const value = bounded(body.set, `${taskReference}/set`);
       const dynamic = hasExpression(value);
-      if (dynamic) admitSetExpressions(value, `${taskReference}/set`);
+      if (dynamic) admitSetExpressions(value, `${taskReference}/set`, scope);
       operation = { value, dynamic };
     }
-    else if (Object.hasOwn(body, "do")) operation = { children: compileScope(body.do, `${taskReference}/do`, budget, depth + 1) };
+    else if (Object.hasOwn(body, "do")) operation = { children: compileScope(body.do, `${taskReference}/do`, budget, depth + 1, 0, scope) };
     else if (Object.hasOwn(body, "switch")) {
       const at = `${taskReference}/switch`;
       if (!Array.isArray(body.switch) || body.switch.length === 0) reject(at);
@@ -245,7 +273,7 @@ function compileScope(
         if (Object.keys(caseBody).some((field) => field !== "when" && field !== "then")
           || (caseBody.when !== undefined && typeof caseBody.when !== "string")) reject(caseReference);
         const when = caseBody.when === undefined ? undefined : bounded(caseBody.when, `${caseReference}/when`);
-        if (when !== undefined && hasExpression(when)) admitSetExpressions(when, `${caseReference}/when`);
+        if (when !== undefined && hasExpression(when)) admitSetExpressions(when, `${caseReference}/when`, scope);
         const target = resolve(caseBody.then, `${caseReference}/then`, true);
         const item: SwitchCase = { name: caseName, ...(when === undefined ? {} : { when }), next: target.next, endsWorkflow: target.ends };
         if (when === undefined) {
@@ -264,7 +292,7 @@ function compileScope(
         branches: fork.branches.map((branch: unknown, slot: number) => {
           // A branch is one named task; its transitions would be outside the proven profile.
           if (object(branch) && Object.values(branch).some((task) => object(task) && Object.hasOwn(task, "then"))) reject(`${at}/branches/${slot}`);
-          return compileScope([branch], `${at}/branches`, budget, depth + 1, slot);
+          return compileScope([branch], `${at}/branches`, budget, depth + 1, slot, scope);
         }),
       };
     } else if (Object.hasOwn(body, "try")) {
@@ -276,10 +304,10 @@ function compileScope(
         || (handlerBody.then !== undefined && body.then !== undefined)) reject(at);
       const after = handlerBody.then === undefined ? undefined : resolve(handlerBody.then, `${at}/then`);
       operation = {
-        attempt: compileScope(body.try, `${taskReference}/try`, budget, depth + 1),
+        attempt: compileScope(body.try, `${taskReference}/try`, budget, depth + 1, 0, scope),
         handler: {
           filter: compileFilter(handlerBody, at),
-          children: compileScope(handlerBody.do, `${at}/do`, budget, depth + 1),
+          children: compileScope(handlerBody.do, `${at}/do`, budget, depth + 1, 0, scope),
           ...(after === undefined ? {} : { next: after.next, endsWorkflow: after.ends }),
         },
       };
@@ -294,7 +322,9 @@ function compileScope(
   }));
 }
 
-async function runScope(tasks: readonly Task[], input: Json, budget: { steps: number }): Promise<{ data: Json; ended: boolean }> {
+async function runScope(
+  tasks: readonly Task[], input: Json, budget: { steps: number }, vars: Variables = {},
+): Promise<{ data: Json; ended: boolean }> {
   const builder = new StateGraph<typeof State.spec, typeof State.State, typeof State.Update, string>(State);
   for (const task of tasks) {
     builder.addNode(task.key, async (state) => {
@@ -310,32 +340,55 @@ async function runScope(tasks: readonly Task[], input: Json, budget: { steps: nu
       let result: { data: Json; ended: boolean };
       if (task.attempt !== undefined) {
         try {
-          result = await runScope(task.attempt, structuredClone(state.data), budget);
+          result = await runScope(task.attempt, structuredClone(state.data), budget, vars);
         } catch (error) {
           const handler = task.handler!;
           if (!(error instanceof WorkflowExecutionError) || (error.problem === undefined && error.catchView === undefined) || !catchMatches(handler.filter, error)) throw error;
-          result = await runScope(handler.children, structuredClone(state.data), budget);
+          result = await runScope(handler.children, structuredClone(state.data), budget, vars);
           if (handler.next !== undefined) {
             next = handler.next;
             endsWorkflow = handler.endsWorkflow === true;
           }
         }
       } else if (task.cases !== undefined || task.fallback !== undefined) {
-        const chosen = selectCase(task, state.data);
+        const chosen = selectCase(task, state.data, vars);
         if (chosen !== undefined) {
           next = chosen.next;
           endsWorkflow = chosen.endsWorkflow;
         }
         result = { data: structuredClone(state.data), ended: false };
+      } else if (task.loop !== undefined) {
+        const loop = task.loop;
+        const source = evaluateSet(task, state.data, loop.source, vars);
+        if (!Array.isArray(source)) {
+          throw new WorkflowExecutionError("workflow_semantic_error", "for.in must evaluate to an array", task.reference, {});
+        }
+        let data: Json = structuredClone(state.data);
+        let finished = false;
+        for (const [index, item] of source.entries()) {
+          const scoped: Variables = { ...vars, [loop.each]: item, [loop.at]: index };
+          if (loop.guard !== undefined) {
+            // Observed core behavior: `.` is the data the loop task received, not the running data.
+            const proceed = hasExpression(loop.guard) ? evaluateSet(task, state.data, loop.guard, scoped) : loop.guard;
+            if (proceed === null || proceed === false) break;
+          }
+          const iteration = await runScope(loop.children, data, budget, scoped);
+          data = iteration.data;
+          if (iteration.ended) {
+            finished = true;
+            break;
+          }
+        }
+        result = { data, ended: finished };
       } else if (task.branches !== undefined) {
-        const settled = await Promise.allSettled(task.branches.map((branch) => runScope(branch, structuredClone(state.data), budget)));
+        const settled = await Promise.allSettled(task.branches.map((branch) => runScope(branch, structuredClone(state.data), budget, vars)));
         const failed = settled.find((outcome): outcome is PromiseRejectedResult => outcome.status === "rejected");
         if (failed !== undefined) throw failed.reason;
         result = { data: settled.map((outcome) => (outcome as PromiseFulfilledResult<{ data: Json }>).value.data), ended: false };
       } else {
         result = task.children !== undefined
-          ? await runScope(task.children, structuredClone(state.data), budget)
-          : { data: task.dynamic ? evaluateSet(task, state.data) : structuredClone(task.value!), ended: false };
+          ? await runScope(task.children, structuredClone(state.data), budget, vars)
+          : { data: task.dynamic ? evaluateSet(task, state.data, task.value, vars) : structuredClone(task.value!), ended: false };
       }
       const ended = result.ended || endsWorkflow;
       return { data: result.data, ended, next: ended ? END : next };
@@ -357,7 +410,7 @@ const DEFAULT_WORKFLOW = {
 export function literalExecutionCapabilities() {
   return {
     engine: "langgraph-js", experimental: true, dsl: "1.0.3",
-    tasks: ["set", "do", "raise", "try", "fork", "switch"], transitions: ["continue", "exit", "end", "scope_task_name"],
+    tasks: ["set", "do", "raise", "try", "fork", "switch", "for"], transitions: ["continue", "exit", "end", "scope_task_name"],
     expressions: true, expressionScope: ["set"], jq: "1.8.2", catalogCalls: false, nativeExtensions: [],
     persistence: false, recovery: false, publicInvocationIdentity: false,
     maxTasks: MAX_TASKS, maxSteps: MAX_STEPS, maxScopeDepth: MAX_SCOPE_DEPTH, maxValueBytes: MAX_VALUE_BYTES,

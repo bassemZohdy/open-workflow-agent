@@ -15,6 +15,7 @@ export class ExpressionFailure extends Error {
 
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 type Jq = Awaited<ReturnType<typeof loadJq>>;
+export type Variables = Readonly<Record<string, Json>>;
 
 const MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER;
 
@@ -41,7 +42,7 @@ const POSTLUDE = `
 // Variables core binds from the workflow state; this profile binds none.
 const UNBOUND_AMBIENT = new Set([
   "$workflow", "$runtime", "$context", "$event", "$resume_input", "$task", "$input", "$output",
-  "$secrets", "$authorization", "$error", "$item", "$index",
+  "$secrets", "$authorization", "$error",
 ]);
 
 let handle: Jq | undefined;
@@ -173,15 +174,28 @@ function tokens(text: string): [string, number][] {
   return found;
 }
 
-function program(source: string): string {
-  return PRELUDE + source + "\n" + POSTLUDE;
+/** Bindings are prepended on the first program line, so the prelude's line numbers are unchanged. */
+function program(source: string, bindings = ""): string {
+  return bindings + PRELUDE + source + "\n" + POSTLUDE;
+}
+
+function bindingsFor(source: string, variables: Variables): string {
+  const used = new Set(tokens(source).filter(([token]) => token.startsWith("$")).map(([token]) => token.slice(1)));
+  let text = "";
+  for (const [name, value] of Object.entries(variables)) {
+    if (!used.has(name)) continue;
+    // Core validates each binding with the same bounds; descriptor wrappers get a little extra depth.
+    validateExpressionData(value, 0, name === "workflow" || name === "task" ? 68 : 64);
+    text += `${JSON.stringify(value)} as $${name} | `;
+  }
+  return text;
 }
 
 /** Admission: reject denied constructs, then compile (without running) via an uncalled definition. */
-function admit(source: string): void {
+function admit(source: string, scope: readonly string[]): void {
   for (const [token, position] of tokens(source)) {
     if (token === "$ENV") throw new ExpressionFailure("ambient environment access is not enabled");
-    if (UNBOUND_AMBIENT.has(token)) throw new ExpressionFailure("expression variables are not enabled in this profile", "unsupported_profile");
+    if (UNBOUND_AMBIENT.has(token) && !scope.includes(token.slice(1))) throw new ExpressionFailure("expression variables are not enabled in this profile", "unsupported_profile");
     if (token === "include" || token === "import") {
       const before = source.slice(0, position).trimEnd();
       const after = source.slice(position + token.length).trimStart();
@@ -191,18 +205,19 @@ function admit(source: string): void {
   try {
     // jq drops uncalled definitions before resolving names; a branch that never runs forces
     // full compilation (undefined variables and functions) without executing the expression.
-    jq().json(null, `def __owa_admission: ${program(source)};\nif false then __owa_admission else null end`);
+    const declared = scope.map((name) => `null as $${name} | `).join("");
+    jq().json(null, `def __owa_admission: ${program(source, declared)};\nif false then __owa_admission else null end`);
   } catch {
     throw new ExpressionFailure("invalid jq expression");
   }
 }
 
 /** Admit every `${ }` segment in a value tree; keys are never evaluated. */
-export function admitExpressions(value: unknown): void {
-  if (Array.isArray(value)) value.forEach(admitExpressions);
-  else if (value !== null && typeof value === "object") Object.values(value).forEach(admitExpressions);
+export function admitExpressions(value: unknown, scope: readonly string[] = []): void {
+  if (Array.isArray(value)) value.forEach((item) => admitExpressions(item, scope));
+  else if (value !== null && typeof value === "object") Object.values(value).forEach((item) => admitExpressions(item, scope));
   else if (typeof value === "string" && value.includes("${")) {
-    for (const [executable, source] of segments(value)) if (executable) admit(source);
+    for (const [executable, source] of segments(value)) if (executable) admit(source, scope);
   }
 }
 
@@ -212,11 +227,11 @@ export function hasExpression(value: unknown): boolean {
   return typeof value === "string" && value.includes("${");
 }
 
-function evaluateAtom(source: string, data: Json): Json {
+function evaluateAtom(source: string, data: Json, variables: Variables): Json {
   validateExpressionData(data);
   let results: unknown[];
   try {
-    results = jq().json(structuredClone(data), program(source));
+    results = jq().json(structuredClone(data), program(source, bindingsFor(source, variables)));
   } catch {
     throw new ExpressionFailure("jq expression evaluation failed");
   }
@@ -225,11 +240,11 @@ function evaluateAtom(source: string, data: Json): Json {
   return results[0] as Json;
 }
 
-export function evaluateExpression(expression: Json, data: Json): Json {
+export function evaluateExpression(expression: Json, data: Json, variables: Variables = {}): Json {
   validateExpressionData(data);
-  if (Array.isArray(expression)) return expression.map((item) => evaluateExpression(item, data));
+  if (Array.isArray(expression)) return expression.map((item) => evaluateExpression(item, data, variables));
   if (expression !== null && typeof expression === "object") {
-    return Object.fromEntries(Object.entries(expression).map(([key, item]) => [key, evaluateExpression(item, data)]));
+    return Object.fromEntries(Object.entries(expression).map(([key, item]) => [key, evaluateExpression(item, data, variables)]));
   }
   if (typeof expression !== "string") {
     validateExpressionData(expression);
@@ -239,6 +254,6 @@ export function evaluateExpression(expression: Json, data: Json): Json {
   const parts = segments(expression);
   const expressions = parts.filter(([executable]) => executable).map(([, source]) => source);
   const literals = parts.filter(([executable]) => !executable).map(([, source]) => source);
-  if (expressions.length === 1 && literals.join("").trim() === "") return evaluateAtom(expressions[0], data);
-  return parts.map(([executable, source]) => (executable ? expressionString(evaluateAtom(source, data)) : source)).join("");
+  if (expressions.length === 1 && literals.join("").trim() === "") return evaluateAtom(expressions[0], data, variables);
+  return parts.map(([executable, source]) => (executable ? expressionString(evaluateAtom(source, data, variables)) : source)).join("");
 }

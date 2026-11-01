@@ -266,9 +266,9 @@ treated as a deferred task or as additional feature completion.
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
   The optional TypeScript package admits official OWS definitions and executes
   literal set/do/raise, try/catch (literal error filters), non-competing fork
-  jq 1.8.2 `set` expressions and `switch` through actual native graphs. Eighty-seven shared
+  jq 1.8.2 `set` expressions, `switch` and `for` through actual native graphs. One hundred eleven shared
   success/fault fixtures match locally across ADK, LangGraph Python and Node; the
-  Node package has 129 tests. This remains a component, not a complete engine adapter.
+  Node package has 155 tests. This remains a component, not a complete engine adapter.
   Public identity, durable services, expressions, calls and full runtime behavior
   remain missing. Keep the format-validation difference explicit. See the
   [execution scope](docs/s4-03-javascript-execution-acceptance.md),

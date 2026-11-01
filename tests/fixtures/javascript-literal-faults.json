@@ -113,5 +113,45 @@
     "id": "switch-fault-plain-continue-runs-next-task",
     "tasks": [{"route": {"switch": [{"a": {"when": "${ true }", "then": "continue"}}]}}, {"mid": {"raise": {"error": {"status": 400, "type": "https://errors.test/mid-ran"}}}}, {"zeroT": {"set": {"r": "zero"}, "then": "end"}}],
     "expected": {"code": "workflow_execution_error", "message": "https://errors.test/mid-ran", "details": {"status": 400, "type": "https://errors.test/mid-ran", "instance": "/do/1/mid"}}
+  },
+  {
+    "id": "for-fault-body-error-keeps-the-task-instance",
+    "tasks": [{"loop": {"for": {"each": "n", "in": "${ [1] }"}, "do": [{"step": {"raise": {"error": {"status": 400, "type": "https://errors.test/loop"}}}}]}}],
+    "expected": {"code": "workflow_execution_error", "message": "https://errors.test/loop", "details": {"status": 400, "type": "https://errors.test/loop", "instance": "/do/0/loop/do/0/step"}}
+  },
+  {
+    "id": "for-fault-in-expression-error",
+    "tasks": [{"loop": {"for": {"each": "n", "in": "${ 1 / 0 }"}, "do": [{"step": {"set": {"v": 1}}}]}}],
+    "expected": {"code": "expression_error", "message": "jq expression evaluation failed", "details": {"instance": "/do/0/loop"}}
+  },
+  {
+    "id": "for-fault-while-expression-error",
+    "tasks": [{"loop": {"for": {"each": "n", "in": "${ [1, 2] }"}, "do": [{"step": {"set": {"v": 1}}}], "while": "${ 1 / 0 }"}}],
+    "expected": {"code": "expression_error", "message": "jq expression evaluation failed", "details": {"instance": "/do/0/loop"}}
+  },
+  {
+    "id": "for-fault-in-object-is-not-an-array",
+    "tasks": [{"loop": {"for": {"each": "n", "in": "${ {} }"}, "do": [{"step": {"set": {"v": 1}}}]}}],
+    "expected": {"code": "workflow_semantic_error", "message": "for.in must evaluate to an array", "details": {"instance": "/do/0/loop"}}
+  },
+  {
+    "id": "for-fault-in-number-is-not-an-array",
+    "tasks": [{"loop": {"for": {"each": "n", "in": "${ 5 }"}, "do": [{"step": {"set": {"v": 1}}}]}}],
+    "expected": {"code": "workflow_semantic_error", "message": "for.in must evaluate to an array", "details": {"instance": "/do/0/loop"}}
+  },
+  {
+    "id": "for-fault-in-null-is-not-an-array",
+    "tasks": [{"loop": {"for": {"each": "n", "in": "${ null }"}, "do": [{"step": {"set": {"v": 1}}}]}}],
+    "expected": {"code": "workflow_semantic_error", "message": "for.in must evaluate to an array", "details": {"instance": "/do/0/loop"}}
+  },
+  {
+    "id": "for-fault-in-string-is-not-an-array",
+    "tasks": [{"loop": {"for": {"each": "n", "in": "${ \"ab\" }"}, "do": [{"step": {"set": {"v": 1}}}]}}],
+    "expected": {"code": "workflow_semantic_error", "message": "for.in must evaluate to an array", "details": {"instance": "/do/0/loop"}}
+  },
+  {
+    "id": "for-fault-in-literal-text-is-not-an-array",
+    "tasks": [{"loop": {"for": {"each": "n", "in": "[1,2]"}, "do": [{"step": {"set": {"v": 1}}}]}}],
+    "expected": {"code": "workflow_semantic_error", "message": "for.in must evaluate to an array", "details": {"instance": "/do/0/loop"}}
   }
 ]

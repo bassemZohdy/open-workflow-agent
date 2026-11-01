@@ -579,5 +579,101 @@
     "tasks": [{"g": {"try": [{"route": {"switch": [{"a": {"when": "${ 1 / 0 }", "then": "continue"}}]}}], "catch": {"do": [{"r": {"set": {"m": "caught"}}}]}}}],
     "input": {"x": 1},
     "expected": {"m": "caught"}
+  },
+  {
+    "id": "for-threads-data-through-iterations",
+    "tasks": [{"loop": {"for": {"each": "n", "in": "${ .items }"}, "do": [{"step": {"set": {"total": "${ .total + $n }", "items": "${ .items }"}}}]}}],
+    "input": {"items": [1, 2, 3], "total": 0},
+    "expected": {"items": [1, 2, 3], "total": 6}
+  },
+  {
+    "id": "for-default-item-and-index-names",
+    "tasks": [{"loop": {"for": {"in": "${ .items }"}, "do": [{"step": {"set": {"last": "${ $item }", "idx": "${ $index }", "items": "${ .items }"}}}]}}],
+    "input": {"items": ["a", "b"]},
+    "expected": {"idx": 1, "items": ["a", "b"], "last": "b"}
+  },
+  {
+    "id": "for-custom-item-and-index-names",
+    "tasks": [{"loop": {"for": {"each": "n", "in": "${ .items }", "at": "i"}, "do": [{"step": {"set": {"acc": "${ (.acc // []) + [[$i, $n]] }", "items": "${ .items }"}}}]}}],
+    "input": {"items": ["x", "y", "z"]},
+    "expected": {"acc": [[0, "x"], [1, "y"], [2, "z"]], "items": ["x", "y", "z"]}
+  },
+  {
+    "id": "for-empty-array-leaves-data-unchanged",
+    "tasks": [{"loop": {"for": {"each": "n", "in": "${ .items }"}, "do": [{"step": {"set": {"total": "${ .total + $n }", "items": "${ .items }"}}}]}}],
+    "input": {"items": [], "total": 9},
+    "expected": {"items": [], "total": 9}
+  },
+  {
+    "id": "for-while-guards-on-the-loop-variable",
+    "tasks": [{"loop": {"for": {"each": "x", "in": "${ .items }"}, "do": [{"step": {"set": {"n": "${ (.n // 0) + 1 }", "items": "${ .items }"}}}], "while": "${ $x < 3 }"}}],
+    "input": {"items": [1, 2, 3, 4]},
+    "expected": {"items": [1, 2, 3, 4], "n": 2}
+  },
+  {
+    "id": "for-while-guards-on-the-index",
+    "tasks": [{"loop": {"for": {"each": "x", "in": "${ .items }", "at": "i"}, "do": [{"step": {"set": {"n": "${ (.n // 0) + 1 }", "items": "${ .items }"}}}], "while": "${ $i < 2 }"}}],
+    "input": {"items": [1, 2, 3, 4]},
+    "expected": {"items": [1, 2, 3, 4], "n": 2}
+  },
+  {
+    "id": "for-while-false-runs-nothing",
+    "tasks": [{"loop": {"for": {"each": "x", "in": "${ .items }"}, "do": [{"step": {"set": {"n": "${ (.n // 0) + 1 }", "items": "${ .items }"}}}], "while": "${ false }"}}],
+    "input": {"items": [1, 2, 3, 4], "n": 7},
+    "expected": {"items": [1, 2, 3, 4], "n": 7}
+  },
+  {
+    "id": "for-while-literal-string-is-truthy",
+    "tasks": [{"loop": {"for": {"each": "x", "in": "${ .items }"}, "do": [{"step": {"set": {"n": "${ (.n // 0) + 1 }", "items": "${ .items }"}}}], "while": "false"}}],
+    "input": {"items": [1, 2, 3, 4]},
+    "expected": {"items": [1, 2, 3, 4], "n": 4}
+  },
+  {
+    "id": "for-while-sees-the-data-the-loop-received",
+    "tasks": [{"loop": {"for": {"each": "x", "in": "${ .items }"}, "do": [{"step": {"set": {"n": "${ (.n // 0) + 1 }", "items": "${ .items }", "flag": "${ .flag }", "gen": "${ (.gen // 0) + 1 }"}}}], "while": "${ .gen < 2 }"}}],
+    "input": {"items": [1, 2, 3], "flag": true, "gen": 0},
+    "expected": {"flag": true, "gen": 3, "items": [1, 2, 3], "n": 3}
+  },
+  {
+    "id": "for-while-dot-is-not-the-item",
+    "tasks": [{"loop": {"for": {"each": "x", "in": "${ .items }"}, "do": [{"step": {"set": {"n": "${ (.n // 0) + 1 }", "items": "${ .items }", "flag": "${ .flag }", "gen": "${ (.gen // 0) + 1 }"}}}], "while": "${ . == $x }"}}],
+    "input": {"items": [1, 2, 3], "flag": true, "gen": 0},
+    "expected": {"flag": true, "gen": 0, "items": [1, 2, 3]}
+  },
+  {
+    "id": "for-then-end-in-body-ends-the-workflow",
+    "tasks": [{"loop": {"for": {"each": "n", "in": "${ .items }"}, "do": [{"step": {"set": {"n": "${ $n }"}, "then": "end"}}]}}],
+    "input": {"items": [1, 2, 3]},
+    "expected": {"n": 1}
+  },
+  {
+    "id": "for-then-exit-in-body-ends-only-the-iteration",
+    "tasks": [{"loop": {"for": {"each": "x", "in": "${ .items }"}, "do": [{"step": {"set": {"n": "${ (.n // 0) + 1 }", "items": "${ .items }"}, "then": "exit"}}, {"skip": {"set": {"wrong": true}}}]}}, {"after": {"set": {"n": "${ .n }"}}}],
+    "input": {"items": [1, 2, 3]},
+    "expected": {"n": 3}
+  },
+  {
+    "id": "for-named-jump-restarts-each-iteration",
+    "tasks": [{"loop": {"for": {"each": "x", "in": "${ .items }"}, "do": [{"a": {"set": {"n": "${ (.n // 0) + 1 }", "items": "${ .items }"}, "then": "c"}}, {"b": {"set": {"wrong": true}}}, {"c": {"set": {"n": "${ .n + 10 }", "items": "${ .items }"}}}]}}],
+    "input": {"items": [1, 2]},
+    "expected": {"items": [1, 2], "n": 22}
+  },
+  {
+    "id": "for-nested-loops-see-outer-variables",
+    "tasks": [{"outer": {"for": {"each": "a", "in": "${ .xs }"}, "do": [{"inner": {"for": {"each": "b", "in": "${ .ys }"}, "do": [{"acc": {"set": {"xs": "${ .xs }", "ys": "${ .ys }", "t": "${ (.t // 0) + $a * $b }"}}}]}}]}}],
+    "input": {"xs": [1, 2], "ys": [10, 20]},
+    "expected": {"t": 90, "xs": [1, 2], "ys": [10, 20]}
+  },
+  {
+    "id": "for-switch-in-body-uses-the-loop-variable",
+    "tasks": [{"loop": {"for": {"each": "x", "in": "${ .items }"}, "do": [{"r": {"switch": [{"big": {"when": "${ $x > 1 }", "then": "hi"}}, {"d": {"then": "lo"}}]}}, {"lo": {"set": {"t": "${ (.t // 0) + 1 }", "items": "${ .items }"}, "then": "end"}}, {"hi": {"set": {"t": "${ (.t // 0) + 100 }", "items": "${ .items }"}, "then": "end"}}]}}],
+    "input": {"items": [1, 2]},
+    "expected": {"items": [1, 2], "t": 1}
+  },
+  {
+    "id": "for-body-error-is-caught",
+    "tasks": [{"g": {"try": [{"loop": {"for": {"each": "n", "in": "${ .items }"}, "do": [{"step": {"set": {"x": "${ 1 / 0 }"}}}]}}], "catch": {"do": [{"r": {"set": {"m": "caught"}}}]}}}],
+    "input": {"items": [1]},
+    "expected": {"m": "caught"}
   }
 ]
