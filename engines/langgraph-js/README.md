@@ -18,23 +18,29 @@ invocation identity or a production-qualified engine adapter.
 `executeLiteralWorkflow(source, input)` is an experimental execution component.
 It validates the complete official definition, derives a typed immutable private
 program, and builds actual LangGraph nodes for literal `set`, inline `raise`, nested `do` and
-`try`/`catch` (literal error filters only) and non-competing `fork` tasks. Fixed `continue`, scope-local named transitions, `exit`, and workflow `end`
-are supported. Whole-definition admission precedes native graph construction.
+`try`/`catch` (literal error filters only), non-competing `fork` tasks and jq 1.8.2
+`${ }` expressions in `set` values. Fixed `continue`, scope-local named transitions,
+`exit`, and workflow `end` are supported. Whole-definition admission precedes native graph construction.
 Missing source generates the canonical one-task `agent:1.0.0@default` workflow,
 which explicitly rejects because catalog calls are outside this component.
 
-The profile rejects expressions, data transforms/schemas, calls, other task types,
+The profile rejects expressions outside `set` values, workflow-state variables
+(`$workflow`, `$context`, `$input` and similar), data transforms/schemas, calls,
+other task types,
 native extensions, persistence and recovery. It has no public plan or durable
 handle. Values must be finite JSON, at most 1 MiB and depth 64, with integers in
-JavaScript's safe range; executable literal strings containing `${` reject.
+JavaScript's safe range; `${` is evaluated as a jq expression only in `set` values and
+rejects elsewhere. jq has no time limit here, so a pathological expression can block
+the event loop.
 Compilation caps task names at 256 UTF-8 bytes, task references at 8 KiB,
 total tasks at 256 and nested scope depth at eight; a shared
 512-step budget bounds routing loops. `literalExecutionCapabilities()` exposes
 these restrictions. `WorkflowExecutionError.asDict()` projects a bounded common
 error code/message/reference without SDK objects or source excerpts. A declared
 inline `raise.error` instead projects the literal standard error fields with
-the canonical task `instance`, matching the Python contract. Error references,
-expressions and runtime lookup are unsupported and reject before execution.
+the canonical task `instance`, matching the Python contract. Error references and
+runtime lookup are unsupported and reject before execution; expression failures
+project the common `expression_error` code.
 
 Nine exact shared fixtures exercise this component and the Python adapters.
 They cover literal data, sequences, local jumps, nested exit and workflow end;

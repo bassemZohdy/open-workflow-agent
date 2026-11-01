@@ -38,5 +38,60 @@
     "id": "fork-branch-fault-propagates",
     "tasks": [{"par": {"fork": {"branches": [{"a": {"set": {"v": "A"}}}, {"b": {"raise": {"error": {"status": 400, "type": "https://errors.test/a"}}}}]}}}],
     "expected": {"code": "workflow_execution_error", "message": "https://errors.test/a", "details": {"instance": "/do/0/par/fork/branches/1/b", "status": 400, "type": "https://errors.test/a"}}
+  },
+  {
+    "id": "expr-fault-runtime-division",
+    "tasks": [{"a": {"set": "${ 1 / 0 }"}}],
+    "expected": {"code": "expression_error", "message": "jq expression evaluation failed", "details": {"instance": "/do/0/a"}}
+  },
+  {
+    "id": "expr-fault-two-values",
+    "tasks": [{"a": {"set": "${ 1, 2 }"}}],
+    "expected": {"code": "expression_error", "message": "jq expression must produce exactly one JSON value", "details": {"instance": "/do/0/a"}}
+  },
+  {
+    "id": "expr-fault-no-value",
+    "tasks": [{"a": {"set": "${ empty }"}}],
+    "expected": {"code": "expression_error", "message": "jq expression must produce exactly one JSON value", "details": {"instance": "/do/0/a"}}
+  },
+  {
+    "id": "expr-fault-env-disabled",
+    "tasks": [{"a": {"set": "${ env }"}}],
+    "expected": {"code": "expression_error", "message": "jq expression evaluation failed", "details": {"instance": "/do/0/a"}}
+  },
+  {
+    "id": "expr-fault-input-disabled",
+    "tasks": [{"a": {"set": "${ input }"}}],
+    "expected": {"code": "expression_error", "message": "jq expression evaluation failed", "details": {"instance": "/do/0/a"}}
+  },
+  {
+    "id": "expr-fault-non-finite",
+    "tasks": [{"a": {"set": "${ [nan] | .[0] }"}}],
+    "expected": {"code": "expression_error", "message": "jq expression evaluation failed", "details": {"instance": "/do/0/a"}}
+  },
+  {
+    "id": "expr-fault-unsafe-integer",
+    "tasks": [{"a": {"set": "${ 9007199254740993 }"}}],
+    "expected": {"code": "expression_error", "message": "expression data must be finite JSON with safe integers and bounded nesting", "details": {"reason": "invalid_json", "instance": "/do/0/a"}}
+  },
+  {
+    "id": "expr-fault-in-interpolation",
+    "tasks": [{"a": {"set": "x ${ 1 / 0 } y"}}],
+    "expected": {"code": "expression_error", "message": "jq expression evaluation failed", "details": {"instance": "/do/0/a"}}
+  },
+  {
+    "id": "expr-fault-explicit-error",
+    "tasks": [{"a": {"set": "${ error(\"boom\") }"}}],
+    "expected": {"code": "expression_error", "message": "jq expression evaluation failed", "details": {"instance": "/do/0/a"}}
+  },
+  {
+    "id": "expr-fault-catch-filter-status-mismatch",
+    "tasks": [{"guard": {"try": [{"a": {"set": "${ 1 / 0 }"}}], "catch": {"errors": {"with": {"status": 500}}, "do": [{"r": {"set": {"m": "caught"}}}]}}}],
+    "expected": {"code": "expression_error", "message": "jq expression evaluation failed", "details": {"instance": "/do/0/guard/try/0/a"}}
+  },
+  {
+    "id": "expr-fault-catch-filter-status-422",
+    "tasks": [{"guard": {"try": [{"a": {"set": "${ 1 / 0 }"}}], "catch": {"errors": {"with": {"status": 422}}, "do": [{"r": {"set": {"m": "caught"}}}]}}}],
+    "expected": {"code": "expression_error", "message": "jq expression evaluation failed", "details": {"instance": "/do/0/guard/try/0/a"}}
   }
 ]

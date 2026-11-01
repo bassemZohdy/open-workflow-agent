@@ -141,7 +141,7 @@ test("fork outside the literal profile rejects before constructing a native grap
       { branches: [{ a: { set: { v: 1 }, then: "end" } }] },
       { branches: [{ a: { set: { v: 1 }, then: "continue" } }] },
       { branches: [{ a: { call: "agent:1.0.0@default" } }] },
-      { branches: [{ a: { set: { v: "${ .x }" } } }] },
+      { branches: [{ a: { raise: { error: { status: 400, type: "${ .x }" } } } }] },
     ]) {
       await assert.rejects(executeLiteralWorkflow(workflow([{ par: { fork } }]), {}), (error: unknown) => {
         assert.ok(error instanceof WorkflowExecutionError);
@@ -155,13 +155,58 @@ test("fork outside the literal profile rejects before constructing a native grap
   }
 });
 
+test("the bundled jq is exactly the version core pins", async () => {
+  const { version } = await import("jq-wasm");
+  assert.equal(await version(), "jq-1.8.2");
+});
+
+test("expression admission mirrors core: errors are raised before any native graph is built", async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(StateGraph.prototype, "compile")!;
+  Object.defineProperty(StateGraph.prototype, "compile", { ...descriptor, value() { throw new Error("must-not-compile"); } });
+  try {
+    // Messages and details are the ones core's compile_workflow raises for the same inputs.
+    for (const [expression, message] of [
+      ["${ .a + }", "invalid jq expression"],
+      ["${ $nope }", "invalid jq expression"],
+      ["${ .a", "unterminated runtime expression"],
+      ["${ $ENV }", "ambient environment access is not enabled"],
+      ["${ import \"x\" as x; 1 }", "expression modules are not enabled"],
+    ] as const) {
+      await assert.rejects(executeLiteralWorkflow(workflow([{ a: { set: expression } }]), {}), (error: unknown) => {
+        assert.ok(error instanceof WorkflowExecutionError);
+        assert.equal(error.code, "expression_error");
+        assert.equal(error.message, message);
+        assert.deepEqual(error.asDict().details, { reference: "/do/0/a/set" });
+        return true;
+      });
+    }
+    // Variables core binds from workflow state are not bound here, so they reject as outside the profile.
+    for (const name of ["$workflow", "$context", "$input", "$secrets", "$runtime"]) {
+      await assert.rejects(executeLiteralWorkflow(workflow([{ a: { set: `\${ ${name} }` } }]), {}), (error: unknown) => {
+        assert.ok(error instanceof WorkflowExecutionError);
+        assert.equal(error.code, "unsupported_workflow_feature");
+        return true;
+      });
+    }
+  } finally {
+    Object.defineProperty(StateGraph.prototype, "compile", descriptor);
+  }
+});
+
+test("expressions evaluate values only, keys stay literal, and local jq bindings work", async () => {
+  const result = await executeLiteralWorkflow(
+    workflow([{ a: { set: { "${ .k }": "v", local: "${ . as $x | $x.k + 1 }" } } }]), { k: 1 },
+  );
+  assert.deepEqual(result.output, { "${ .k }": "v", local: 2 });
+});
+
 test("unsupported late tasks reject before constructing a native graph", async () => {
   const descriptor = Object.getOwnPropertyDescriptor(StateGraph.prototype, "compile")!;
   Object.defineProperty(StateGraph.prototype, "compile", { ...descriptor, value() { throw new Error("must-not-compile"); } });
   try {
     for (const tasks of [
       [{ first: { set: { ok: true } } }, { unsupported: { call: "agent:1.0.0@default" } }],
-      [{ expression: { set: { value: "${ .secret }" } } }],
+      [{ expression: { raise: { error: { status: 400, type: "https://errors.test/a", title: "${ .secret }" } } } }],
       [{ output: { set: { ok: true }, output: { as: "${ . }" } } }],
       [{ timeout: { set: { ok: true }, timeout: { after: { seconds: 1 } } } }],
     ]) {
