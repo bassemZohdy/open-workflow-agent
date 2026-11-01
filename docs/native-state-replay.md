@@ -104,7 +104,12 @@ database recovers it through the identical request, and because the interrupted 
 may already have happened it ends `faulted` without repeating the call. Changing the
 execution policy invalidates the authority the source ran under, so a replay request made
 afterwards is refused with a client error before any invocation is created or any model call
-runs. Revocation *during* an already-running replay is not separately tested.
+runs.
+
+Revoking authority *during* a running replay fails the target closed. In the test, the
+execution policy changes while the second of three re-executed calls is in flight: that call
+had already started, but the target ends `faulted` with `execution_authorization_denied`
+(reason `execution_policy_changed`) at that task, and the third call never runs.
 
 ## Crash and restart
 
