@@ -356,6 +356,8 @@ profile and `POST /v1/invocations/{id}/state-replays` ([guide](native-state-repl
 A local run of `tests/langgraph/test_state_replay_api.py` passes all 32 cases (SQLite
 and PostgreSQL 16 in a throwaway container) for both effect policies, including the
 per-source limit (also under concurrent distinct requests) and the replay depth rule. The
-existing coordinator replay tests still pass, including the SQLite crash cases. This is not
-public qualification: crash and restart through the route, lifecycle gate installation, a
-configured example and frozen-source qualification are still open, and S4-02 remains open.
+existing coordinator replay tests still pass, including the SQLite crash cases. The
+configuration-only example in `examples/` is also exercised end to end (34 cases in total
+on both backends). This is not public qualification: crash and restart through the route,
+lifecycle gate installation and frozen-source qualification are still open, and S4-02
+remains open.

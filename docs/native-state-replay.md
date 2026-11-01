@@ -8,6 +8,18 @@ not a published image, and S4-02 remains open. See the
 [design record](s4-02-public-replay-admission-design.md) for what is deliberately not
 done yet.
 
+## Try it with the configured example
+
+Mount the [bootstrap configuration](../examples/native-state-replay.yaml) and the
+[OWS workflow](../examples/native-state-replay-workflow.yaml) under `/config`, provide
+`OWA_NATIVE_STATE_TOKEN` through deployment secrets and retain `/data`. The example uses
+the fake model, so it makes no external model call. Invoke it with `POST /v1/invoke` and
+`{"input": {}}`, read its history, and replay the checkpoint after `first` as shown
+below. The example declares `reexecute`, so the replay runs the second task again and
+creates new receipts; change `replayEffectPolicy` to `read_only` to see the continuation
+refuse its first effect instead. The policy must permit `catalog.call` and
+`model.complete` for the agent call, plus `state.inspect` and `state.replay`.
+
 ## Enable it
 
 Both `native_state: {}` and `native_state_replay: {}` are explicit opt-ins, and authenticated
@@ -77,5 +89,5 @@ Branching (data attribution), nested scopes, timing, declared channels and Comma
 checkpoints, time travel and JavaScript parity are not implemented. Crash and restart are
 qualified at the coordinator level (see the
 [lineage acceptance record](s4-02-native-lineage-acceptance.md)) but not yet through this
-route, and lifecycle gate installation, a configured example and frozen-source
-qualification are still required.
+route, and lifecycle gate installation and frozen-source qualification are still
+required.
