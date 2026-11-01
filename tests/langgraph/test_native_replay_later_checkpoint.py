@@ -11,7 +11,7 @@ from open_workflow_agent.execution_authority import authority_scope
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow, generate_default_workflow
 
-pytest.importorskip("langgraph")
+pytest.importorskip("langgraph.graph")
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine, native
 from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
 from open_workflow_agent_langgraph.native_lineage_fork import prepare_lineage_storage

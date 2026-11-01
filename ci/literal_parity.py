@@ -27,6 +27,10 @@ FIXTURES = (
     "tests/fixtures/javascript-literal-faults.json",
 )
 ENGINES = frozenset({"adk", "langgraph", "langgraph-js"})
+_SAFE_KINDS = frozenset({"set", "do", "raise", "try", "fork", "switch", "for"})
+_SAFE_FIELDS = frozenset(
+    {"set", "do", "raise", "try", "catch", "fork", "switch", "for", "while", "then", "metadata"}
+)
 SCHEMA = "resources/open-workflow/1.0.3/workflow.yaml"
 FORMAT = "owa/literal-outcomes/v1"
 MAX_REPORT_BYTES = 4_194_304
@@ -88,15 +92,12 @@ def validate_literal_plan(plan: WorkflowPlan) -> None:
         raise ParityError("literal capture task count exceeds its profile")
     for task in tasks:
         body = task.definition
-        if task.kind not in {"set", "do", "raise"} or set(body) - {
-            "set",
-            "do",
-            "raise",
-            "then",
-            "metadata",
-        }:
+        # Control-flow and sandboxed jq only: anything that can reach a catalog, protocol,
+        # process, event or timer (call, run, emit, listen, wait, ...) is still rejected.
+        if task.kind not in _SAFE_KINDS or set(body) - _SAFE_FIELDS:
             raise ParityError("literal capture contains an unsupported operation")
-        if task.kind != "do" and not literal(body[task.kind]):
+        # jq runs with env, input, debug, halt and now disabled; raise stays literal-only.
+        if task.kind == "raise" and not literal(body["raise"]):
             raise ParityError("literal capture cannot evaluate expressions")
 
 

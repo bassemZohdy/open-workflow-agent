@@ -14,7 +14,7 @@ from test_native_lineage_fork import apply
 from test_native_lineage_fork import fork as _fork
 from test_native_state_preflight import preflight as _preflight
 
-pytest.importorskip("langgraph")
+pytest.importorskip("langgraph.graph")
 from open_workflow_agent_langgraph.native_lineage_fork import TABLE
 from open_workflow_agent_langgraph.native_lineage_inspection import (
     inspect_native_lineage,

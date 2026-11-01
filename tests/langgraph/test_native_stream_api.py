@@ -14,7 +14,7 @@ from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.execution_authority import authority_scope
 from open_workflow_agent.services import RuntimeServices
 
-pytest.importorskip("langgraph")
+pytest.importorskip("langgraph.graph")
 from native_stream_test_support import authority, configuration, workflow
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 

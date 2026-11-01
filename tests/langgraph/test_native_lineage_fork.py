@@ -17,7 +17,7 @@ from open_workflow_agent.workflow import ExecutionState, WorkflowExecutor
 from test_native_state_preflight import counts
 from test_native_state_preflight import preflight as _preflight
 
-pytest.importorskip("langgraph")
+pytest.importorskip("langgraph.graph")
 from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor, _json_identity, _node_name
 from open_workflow_agent_langgraph.native_lineage_fork import (
     TABLE,

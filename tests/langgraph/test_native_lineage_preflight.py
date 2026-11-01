@@ -14,7 +14,7 @@ from open_workflow_agent.storage import open_storage
 from test_native_state_preflight import counts
 from test_native_state_preflight import preflight as _preflight
 
-pytest.importorskip("langgraph")
+pytest.importorskip("langgraph.graph")
 from open_workflow_agent_langgraph import native_lineage_preflight as module
 from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
 from open_workflow_agent_langgraph.native_lineage_preflight import prepare_native_lineage

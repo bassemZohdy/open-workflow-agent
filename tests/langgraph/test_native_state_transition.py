@@ -18,7 +18,7 @@ from open_workflow_agent.storage import open_storage
 from test_native_state_preflight import preflight as _preflight_fixture
 from test_native_state_preflight import prepare
 
-pytest.importorskip("langgraph")
+pytest.importorskip("langgraph.graph")
 from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
 from open_workflow_agent_langgraph.native_state_mutations import prepare_state_update_storage
 from open_workflow_agent_langgraph.native_state_transition import (

@@ -123,5 +123,7 @@ runtime recovers it to faulted without repeating the call), as is a changed exec
 before the request (refused before anything is created). Revocation during a running replay
 fails the target closed at the in-flight task, and no later effect runs.
 
-Not yet done, so S4-02 stays open: frozen-source qualification on both platforms. The remaining out-of-scope items above are
+The profile was qualified on hosted Linux runners at a frozen commit; see
+[the record](validation-history/s4-02-public-replay-hosted-qualification.md). S4-02 as a whole
+stays open: replay is one profile among broader memory, stream and native-scope work. The remaining out-of-scope items above are
 unchanged.

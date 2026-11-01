@@ -86,8 +86,10 @@ views, so no reference to one can be obtained.
 ## Not implemented
 
 Branching (data attribution), nested scopes, timing, declared channels and Command/Send workflows, replay from non-root
-checkpoints, time travel and JavaScript parity are not implemented. Frozen-source
-qualification is still required.
+checkpoints, time travel and JavaScript parity are not implemented. The profile is
+qualified on hosted Linux runners at a frozen commit (see the
+[hosted qualification record](validation-history/s4-02-public-replay-hosted-qualification.md),
+including what it found and one unresolved repository-wide coverage gate).
 
 ## Lifecycle of the new invocation
 

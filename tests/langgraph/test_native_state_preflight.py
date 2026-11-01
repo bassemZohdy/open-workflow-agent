@@ -20,7 +20,7 @@ from open_workflow_agent.storage import open_storage
 from open_workflow_agent.timers import TimerSuspension
 from open_workflow_agent.workflow import compile_workflow, generate_default_workflow
 
-pytest.importorskip("langgraph")
+pytest.importorskip("langgraph.graph")
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine, native
 from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
 from open_workflow_agent_langgraph.native_state import state_reference

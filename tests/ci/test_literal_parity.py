@@ -77,7 +77,9 @@ def test_shared_outcome_job_requires_actual_all_three_source_matched_producers()
     "body",
     [
         {"call": "llm:1.0.0@default"},
-        {"set": {"value": "${ env }"}},
+        {"wait": {"seconds": 1}},
+        {"emit": {"event": {"with": {"source": "https://example.test", "type": "x"}}}},
+        {"raise": {"error": {"status": 400, "type": "https://e.test/a", "title": "${ env }"}}},
         {"set": {"ok": True}, "output": {"as": "${ env }"}},
     ],
 )
@@ -222,3 +224,31 @@ def test_real_cli_persists_only_complete_matched_evidence_and_leaves_output_unch
     result = subprocess.run(command, capture_output=True, timeout=10)
     assert result.returncode == 2 and b"evidence rejected" in result.stderr
     assert output.read_bytes() == original
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"set": {"value": "${ .a + 1 }"}},
+        {"set": {"value": "${ env }"}},
+        {"try": [{"inner": {"set": {"x": 1}}}], "catch": {"do": [{"r": {"set": {"y": 2}}}]}},
+        {"fork": {"branches": [{"a": {"set": {"v": 1}}}, {"b": {"set": {"v": 2}}}]}},
+        {"switch": [{"a": {"when": "${ .x > 0 }", "then": "continue"}}]},
+        {"for": {"each": "n", "in": "${ .items }"}, "do": [{"s": {"set": {"v": "${ $n }"}}}]},
+    ],
+)
+def test_capture_admission_accepts_the_sandboxed_control_flow_profile(body):
+    from open_workflow_agent.workflow import compile_workflow
+
+    plan = compile_workflow(
+        {
+            "document": {
+                "dsl": "1.0.3",
+                "namespace": "tests",
+                "name": "capture",
+                "version": "1.0.0",
+            },
+            "do": [{"safe": body}],
+        }
+    )
+    validate_literal_plan(plan)

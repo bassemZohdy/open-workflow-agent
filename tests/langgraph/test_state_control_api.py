@@ -24,7 +24,7 @@ from open_workflow_agent.native_state_policy import CAPABILITY
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow, generate_default_workflow
 
-pytest.importorskip("langgraph")
+pytest.importorskip("langgraph.graph")
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 from open_workflow_agent_langgraph.native_state_transition import AttestedStateControls
 from open_workflow_agent_langgraph.state_control import LangGraphStateController

@@ -520,7 +520,8 @@ jobs:
       - name: Type check
         run: |
           uv run --locked mypy ci
-          uv run --locked mypy \
+          # The native memory modules import psycopg lazily; mypy needs it installed.
+          uv run --locked --extra postgres mypy \
             --package open_workflow_agent \
             --package open_workflow_agent_adk \
             --package open_workflow_agent_langgraph \
@@ -612,7 +613,7 @@ jobs:
     # Full shared recovery selections exceeded eight minutes at 46-51%.
     name: ${{ matrix.engine }} native and contract tests
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 65
     env:
       OWA_TEST_JAVASCRIPT_ENGINE: ${{ matrix.engine }}
       OWA_TEST_REQUIRED_JAVASCRIPT: "1"
@@ -658,9 +659,10 @@ jobs:
           PYTHONUNBUFFERED: "1"
         run: |
           set -euo pipefail
+          # The replay suites run in the dedicated PostgreSQL replay job.
           # The hosted ADK profile reached 95% at the 30-minute cap; leave room
           # for the remaining native/shared cases and real JavaScript OS-stop proofs.
-          timeout --signal=TERM --kill-after=30s 45m \
+          timeout --signal=TERM --kill-after=30s 60m \
             uv run --locked --extra knowledge --extra ${{ matrix.extra }} --with pytest --with pytest-asyncio \
             pytest ../../tests/${{ matrix.test_dir }} ../../tests/contract -vv --durations=20 \
             --ignore=../../tests/contract/test_external_operation_keys.py \
@@ -677,7 +679,10 @@ jobs:
             --ignore=../../tests/contract/test_a2a_sdk_inbound.py \
             --ignore=../../tests/contract/test_a2a_sdk_http_json_optional_methods.py \
             --ignore=../../tests/contract/test_a2a_sdk_malformed_streaming_admission.py \
-            --ignore=../../tests/contract/test_a2a_initial_delivery.py
+            --ignore=../../tests/contract/test_a2a_initial_delivery.py \
+            --ignore=../../tests/langgraph/test_state_replay_api.py \
+            --ignore=../../tests/langgraph/test_native_lineage_replay_integration.py \
+            --ignore=../../tests/langgraph/test_native_replay_later_checkpoint.py
       - name: Portable Profile CTK subset
         shell: bash
         run: |

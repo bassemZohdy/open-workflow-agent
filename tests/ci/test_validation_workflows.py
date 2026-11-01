@@ -52,8 +52,9 @@ def test_root_and_both_principal_environments_keep_full_shared_coverage():
     assert "--cov-precision=2" in root_tests["run"]
     assert "--kill-after=30s 45m" in root_tests["run"]
     assert jobs["root"]["timeout-minutes"] == "60"
-    assert jobs["engines"]["timeout-minutes"] == "50"
-    assert "--kill-after=30s 45m" in _runs(jobs["engines"])
+    # The ADK profile already finished at 44 of 45 minutes, so the engine matrix has headroom.
+    assert jobs["engines"]["timeout-minutes"] == "65"
+    assert "--kill-after=30s 60m" in _runs(jobs["engines"])
     engines = jobs["engines"]
     assert {entry["engine"] for entry in engines["strategy"]["matrix"]["include"]} == {
         "adk",
