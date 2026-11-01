@@ -116,6 +116,11 @@ and replays through public requests only, tested on SQLite and PostgreSQL.
 Crash and restart driven through the route is tested as well: a subprocess running the
 real app is stopped at each coordinator stage and the identical request recovers it.
 
-Not yet done, so S4-02 stays open: lifecycle gate installation for the continued target and
-frozen-source qualification on both platforms. The remaining out-of-scope items above are
+The continued target's lifecycle controls are tested for cancellation: a running replay
+target ends cancelled, does no late work and is not resurrected by a repeated request.
+Graceful shutdown mid-continuation and revocation of the original authority during a
+replay are not separately tested.
+
+Not yet done, so S4-02 stays open: frozen-source qualification on both platforms, and the
+two untested lifecycle cases above. The remaining out-of-scope items above are
 unchanged.

@@ -86,8 +86,19 @@ views, so no reference to one can be obtained.
 ## Not implemented
 
 Branching (data attribution), nested scopes, timing, declared channels and Command/Send workflows, replay from non-root
-checkpoints, time travel and JavaScript parity are not implemented. Lifecycle gate
-installation for the continued target and frozen-source qualification are still required.
+checkpoints, time travel and JavaScript parity are not implemented. Frozen-source
+qualification is still required.
+
+## Lifecycle of the new invocation
+
+The continued target is an ordinary invocation owned by the same principal, so the common
+lifecycle controls apply to it. A running replay target obeys the public cancel route: it
+ends `cancelled`, performs no work after the in-flight call returns, and repeating the
+replay request returns the same target without resurrecting it. Tests hold a re-executed
+model call open, cancel through `POST /v1/invocations/{id}/cancel`, then release the call
+(SQLite and PostgreSQL). Process stops are covered above. Not separately tested: graceful
+engine shutdown mid-continuation and revocation of the original authority while a replay
+runs.
 
 ## Crash and restart
 
