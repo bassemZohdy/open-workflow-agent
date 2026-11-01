@@ -366,6 +366,6 @@ route also holds on both backends (the target ends cancelled, performs no late w
 not resurrected by a repeated request). Graceful shutdown mid-continuation leaves the target
 running and a restarted runtime recovers it to faulted without repeating the call, and a
 changed execution policy refuses a new replay before anything is created (both on both
-backends). This is not public qualification: frozen-source qualification is still open,
-revocation during an already-running replay is not separately tested, and S4-02 remains
-open.
+backends). Revoking authority during a running replay fails the target closed
+(`execution_policy_changed` at the in-flight task, no later effect). This is not public
+qualification: frozen-source qualification is still open, and S4-02 remains open.

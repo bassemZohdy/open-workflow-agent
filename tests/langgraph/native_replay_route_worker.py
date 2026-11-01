@@ -23,7 +23,11 @@ from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 async def main():
     root, source_id, key, reference, policy, phase = sys.argv[1:]
     config = configuration()
-    config.execution_authorization.policy.rules[0].actions.append("state.replay")
+    # Must match the parent fixture's policy exactly: the policy digest is part of the
+    # authority the source invocation ran under.
+    config.execution_authorization.policy.rules[0].actions.extend(
+        ["state.replay", "invocations.cancel"]
+    )
     config.native_state_replay = NativeStateReplayConfig()
     datasource = os.getenv("OWA_TEST_POSTGRES_URL")
     if datasource:

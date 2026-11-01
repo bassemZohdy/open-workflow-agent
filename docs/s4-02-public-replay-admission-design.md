@@ -120,9 +120,8 @@ The continued target's lifecycle controls are tested for cancellation: a running
 target ends cancelled, does no late work and is not resurrected by a repeated request.
 Graceful shutdown mid-continuation is tested (the target stays running and a restarted
 runtime recovers it to faulted without repeating the call), as is a changed execution policy
-before the request (refused before anything is created). Revocation during an
-already-running replay is not separately tested.
+before the request (refused before anything is created). Revocation during a running replay
+fails the target closed at the in-flight task, and no later effect runs.
 
-Not yet done, so S4-02 stays open: frozen-source qualification on both platforms, and
-revocation during a running replay. The remaining out-of-scope items above are
+Not yet done, so S4-02 stays open: frozen-source qualification on both platforms. The remaining out-of-scope items above are
 unchanged.

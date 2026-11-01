@@ -27,7 +27,7 @@ from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 TERMINAL = {"completed", "faulted", "cancelled"}
 
 
-def workflow(config, policy):
+def workflow(config, policy, tasks=2):
     source = generate_default_workflow()
     source["document"]["name"] = "state-replay-" + uuid4().hex
     source["document"]["metadata"] = {
@@ -44,10 +44,8 @@ def workflow(config, policy):
             },
         }
     }
-    source["do"] = [
-        {"first": {"call": "agent:1.0.0@default"}},
-        {"second": {"call": "agent:1.0.0@default"}},
-    ]
+    names = ["first", "second", "third", "fourth"][:tasks]
+    source["do"] = [{name: {"call": "agent:1.0.0@default"}} for name in names]
     return compile_workflow(source)
 
 
@@ -61,8 +59,13 @@ def replay_config(request):
     return getattr(request, "param", NativeStateReplayConfig())
 
 
+@pytest.fixture
+def task_count(request):
+    return getattr(request, "param", 2)
+
+
 @pytest.fixture(params=["sqlite", "postgresql"])
-async def replay_runtime(request, tmp_path, monkeypatch, policy, replay_config):
+async def replay_runtime(request, tmp_path, monkeypatch, policy, replay_config, task_count):
     for actor in ("alice", "bob"):
         monkeypatch.setenv("OWA_NATIVE_STREAM_TEST_" + actor.upper(), "replay-state-" + actor)
     config = configuration()
@@ -83,7 +86,7 @@ async def replay_runtime(request, tmp_path, monkeypatch, policy, replay_config):
     engine = LangGraphWorkflowEngine()
     await engine.initialize(services)
     await engine._timer_dispatcher.stop()
-    plan = workflow(config, policy)
+    plan = workflow(config, policy, task_count)
     await engine.compile(plan)
     handle = services.invocations.create(
         engine="langgraph",
@@ -97,7 +100,7 @@ async def replay_runtime(request, tmp_path, monkeypatch, policy, replay_config):
     with authority_scope(authority(services, "alice")):
         result = await engine.invoke(plan, handle, {})
     assert result.status == "completed", result.error
-    assert len(services.model.calls) == 2
+    assert len(services.model.calls) == task_count
     try:
         yield services, engine, handle, plan
     finally:
@@ -664,3 +667,43 @@ async def test_graceful_shutdown_mid_continuation_leaves_a_recoverable_target(
     finally:
         await second.shutdown()
         restarted.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("task_count", [3], indirect=True)
+async def test_revocation_during_a_running_replay_refuses_the_next_effect(replay_runtime):
+    services, engine, handle, plan = replay_runtime
+    if plan.native_state_replay.effect_policy != "reexecute":
+        pytest.skip("a running continuation needs re-execution of an effect")
+    entered = asyncio.Event()
+    release = asyncio.Event()
+
+    async def held(_prompt):
+        entered.set()
+        await release.wait()
+        return {"response": "released"}
+
+    path = f"/v1/invocations/{handle.invocation_id}/state-replays"
+    async with client_for(replay_runtime) as client:
+        reference = await first_task_reference(client, handle)
+        calls = len(services.model.calls)
+        services.model.response = held
+        accepted = await client.post(
+            path, json=request_body(reference, "reexecute"), headers={"Idempotency-Key": "revoke"}
+        )
+        assert accepted.status_code == 202, accepted.text
+        target = accepted.json()["invocation_id"]
+        async with asyncio.timeout(30):
+            await entered.wait()
+        # Revoke while the second task's call is in flight, then let it finish.
+        services.config.execution_authorization.policy.rules[0].actions.append("extra.action")
+        release.set()
+        finished = await wait_terminal(services, target)
+        # The in-flight call may already have happened, but the policy change fails the
+        # target closed at that task and no later effect runs.
+        assert finished.status == "faulted"
+        assert finished.error["code"] == "execution_authorization_denied"
+        assert finished.error["details"]["reason"] == "execution_policy_changed"
+        assert finished.error["details"]["instance"] == "/do/1/second"
+        assert len(services.model.calls) == calls + 1
+        assert services.invocations.get(handle.invocation_id).status == "completed"
