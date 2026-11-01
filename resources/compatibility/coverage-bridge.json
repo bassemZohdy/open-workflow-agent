@@ -5,7 +5,7 @@
     "test_inventory": {
       "mapped_count": 0,
       "unmapped_count": 443,
-      "blocker": "The proposed test rows specify multi-runtime acceptance (including Python and JS/TS, with reference/runtime comparison where applicable). No local selector has been demonstrated to assert every criterion across the row's complete backend scope; shared-fixture overlap is insufficient."
+      "blocker": "The proposed test rows specify multi-runtime acceptance (including Python and JS/TS, with reference/runtime comparison where applicable); by the 2026-11-01 owner decision the candidate OWS runtime is no longer a required backend for the 420 rows that named it. No local selector has been demonstrated to assert every criterion across the row's complete backend scope; shared-fixture overlap is insufficient."
     },
     "schema_constraint_inventory": {
       "mapped_count": 658,
@@ -19,6 +19,18 @@
     "executed": "The selector ran and has a retained evidence reference; acceptance is not thereby verified.",
     "verified": "The full row acceptance criteria were checked by the linked selector and retained evidence."
   },
+  "scope_decisions": [
+    {
+      "id": "scope-2026-11-01-candidate-runtime",
+      "decided_by": "project owner, in chat, 2026-11-01",
+      "decision": "For repository acceptance the stated backend 'candidate OWS runtime' is not a required backend. It is tracked separately as an optional comparison task if it is still wanted.",
+      "applies_to_backends": "OWA reference; LangGraph Python; LangGraph JS; candidate OWS runtime",
+      "effective_backends": "OWA reference; LangGraph Python; LangGraph JS",
+      "row_count": 420,
+      "tracker_fields_preserved": true,
+      "effect": "Removes one unrunnable backend from the stated scope of 420 rows. It maps and credits no row: the JavaScript engine, expressions, durability and history/trace criteria are still required before any proposed test can be credited."
+    }
+  ],
   "test_inventory": [
     {
       "id": "T01",

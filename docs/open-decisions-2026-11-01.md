@@ -20,7 +20,11 @@ Core pins jq 1.8.2 exactly.
 Recommendation: A. The first attempt to install it was denied by the permission
 classifier and was not retried; an explicit approval from the owner is required.
 
-## 2. The "candidate OWS runtime" (blocks 420 proposed tests)
+## 2. The "candidate OWS runtime" (blocks 420 proposed tests) — decided 2026-11-01
+
+**Decision (project owner, 2026-11-01): narrow the stated backends.** The bridge records it
+as `scope_decisions`, the tracker's original fields are preserved, and no row is credited
+by it. The text below is the original brief.
 
 Those rows name a backend that has no adapter, runner or acceptance record in this
 repository. Either provide it, or record a decision to narrow the stated backends of

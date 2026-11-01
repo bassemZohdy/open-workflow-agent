@@ -248,3 +248,23 @@ def test_apache_snapshot_exact_bytes_and_generic_source_boundary():
     assert all("destination" not in item for item in generic["files"])
     assert manifest["private_source"]["visibility"] == "private"
     assert manifest["private_source"]["public_transfer"].startswith("Authorized by the user")
+
+
+def test_backend_scope_decision_matches_the_preserved_tracker():
+    tracker = json.loads(
+        (ROOT / "resources/compatibility/feature-tracker.json").read_text(encoding="utf-8")
+    )
+    bridge = json.loads(
+        (ROOT / "resources/compatibility/coverage-bridge.json").read_text(encoding="utf-8")
+    )
+    (decision,) = bridge["scope_decisions"]
+    affected = [
+        row for row in tracker["tests"] if row["backends"] == decision["applies_to_backends"]
+    ]
+    assert len(affected) == decision["row_count"] == 420
+    # The decision is additive: the tracker keeps its original stated backends.
+    assert all("candidate OWS runtime" in row["backends"] for row in affected)
+    assert decision["tracker_fields_preserved"] is True
+    assert "candidate" not in decision["effective_backends"]
+    # A scope decision never credits a row by itself.
+    assert all(row["status"] == "unmapped" for row in bridge["test_inventory"])

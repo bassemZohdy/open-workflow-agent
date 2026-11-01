@@ -55,10 +55,19 @@ considered.
 Shared-fixture overlap on these is useful regression evidence but is explicitly
 insufficient for the bridge, so it is not credited.
 
+## Scope decision (2026-11-01)
+
+The project owner decided to narrow the stated backends of the 420 rows to the engines
+this repository can run, so the candidate runtime is no longer required. This is
+recorded in the bridge's `scope_decisions`; the tracker's original fields are preserved
+and no row is credited. The JavaScript engine, expressions, durability and history/trace
+criteria below still apply.
+
 ## What would unblock mapping
 
-1. A decision on the candidate OWS runtime: either an adapter and runner in this
-   repository, or a recorded decision to narrow the rows' stated backends.
-2. Expressions (`jq`), then calls and durable state in the Node engine, in that order.
+1. ~~A decision on the candidate OWS runtime~~ (made; see above).
+2. Calls and durable state in the Node engine; `set` expressions now exist (see the
+   [S4-03 scope](s4-03-javascript-execution-acceptance.md)), but `for`, `switch` and
+   conditions do not.
 3. Lifecycle-history and trace capture comparable across engines for the
    history-based criteria (T04, T63 and similar).
