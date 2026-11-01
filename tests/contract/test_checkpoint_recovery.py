@@ -220,8 +220,13 @@ async def test_late_native_resume_result_preserves_committed_cancellation(
 ):
     if engine_name not in {"adk", "langgraph"}:
         pytest.skip("optional bridge has no separate native resume boundary")
-    services = _services(tmp_path, backend, FakeModel())
     engine = engine_type()
+    available = (
+        engine.native.available if engine_name == "adk" else engine.native.task_nodes_available
+    )
+    if not available:
+        pytest.skip("this engine's native SDK is not installed in this environment")
+    services = _services(tmp_path, backend, FakeModel())
     await engine.initialize(services)
     started = asyncio.Event()
     release = asyncio.Event()

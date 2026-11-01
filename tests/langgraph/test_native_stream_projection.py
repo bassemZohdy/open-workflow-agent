@@ -11,7 +11,9 @@ from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.native_streams import NativeStreamLimits, NativeStreamLog
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow, generate_default_workflow
-from open_workflow_agent_langgraph import LangGraphWorkflowEngine
+
+pytest.importorskip("langgraph.checkpoint.sqlite")
+from open_workflow_agent_langgraph import LangGraphWorkflowEngine  # noqa: E402
 
 pytestmark = pytest.mark.asyncio
 
