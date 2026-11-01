@@ -237,6 +237,53 @@ test("switch admission mirrors core: errors are raised before any native graph i
   }
 });
 
+test("for admission mirrors core: bindings, scopes and errors are checked before any native graph is built", async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(StateGraph.prototype, "compile")!;
+  Object.defineProperty(StateGraph.prototype, "compile", { ...descriptor, value() { throw new Error("must-not-compile"); } });
+  const body = [{ step: { set: { v: 1 } } }];
+  const loop = (spec: unknown, extra: Record<string, unknown> = {}, steps: unknown[] = body) =>
+    workflow([{ loop: { for: spec, do: steps, ...extra } }]);
+  try {
+    // Codes, messages and references are the ones core's compile_workflow raises for the same inputs.
+    for (const [source, code, message, reference] of [
+      [loop({ each: "ENV", in: "${ .items }" }), "workflow_semantic_error", "invalid or reserved expression binding", "/do/0/loop/for/each"],
+      [loop({ each: "x", in: "${ .items }", at: "ENV" }), "workflow_semantic_error", "invalid or reserved expression binding", "/do/0/loop/for/at"],
+      [loop({ each: "1x", in: "${ .items }" }), "workflow_semantic_error", "invalid or reserved expression binding", "/do/0/loop/for/each"],
+      [loop({ each: "x", in: "${ .items }", at: "x" }), "workflow_semantic_error", "loop item and index bindings must differ", "/do/0/loop"],
+      [loop({ each: "x", in: "${ .items + }" }), "expression_error", "invalid jq expression", "/do/0/loop/for/in"],
+      [loop({ each: "x", in: "${ .items }" }, { while: "${ .a + }" }), "expression_error", "invalid jq expression", "/do/0/loop/while"],
+      [loop({ each: "n", in: "${ .items }" }, {}, [{ step: { set: { v: "${ $item }" } } }]), "expression_error", "invalid jq expression", "/do/0/loop/do/0/step/set"],
+      [loop({ each: "n", in: "${ [$n] }" }), "expression_error", "invalid jq expression", "/do/0/loop/for/in"],
+      [workflow([{ loop: { for: { each: "n", in: "${ .items }" }, do: body } }, { after: { set: { v: "${ $n }" } } }]), "expression_error", "invalid jq expression", "/do/1/after/set"],
+    ] as const) {
+      await assert.rejects(executeLiteralWorkflow(source, { items: [1] }), (error: unknown) => {
+        assert.ok(error instanceof WorkflowExecutionError);
+        assert.equal(error.code, code);
+        assert.equal(error.message, message);
+        assert.deepEqual(error.asDict().details, { reference });
+        return true;
+      });
+    }
+    // Workflow-state variables stay unbound here, even inside a loop body.
+    await assert.rejects(
+      executeLiteralWorkflow(loop({ each: "x", in: "${ .items }" }, {}, [{ step: { set: { v: "${ $workflow }" } } }]), { items: [1] }),
+      (error: unknown) => error instanceof WorkflowExecutionError && error.code === "unsupported_workflow_feature",
+    );
+  } finally {
+    Object.defineProperty(StateGraph.prototype, "compile", descriptor);
+  }
+});
+
+test("loop variables are bound by name, shadow outer loops and are limited to their scope", async () => {
+  const result = await executeLiteralWorkflow(workflow([{
+    outer: { for: { each: "x", in: "${ .xs }" }, do: [{ inner: { for: { each: "x", in: "${ .ys }" }, do: [
+      { acc: { set: { xs: "${ .xs }", ys: "${ .ys }", seen: "${ (.seen // []) + [$x] }" } } },
+    ] } }] },
+  }]), { xs: [1, 2], ys: [10, 20] });
+  // The inner `x` shadows the outer one, so only the inner values are recorded.
+  assert.deepEqual(result.output, { xs: [1, 2], ys: [10, 20], seen: [10, 20, 10, 20] });
+});
+
 test("unsupported late tasks reject before constructing a native graph", async () => {
   const descriptor = Object.getOwnPropertyDescriptor(StateGraph.prototype, "compile")!;
   Object.defineProperty(StateGraph.prototype, "compile", { ...descriptor, value() { throw new Error("must-not-compile"); } });
