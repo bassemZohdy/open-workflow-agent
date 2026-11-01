@@ -13,8 +13,8 @@ done yet.
 Both `native_state: {}` and `native_state_replay: {}` are explicit opt-ins, and authenticated
 API ingress with original execution authorization is required, exactly as for native state
 views. Replay does not require `native_state_updates`. The block bounds native work
-(`bounds`) and the number of concurrently admitting replays (`max_active_replays`, default
-2). Default installations and ADK reject workflows that require replay.
+(`bounds`), the number of concurrently admitting replays (`max_active_replays`, default 2)
+and the number of replays of one source invocation (`max_replays_per_source`, default 8). Default installations and ADK reject workflows that require replay.
 
 The workflow declares the profile and its effect policy; infrastructure never decides it:
 
@@ -63,13 +63,17 @@ The source invocation and its authority are untouched.
 Only the original owner may replay, and both the current caller and the retained
 original authority must permit `state.replay` on the invocation. Query parameters,
 extra body fields and malformed references are rejected. At most `max_active_replays`
-replays admit concurrently (`429` beyond that); a repeat of an admitted request is not a
-new admission.
+replays admit concurrently and at most `max_replays_per_source` replays may exist for one
+source (`429` beyond either). The per-source limit is enforced inside the reservation
+transaction that every replay serializes on, so concurrent distinct requests cannot
+exceed it; a repeat of an admitted request is never a new admission and is never limited.
+A replay target cannot itself be replayed (`409`, checked before any preflight work).
+The state history of a replay target is also not currently readable through the state
+views, so no reference to one can be obtained.
 
 ## Not implemented
 
-Per-source replay limits and replay depth limits, branching (data attribution), nested
-scopes, timing, declared channels and Command/Send workflows, replay from non-root
+Branching (data attribution), nested scopes, timing, declared channels and Command/Send workflows, replay from non-root
 checkpoints, time travel and JavaScript parity are not implemented. Crash and restart are
 qualified at the coordinator level (see the
 [lineage acceptance record](s4-02-native-lineage-acceptance.md)) but not yet through this

@@ -1390,6 +1390,7 @@ class NativeStateReplayConfig(StrictModel):
         default_factory=lambda: NativeStateConfig(max_concurrency=2, timeout_seconds=30)
     )
     max_active_replays: int = Field(default=2, ge=1, le=16, strict=True)
+    max_replays_per_source: int = Field(default=8, ge=1, le=64, strict=True)
 
     def verify_view_budget(self, views: NativeStateConfig) -> None:
         if (

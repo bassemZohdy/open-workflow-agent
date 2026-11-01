@@ -36,7 +36,16 @@ if TYPE_CHECKING:
 class NativeReplayCoordinator:
     """Reconcile a single root replay; no public capability is advertised."""
 
-    def __init__(self, engine: LangGraphWorkflowEngine, bounds: NativeStateConfig) -> None:
+    def __init__(
+        self,
+        engine: LangGraphWorkflowEngine,
+        bounds: NativeStateConfig,
+        *,
+        max_replays_per_source: int | None = None,
+        allow_replay_of_replay: bool = True,
+    ) -> None:
+        self.max_replays_per_source = max_replays_per_source
+        self.allow_replay_of_replay = allow_replay_of_replay
         self.engine = engine
         self.services = engine.services
         self.bounds = NativeStateConfig.model_validate(bounds.model_dump())
@@ -76,7 +85,14 @@ class NativeReplayCoordinator:
                 bounds=self.bounds,
             )
             plan = await self.services.recovery_definitions.resolve_inspection(source)
-            target = self.reservations.reserve(source, authority, plan, prepared)
+            target = self.reservations.reserve(
+                source,
+                authority,
+                plan,
+                prepared,
+                max_per_source=self.max_replays_per_source,
+                allow_replay_of_replay=self.allow_replay_of_replay,
+            )
         else:
             request, target = self.reservations.recover(source, authority, request_id)
             if (
