@@ -114,7 +114,7 @@ def reports():
 
 def test_complete_synthetic_reports_compare_only_finite_public_outcomes():
     result = aggregate(reports(), SOURCE)
-    assert result["case_count"] == 64 and result["engines"] == sorted(ENGINES)
+    assert result["case_count"] == 87 and result["engines"] == sorted(ENGINES)
     assert result["outcome_parity"] is True
     assert (
         result["public_identity_parity"]

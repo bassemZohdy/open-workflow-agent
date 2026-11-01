@@ -171,3 +171,29 @@ passes on ADK and LangGraph (367 passed); `npm audit --omit=dev` reports no
 vulnerabilities. This is not hosted qualification and promotes no proposed-test or
 schema-constraint row; S4-03 remains open.
 
+## `switch` (local development result)
+
+`switch` executes in Node with jq `when` conditions. Behavior was probed on actual ADK
+and LangGraph Python, which agreed on every case, and 23 more shared fixtures (19
+success, 4 fault; 87 in total) are consumed identically by Node and both Python engines.
+
+Semantics, as observed: `when` cases are evaluated in listed order and the first with a
+jq-truthy result (anything except `null` and `false`, so `0` and a literal string such
+as `"false"` are true) is selected; later `when` expressions are never evaluated. The
+default case (no `when`) is taken only if no `when` case matches, wherever it is listed.
+The data is unchanged. The selected case's `then` applies: a named task, `exit`, `end`,
+or `continue` meaning the natural next task. The task-level `then` applies only when no
+case is selected, and an explicit `continue` on a case or default does not use it. A
+`when` failure is an `expression_error` at the switch task and is catchable.
+
+Admission errors are raised before any graph is built with the same codes, messages
+and details as core: a duplicate case name, an unknown target (with `target` detail),
+more than one default, and invalid or denied `when` expressions (reference
+`.../switch/N/case/when`). Rejected as outside the profile: workflow-state variables in
+`when`, as for `set`. Backward jumps work and are bounded by the shared step budget.
+
+Local evidence: Node 129/129 passes; the shared-fixture contract and CI selection passes
+on ADK and LangGraph. This is not hosted qualification and promotes no proposed-test or
+schema-constraint row; S4-03 remains open (`for`, calls, durability and public identity
+are still unimplemented).
+

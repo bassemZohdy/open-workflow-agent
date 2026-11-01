@@ -465,5 +465,119 @@
     "tasks": [{"guard": {"try": [{"a": {"set": "${ 1 / 0 }"}}], "catch": {"errors": {"with": {"title": "expression_error"}}, "do": [{"r": {"set": {"m": "caught"}}}]}}}],
     "input": {"a": 1},
     "expected": {"m": "caught"}
+  },
+  {
+    "id": "switch-first-matching-case-negative",
+    "tasks": [{"route": {"switch": [{"neg": {"when": "${ .x < 0 }", "then": "negT"}}, {"pos": {"when": "${ .x > 0 }", "then": "posT"}}, {"other": {"then": "zeroT"}}]}}, {"negT": {"set": {"r": "neg"}, "then": "end"}}, {"posT": {"set": {"r": "pos"}, "then": "end"}}, {"zeroT": {"set": {"r": "zero"}}}],
+    "input": {"x": -1},
+    "expected": {"r": "neg"}
+  },
+  {
+    "id": "switch-first-matching-case-positive",
+    "tasks": [{"route": {"switch": [{"neg": {"when": "${ .x < 0 }", "then": "negT"}}, {"pos": {"when": "${ .x > 0 }", "then": "posT"}}, {"other": {"then": "zeroT"}}]}}, {"negT": {"set": {"r": "neg"}, "then": "end"}}, {"posT": {"set": {"r": "pos"}, "then": "end"}}, {"zeroT": {"set": {"r": "zero"}}}],
+    "input": {"x": 1},
+    "expected": {"r": "pos"}
+  },
+  {
+    "id": "switch-default-when-nothing-matches",
+    "tasks": [{"route": {"switch": [{"neg": {"when": "${ .x < 0 }", "then": "negT"}}, {"pos": {"when": "${ .x > 0 }", "then": "posT"}}, {"other": {"then": "zeroT"}}]}}, {"negT": {"set": {"r": "neg"}, "then": "end"}}, {"posT": {"set": {"r": "pos"}, "then": "end"}}, {"zeroT": {"set": {"r": "zero"}}}],
+    "input": {"x": 0},
+    "expected": {"r": "zero"}
+  },
+  {
+    "id": "switch-overlapping-cases-first-wins",
+    "tasks": [{"route": {"switch": [{"a": {"when": "${ .x >= 0 }", "then": "posT"}}, {"b": {"when": "${ .x > 0 }", "then": "negT"}}, {"d": {"then": "zeroT"}}]}}, {"negT": {"set": {"r": "neg"}, "then": "end"}}, {"posT": {"set": {"r": "pos"}, "then": "end"}}, {"zeroT": {"set": {"r": "zero"}}}],
+    "input": {"x": 5},
+    "expected": {"r": "pos"}
+  },
+  {
+    "id": "switch-default-listed-first-is-still-last",
+    "tasks": [{"route": {"switch": [{"a": {"then": "posT"}}, {"b": {"when": "${ true }", "then": "negT"}}]}}, {"negT": {"set": {"r": "neg"}, "then": "end"}}, {"posT": {"set": {"r": "pos"}, "then": "end"}}, {"zeroT": {"set": {"r": "zero"}}}],
+    "input": {"x": 1},
+    "expected": {"r": "neg"}
+  },
+  {
+    "id": "switch-no-match-no-default-continues",
+    "tasks": [{"route": {"switch": [{"a": {"when": "${ .x > 100 }", "then": "posT"}}]}}, {"negT": {"set": {"r": "neg"}, "then": "end"}}, {"posT": {"set": {"r": "pos"}, "then": "end"}}, {"zeroT": {"set": {"r": "zero"}}}],
+    "input": {"x": 1},
+    "expected": {"r": "neg"}
+  },
+  {
+    "id": "switch-case-then-continue",
+    "tasks": [{"route": {"switch": [{"a": {"when": "${ true }", "then": "continue"}}]}}, {"after": {"set": {"after": true}}}],
+    "input": {"x": 1},
+    "expected": {"after": true}
+  },
+  {
+    "id": "switch-case-then-end",
+    "tasks": [{"route": {"switch": [{"a": {"when": "${ true }", "then": "end"}}]}}, {"after": {"set": {"after": true}}}],
+    "input": {"x": 1},
+    "expected": {"x": 1}
+  },
+  {
+    "id": "switch-case-then-exit-is-scoped",
+    "tasks": [{"outer": {"do": [{"route": {"switch": [{"a": {"when": "${ true }", "then": "exit"}}]}}, {"skipped": {"set": {"wrong": true}}}]}}, {"after": {"set": {"after": true}}}],
+    "input": {"x": 1},
+    "expected": {"after": true}
+  },
+  {
+    "id": "switch-data-is-unchanged",
+    "tasks": [{"route": {"switch": [{"a": {"when": "${ true }", "then": "continue"}}]}}],
+    "input": {"x": 1, "y": [1, 2]},
+    "expected": {"x": 1, "y": [1, 2]}
+  },
+  {
+    "id": "switch-jq-zero-is-truthy",
+    "tasks": [{"route": {"switch": [{"a": {"when": "${ 0 }", "then": "posT"}}, {"d": {"then": "zeroT"}}]}}, {"negT": {"set": {"r": "neg"}, "then": "end"}}, {"posT": {"set": {"r": "pos"}, "then": "end"}}, {"zeroT": {"set": {"r": "zero"}}}],
+    "input": {"x": 1},
+    "expected": {"r": "pos"}
+  },
+  {
+    "id": "switch-jq-null-is-falsy",
+    "tasks": [{"route": {"switch": [{"a": {"when": "${ null }", "then": "posT"}}, {"d": {"then": "zeroT"}}]}}, {"negT": {"set": {"r": "neg"}, "then": "end"}}, {"posT": {"set": {"r": "pos"}, "then": "end"}}, {"zeroT": {"set": {"r": "zero"}}}],
+    "input": {"x": 1},
+    "expected": {"r": "zero"}
+  },
+  {
+    "id": "switch-jq-false-is-falsy",
+    "tasks": [{"route": {"switch": [{"a": {"when": "${ false }", "then": "posT"}}, {"d": {"then": "zeroT"}}]}}, {"negT": {"set": {"r": "neg"}, "then": "end"}}, {"posT": {"set": {"r": "pos"}, "then": "end"}}, {"zeroT": {"set": {"r": "zero"}}}],
+    "input": {"x": 1},
+    "expected": {"r": "zero"}
+  },
+  {
+    "id": "switch-literal-when-string-is-truthy",
+    "tasks": [{"route": {"switch": [{"a": {"when": "false", "then": "posT"}}, {"d": {"then": "zeroT"}}]}}, {"negT": {"set": {"r": "neg"}, "then": "end"}}, {"posT": {"set": {"r": "pos"}, "then": "end"}}, {"zeroT": {"set": {"r": "zero"}}}],
+    "input": {"x": 1},
+    "expected": {"r": "pos"}
+  },
+  {
+    "id": "switch-later-when-is-not-evaluated-after-a-match",
+    "tasks": [{"route": {"switch": [{"a": {"when": "${ true }", "then": "posT"}}, {"b": {"when": "${ 1 / 0 }", "then": "negT"}}]}}, {"negT": {"set": {"r": "neg"}, "then": "end"}}, {"posT": {"set": {"r": "pos"}, "then": "end"}}, {"zeroT": {"set": {"r": "zero"}}}],
+    "input": {"x": 1},
+    "expected": {"r": "pos"}
+  },
+  {
+    "id": "switch-case-then-wins-over-task-then",
+    "tasks": [{"route": {"switch": [{"a": {"when": "${ true }", "then": "posT"}}], "then": "negT"}}, {"negT": {"set": {"r": "neg"}, "then": "end"}}, {"posT": {"set": {"r": "pos"}, "then": "end"}}, {"zeroT": {"set": {"r": "zero"}}}],
+    "input": {"x": 1},
+    "expected": {"r": "pos"}
+  },
+  {
+    "id": "switch-no-match-uses-task-then",
+    "tasks": [{"route": {"switch": [{"a": {"when": "${ false }", "then": "zeroT"}}], "then": "zeroT"}}, {"mid": {"raise": {"error": {"status": 400, "type": "https://errors.test/mid-ran"}}}}, {"zeroT": {"set": {"r": "zero"}, "then": "end"}}],
+    "input": {"x": 1},
+    "expected": {"r": "zero"}
+  },
+  {
+    "id": "switch-backward-jump-loops-until-done",
+    "tasks": [{"first": {"set": {"n": "${ (.n // 0) + 1 }"}}}, {"route": {"switch": [{"again": {"when": "${ .n < 3 }", "then": "first"}}, {"done": {"then": "end"}}]}}],
+    "input": {},
+    "expected": {"n": 3}
+  },
+  {
+    "id": "switch-when-error-is-caught",
+    "tasks": [{"g": {"try": [{"route": {"switch": [{"a": {"when": "${ 1 / 0 }", "then": "continue"}}]}}], "catch": {"do": [{"r": {"set": {"m": "caught"}}}]}}}],
+    "input": {"x": 1},
+    "expected": {"m": "caught"}
   }
 ]

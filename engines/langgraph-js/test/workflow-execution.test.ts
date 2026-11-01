@@ -200,6 +200,43 @@ test("expressions evaluate values only, keys stay literal, and local jq bindings
   assert.deepEqual(result.output, { "${ .k }": "v", local: 2 });
 });
 
+test("switch admission mirrors core: errors are raised before any native graph is built", async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(StateGraph.prototype, "compile")!;
+  Object.defineProperty(StateGraph.prototype, "compile", { ...descriptor, value() { throw new Error("must-not-compile"); } });
+  const targets = [{ negT: { set: { r: "neg" } } }, { posT: { set: { r: "pos" } } }];
+  const route = (cases: unknown[]) => workflow([{ route: { switch: cases } }, ...targets]);
+  try {
+    // Codes, messages and details are the ones core's compile_workflow raises for the same inputs.
+    for (const [cases, code, message, details] of [
+      [[{ a: { when: "${ true }", then: "posT" } }, { a: { then: "negT" } }], "workflow_semantic_error", "duplicate switch case name", { reference: "/do/0/route/switch/1/a" }],
+      [[{ a: { when: "${ true }", then: "nowhere" } }], "workflow_semantic_error", "transition target must belong to the current scope", { reference: "/do/0/route/switch/0/a/then", target: "nowhere" }],
+      [[{ a: { then: "posT" } }, { b: { then: "negT" } }], "workflow_semantic_error", "switch must have at most one default case", { reference: "/do/0/route/switch" }],
+      [[{ a: { when: "${ .x + }", then: "continue" } }], "expression_error", "invalid jq expression", { reference: "/do/0/route/switch/0/a/when" }],
+      [[{ a: { when: "${ $ENV }", then: "continue" } }], "expression_error", "ambient environment access is not enabled", { reference: "/do/0/route/switch/0/a/when" }],
+    ] as const) {
+      await assert.rejects(executeLiteralWorkflow(route([...cases]), {}), (error: unknown) => {
+        assert.ok(error instanceof WorkflowExecutionError);
+        assert.equal(error.code, code);
+        assert.equal(error.message, message);
+        assert.deepEqual(error.asDict().details, details);
+        return true;
+      });
+    }
+    // Schema-valid shapes outside the profile reject as unsupported.
+    for (const cases of [
+      [{ a: { when: "${ $workflow }", then: "continue" } }],
+    ]) {
+      await assert.rejects(executeLiteralWorkflow(route(cases), {}), (error: unknown) => {
+        assert.ok(error instanceof WorkflowExecutionError);
+        assert.equal(error.code, "unsupported_workflow_feature");
+        return true;
+      });
+    }
+  } finally {
+    Object.defineProperty(StateGraph.prototype, "compile", descriptor);
+  }
+});
+
 test("unsupported late tasks reject before constructing a native graph", async () => {
   const descriptor = Object.getOwnPropertyDescriptor(StateGraph.prototype, "compile")!;
   Object.defineProperty(StateGraph.prototype, "compile", { ...descriptor, value() { throw new Error("must-not-compile"); } });
