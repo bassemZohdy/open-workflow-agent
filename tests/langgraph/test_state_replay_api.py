@@ -568,3 +568,99 @@ async def test_a_running_replay_target_obeys_cancellation_and_never_resumes_late
         await asyncio.sleep(1)
         assert services.invocations.get(target).status == "cancelled"
         assert len(services.model.calls) == calls + 1
+
+
+@pytest.mark.asyncio
+async def test_a_changed_original_policy_refuses_replay_before_creating_anything(
+    replay_runtime, policy
+):
+    services, engine, handle, plan = replay_runtime
+    path = f"/v1/invocations/{handle.invocation_id}/state-replays"
+    async with client_for(replay_runtime) as client:
+        reference = await first_task_reference(client, handle)
+        calls = len(services.model.calls)
+        before = {
+            row[0]
+            for row in services.invocations.connection.execute(
+                "SELECT invocation_id FROM invocations"
+            ).fetchall()
+        }
+        # Any change to the execution policy invalidates the authority the source ran under.
+        services.config.execution_authorization.policy.rules[0].actions.append("extra.action")
+        refused = await client.post(
+            path, json=request_body(reference, policy), headers={"Idempotency-Key": "revoked"}
+        )
+        assert 400 <= refused.status_code < 500, refused.text
+        assert refused.status_code != 202
+        after = {
+            row[0]
+            for row in services.invocations.connection.execute(
+                "SELECT invocation_id FROM invocations"
+            ).fetchall()
+        }
+        assert after == before
+        assert len(services.model.calls) == calls
+
+
+@pytest.mark.asyncio
+async def test_graceful_shutdown_mid_continuation_leaves_a_recoverable_target(
+    replay_runtime, tmp_path
+):
+    services, engine, handle, plan = replay_runtime
+    if plan.native_state_replay.effect_policy != "reexecute":
+        pytest.skip("a running continuation needs re-execution of an effect")
+    entered = asyncio.Event()
+    release = asyncio.Event()
+
+    async def held(_prompt):
+        entered.set()
+        await release.wait()
+        return {"response": "released"}
+
+    path = f"/v1/invocations/{handle.invocation_id}/state-replays"
+    async with client_for(replay_runtime) as client:
+        reference = await first_task_reference(client, handle)
+        services.model.response = held
+        body = request_body(reference, "reexecute")
+        accepted = await client.post(path, json=body, headers={"Idempotency-Key": "shutdown"})
+        assert accepted.status_code == 202, accepted.text
+        target = accepted.json()["invocation_id"]
+        async with asyncio.timeout(30):
+            await entered.wait()
+    calls = len(services.model.calls)
+    status_before = services.invocations.get(target).status
+    await engine.shutdown()
+    release.set()
+    await asyncio.sleep(0.5)
+    assert status_before == "running"
+    assert services.invocations.get(target).status == "running"
+    assert services.native_replay_controller is None
+    assert len(services.model.calls) == calls
+    # A restarted runtime on the same database recovers the target through the same request.
+    postgres = str(services.config.persistence.datasource).startswith("postgres")
+    restarted = RuntimeServices(
+        services.config.model_copy(deep=True),
+        model=FakeModel(),
+        database_root=None if postgres else tmp_path,
+    )
+    second = LangGraphWorkflowEngine()
+    await second.initialize(restarted)
+    await second._timer_dispatcher.stop()
+    try:
+        async with client_for((restarted, second)) as client:
+            async with asyncio.timeout(90):
+                while True:
+                    recovered = await client.post(
+                        path, json=body, headers={"Idempotency-Key": "shutdown"}
+                    )
+                    if recovered.status_code == 202:
+                        break
+                    await asyncio.sleep(2)
+            assert recovered.json()["invocation_id"] == target
+            finished = await wait_terminal(restarted, target)
+            # The interrupted effect may already have happened, so it is never repeated.
+            assert finished.status == "faulted"
+            assert len(restarted.model.calls) == 0
+    finally:
+        await second.shutdown()
+        restarted.close()

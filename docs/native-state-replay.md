@@ -96,9 +96,15 @@ lifecycle controls apply to it. A running replay target obeys the public cancel 
 ends `cancelled`, performs no work after the in-flight call returns, and repeating the
 replay request returns the same target without resurrecting it. Tests hold a re-executed
 model call open, cancel through `POST /v1/invocations/{id}/cancel`, then release the call
-(SQLite and PostgreSQL). Process stops are covered above. Not separately tested: graceful
-engine shutdown mid-continuation and revocation of the original authority while a replay
-runs.
+(SQLite and PostgreSQL). Process stops are covered above.
+
+A graceful engine shutdown mid-continuation leaves the target `running` (never terminal),
+unregisters the replay controller and runs no further work. A restarted runtime on the same
+database recovers it through the identical request, and because the interrupted model call
+may already have happened it ends `faulted` without repeating the call. Changing the
+execution policy invalidates the authority the source ran under, so a replay request made
+afterwards is refused with a client error before any invocation is created or any model call
+runs. Revocation *during* an already-running replay is not separately tested.
 
 ## Crash and restart
 
