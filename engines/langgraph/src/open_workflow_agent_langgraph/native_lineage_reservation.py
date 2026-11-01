@@ -14,7 +14,9 @@ from contextlib import contextmanager
 from typing import Any
 
 from open_workflow_agent.effects import EffectIdentity
+from open_workflow_agent.errors import InvocationStateError
 from open_workflow_agent.execution_authority import ExecutionAuthority
+from open_workflow_agent.native_state import NativeStateCapacity
 from open_workflow_agent.persistence import ExecutionHandle, _public_fields, _verify_identity
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.state_lineage import PREFIX, StateLineageRequest, lineage_error
@@ -89,8 +91,16 @@ class NativeReplayReservations:
         authority: ExecutionAuthority,
         plan: WorkflowPlan,
         preflight: NativeLineagePreflight,
+        *,
+        max_per_source: int | None = None,
+        allow_replay_of_replay: bool = True,
     ) -> ExecutionHandle:
-        """Reserve once; retries must carry the identical inspected command."""
+        """Reserve once; retries must carry the identical inspected command.
+
+        The optional limits are enforced inside the reservation transaction, which every
+        reservation serializes on, so concurrent distinct requests cannot exceed them.
+        A repeat of an existing reservation is never a new admission and is never limited.
+        """
         request = preflight.request
         _owner(self.services, source, authority, "replay")
         preflight.verify_basis(preflight.input_json, preflight.snapshots)
@@ -109,6 +119,24 @@ class NativeReplayReservations:
             row = self._row(request.identity.key)
             if row is not None:
                 return self._recover(row, request)
+            if (
+                not allow_replay_of_replay
+                and connection.execute(
+                    f"SELECT 1 FROM {_TABLE} WHERE target_id=?", (source.invocation_id,)
+                ).fetchone()
+                is not None
+            ):
+                raise InvocationStateError(
+                    "a replay target cannot itself be replayed",
+                    details={"stage": "state_lineage", "reason": "replay_depth"},
+                )
+            if (
+                max_per_source is not None
+                and self._source_count(connection, source.invocation_id) >= max_per_source
+            ):
+                raise NativeStateCapacity(
+                    "native state replay limit for this invocation is reached"
+                )
             if (
                 connection.execute(
                     f"SELECT 1 FROM {_TABLE} WHERE target_id=?", (request.target_invocation_id,)
@@ -161,6 +189,32 @@ class NativeReplayReservations:
                 ),
             )
             return target
+
+    def is_replay_target(self, invocation_id: str) -> bool:
+        """Whether the invocation was created by a replay reservation."""
+        return (
+            self.connection.execute(
+                f"SELECT 1 FROM {_TABLE} WHERE target_id=?", (invocation_id,)
+            ).fetchone()
+            is not None
+        )
+
+    @staticmethod
+    def _source_count(connection: StorageConnection, source_id: str) -> int:
+        """Exact count of replay reservations whose source is the given invocation."""
+        rows = connection.execute(
+            f"SELECT payload FROM {_TABLE} WHERE payload LIKE ?",
+            ('%"source_invocation_id":' + json.dumps(source_id) + "%",),
+        ).fetchall()
+        total = 0
+        for (payload,) in rows:
+            if (
+                type(payload) is str
+                and len(payload.encode()) <= 131_072
+                and json.loads(payload).get("request", {}).get("source_invocation_id") == source_id
+            ):
+                total += 1
+        return total
 
     def recover(
         self, source: ExecutionHandle, authority: ExecutionAuthority, request_id: str

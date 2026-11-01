@@ -107,8 +107,10 @@ policies, idempotent and concurrent same-key requests, a changed request under a
 key, acknowledgement mismatch, other principals, malformed input and the active
 budget.
 
-Not yet done, so S4-02 stays open: the per-source replay limit and replay depth limit
-(only `max_active_replays` is enforced), crash and restart driven through the route,
+The per-source limit (`max_replays_per_source`) and replay depth 1 are also enforced, the
+former atomically inside the reservation transaction.
+
+Not yet done, so S4-02 stays open: crash and restart driven through the route,
 lifecycle gate installation for the continued target, a configured example, and
 frozen-source qualification on both platforms. The remaining out-of-scope items above are
 unchanged.

@@ -52,13 +52,18 @@ def policy(request):
     return request.param
 
 
+@pytest.fixture
+def replay_config(request):
+    return getattr(request, "param", NativeStateReplayConfig())
+
+
 @pytest.fixture(params=["sqlite", "postgresql"])
-async def replay_runtime(request, tmp_path, monkeypatch, policy):
+async def replay_runtime(request, tmp_path, monkeypatch, policy, replay_config):
     for actor in ("alice", "bob"):
         monkeypatch.setenv("OWA_NATIVE_STREAM_TEST_" + actor.upper(), "replay-state-" + actor)
     config = configuration()
     config.execution_authorization.policy.rules[0].actions.append("state.replay")
-    config.native_state_replay = NativeStateReplayConfig()
+    config.native_state_replay = replay_config
     if request.param == "postgresql":
         datasource = os.getenv("OWA_TEST_POSTGRES_URL")
         if not datasource:
@@ -300,3 +305,82 @@ async def test_a_different_request_under_a_used_key_is_rejected(replay_runtime, 
         assert changed.status_code != 202
         assert len(services.model.calls) == calls
         assert first.json()["invocation_id"] not in changed.text
+
+
+TIGHT = [NativeStateReplayConfig(max_replays_per_source=1)]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("replay_config", TIGHT, indirect=True)
+async def test_per_source_limit_rejects_a_new_replay_but_not_a_repeat(replay_runtime, policy):
+    services, engine, handle, plan = replay_runtime
+    path = f"/v1/invocations/{handle.invocation_id}/state-replays"
+    async with client_for(replay_runtime) as client:
+        reference = await first_task_reference(client, handle)
+        first = await client.post(
+            path, json=request_body(reference, policy), headers={"Idempotency-Key": "one"}
+        )
+        assert first.status_code == 202, first.text
+        await wait_terminal(services, first.json()["invocation_id"])
+        calls = len(services.model.calls)
+        second = await client.post(
+            path, json=request_body(reference, policy), headers={"Idempotency-Key": "two"}
+        )
+        assert second.status_code == 429, second.text
+        # The admitted request is not a new admission, so the limit never blocks its repeat.
+        repeat = await client.post(
+            path, json=request_body(reference, policy), headers={"Idempotency-Key": "one"}
+        )
+        assert repeat.status_code == 202, repeat.text
+        assert repeat.json()["invocation_id"] == first.json()["invocation_id"]
+        assert len(services.model.calls) == calls
+
+
+@pytest.mark.asyncio
+async def test_a_replay_target_cannot_itself_be_replayed(replay_runtime, policy):
+    services, engine, handle, plan = replay_runtime
+    async with client_for(replay_runtime) as client:
+        reference = await first_task_reference(client, handle)
+        first = await client.post(
+            f"/v1/invocations/{handle.invocation_id}/state-replays",
+            json=request_body(reference, policy),
+            headers={"Idempotency-Key": "depth-1"},
+        )
+        assert first.status_code == 202, first.text
+        target = first.json()["invocation_id"]
+        await wait_terminal(services, target)
+        calls = len(services.model.calls)
+        # Any well-formed reference is refused up front: the depth rule is checked before
+        # any preflight work, so no target state is read or created.
+        again = await client.post(
+            f"/v1/invocations/{target}/state-replays",
+            json=request_body(reference, policy),
+            headers={"Idempotency-Key": "depth-2"},
+        )
+        assert again.status_code == 409, again.text
+        assert len(services.model.calls) == calls
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("replay_config", TIGHT, indirect=True)
+async def test_per_source_limit_holds_under_concurrent_distinct_requests(replay_runtime, policy):
+    services, engine, handle, plan = replay_runtime
+    path = f"/v1/invocations/{handle.invocation_id}/state-replays"
+    async with client_for(replay_runtime) as client:
+        reference = await first_task_reference(client, handle)
+        responses = await asyncio.gather(
+            *(
+                client.post(
+                    path,
+                    json=request_body(reference, policy),
+                    headers={"Idempotency-Key": f"race-{number}"},
+                )
+                for number in range(2)
+            )
+        )
+        statuses = sorted(item.status_code for item in responses)
+        assert statuses == [202, 429], [item.text for item in responses]
+        admitted = next(item for item in responses if item.status_code == 202)
+        await wait_terminal(services, admitted.json()["invocation_id"])
+        # Only the admitted request ran any work.
+        assert len(services.model.calls) == (3 if policy == "reexecute" else 2)
