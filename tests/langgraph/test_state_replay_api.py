@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import os
+import subprocess
+import sys
 from pathlib import Path
 from uuid import uuid4
 
@@ -449,3 +451,78 @@ async def test_configuration_only_app_invokes_and_replays_with_public_requests(
         assert services.native_replay_controller is None
     finally:
         services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("phase", ["reserved", "admitted", "forked", "bound", "effect"])
+async def test_a_process_stop_at_each_stage_recovers_through_the_same_request(
+    replay_runtime, policy, phase, tmp_path
+):
+    if policy == "read_only" and phase != "bound":
+        pytest.skip("read-only interruption is exercised at the bound boundary")
+    if phase == "effect" and policy != "reexecute":
+        pytest.skip("an effect is only reached when re-execution is declared")
+    services, engine, handle, plan = replay_runtime
+    postgres = str(services.config.persistence.datasource).startswith("postgres")
+    async with client_for(replay_runtime) as client:
+        reference = await first_task_reference(client, handle)
+    environment = os.environ.copy()
+    if not postgres:
+        environment.pop("OWA_TEST_POSTGRES_URL", None)
+    worker = Path(__file__).with_name("native_replay_route_worker.py")
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            str(worker),
+            str(tmp_path),
+            handle.invocation_id,
+            "crash-key",
+            reference,
+            policy,
+            phase,
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        env=environment,
+    )
+    output = []
+    try:
+
+        async def read_phase():
+            while True:
+                line = await asyncio.to_thread(process.stdout.readline)
+                if not line:
+                    raise AssertionError("worker exited before the stage: " + "".join(output))
+                output.append(line)
+                if line.startswith("CRASH_PHASE "):
+                    return line.strip().split()
+
+        marker = await asyncio.wait_for(read_phase(), timeout=120)
+        assert marker[1] == phase
+        process.kill()
+        await asyncio.to_thread(process.wait, timeout=10)
+    finally:
+        if process.poll() is None:
+            process.kill()
+            await asyncio.to_thread(process.wait, timeout=10)
+        process.stdout.close()
+    # Let the dead worker's execution lease lapse, then repeat the identical request.
+    await asyncio.sleep(13 if phase == "effect" else 3)
+    expected = "faulted" if policy == "read_only" or phase == "effect" else "completed"
+    expected_calls = 2 if expected == "faulted" else 3
+    async with client_for(replay_runtime) as client:
+        path = f"/v1/invocations/{handle.invocation_id}/state-replays"
+        body = request_body(reference, policy)
+        recovered = await client.post(path, json=body, headers={"Idempotency-Key": "crash-key"})
+        assert recovered.status_code == 202, recovered.text
+        target = recovered.json()["invocation_id"]
+        assert target == marker[2]
+        finished = await wait_terminal(services, target)
+        assert finished.status == expected
+        # The interrupted stage never repeats an effect it may already have performed.
+        assert len(services.model.calls) == expected_calls
+        repeated = await client.post(path, json=body, headers={"Idempotency-Key": "crash-key"})
+        assert repeated.status_code == 202, repeated.text
+        assert repeated.json()["invocation_id"] == target
+        assert len(services.model.calls) == expected_calls

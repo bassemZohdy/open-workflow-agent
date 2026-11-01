@@ -86,8 +86,17 @@ views, so no reference to one can be obtained.
 ## Not implemented
 
 Branching (data attribution), nested scopes, timing, declared channels and Command/Send workflows, replay from non-root
-checkpoints, time travel and JavaScript parity are not implemented. Crash and restart are
-qualified at the coordinator level (see the
-[lineage acceptance record](s4-02-native-lineage-acceptance.md)) but not yet through this
-route, and lifecycle gate installation and frozen-source qualification are still
-required.
+checkpoints, time travel and JavaScript parity are not implemented. Lifecycle gate
+installation for the continued target and frozen-source qualification are still required.
+
+## Crash and restart
+
+A process stop at any stage is recovered by repeating the identical request. The tests
+start the real app in a subprocess, stop it after reservation, admission, native fork,
+lineage binding, or inside the re-executed model call, wait for its execution lease to
+lapse, and repeat the same `Idempotency-Key` request against a fresh runtime. The repeat
+returns the same new invocation; a read-only replay or an interrupted effect ends faulted,
+and no model call is repeated, so an effect that may already have happened is never
+performed twice. This is qualified on SQLite and PostgreSQL (see the
+[lineage acceptance record](s4-02-native-lineage-acceptance.md)); a client whose first
+request never received a response must retry with the same key.
