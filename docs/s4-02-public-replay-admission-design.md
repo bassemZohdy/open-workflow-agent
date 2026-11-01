@@ -96,3 +96,19 @@ workflows, replay from non-root checkpoints, time travel, and any JavaScript par
 1. Asynchronous `202` with polling rather than a synchronous result.
 2. The lifecycle budget defaults above and replay depth 1.
 3. Replay not requiring `native_state_updates`.
+
+## Implementation status (2026-11-01)
+
+The opt-in profile is implemented behind `native_state_replay` as described in
+[the operator guide](native-state-replay.md), using the three choices above as proposed
+(`202` with polling, an active-replay budget, no `native_state_updates` requirement).
+HTTP-level tests pass on SQLite and PostgreSQL for the capability entry, both effect
+policies, idempotent and concurrent same-key requests, a changed request under a used
+key, acknowledgement mismatch, other principals, malformed input and the active
+budget.
+
+Not yet done, so S4-02 stays open: the per-source replay limit and replay depth limit
+(only `max_active_replays` is enforced), crash and restart driven through the route,
+lifecycle gate installation for the continued target, a configured example, and
+frozen-source qualification on both platforms. The remaining out-of-scope items above are
+unchanged.

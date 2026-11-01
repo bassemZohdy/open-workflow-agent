@@ -348,3 +348,13 @@ change frozen runtime/test/example inputs. This remains a private component:
 no end-to-end replay capability, native proof inspection or task completion is
 claimed. The backlog remains 31/37 verified, six open and none deferred; the
 three conditional tracks remain conditional.
+
+## Public replay route (local development result, 2026-11-01)
+
+The private coordinator is now reachable through the opt-in `native_state_replay`
+profile and `POST /v1/invocations/{id}/state-replays` ([guide](native-state-replay.md)).
+A local run of `tests/langgraph/test_state_replay_api.py` passes all 20 cases (SQLite
+and PostgreSQL 16 in a throwaway container) for both effect policies. This is not
+public qualification: crash and restart through the route, per-source limits,
+lifecycle gate installation, a configured example and frozen-source qualification are
+still open, and S4-02 remains open.

@@ -259,7 +259,10 @@ treated as a deferred task or as additional feature completion.
   [memory](docs/s4-02-native-memory-acceptance.md),
   [streams](docs/s4-02-native-streams-acceptance.md),
   [state controls](docs/s4-02-native-state-acceptance.md),
-  [public replay admission design](docs/s4-02-public-replay-admission-design.md),
+  [public replay admission design](docs/s4-02-public-replay-admission-design.md) and
+  [opt-in replay route](docs/native-state-replay.md) (HTTP tests pass on SQLite and
+  PostgreSQL; per-source limits, crash through the route, lifecycle gates, an example and
+  frozen qualification remain open),
   [retained component history](docs/validation-history/s4-02-component-notes.md)
   and the [integration record](docs/validation-history/main-integration-2026-10-25.md).
 

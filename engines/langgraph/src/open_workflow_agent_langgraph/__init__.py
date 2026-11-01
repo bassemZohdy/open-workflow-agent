@@ -24,6 +24,7 @@ from open_workflow_agent.native_extensions import (
     LANGGRAPH_STREAMS,
     MAX_NATIVE_SEND_BRANCHES,
 )
+from open_workflow_agent.native_extensions import LANGGRAPH_STATE_REPLAY as STATE_REPLAY_CAPABILITY
 from open_workflow_agent.native_memory_contract import CAPABILITY as MEMORY_CAPABILITY
 from open_workflow_agent.native_memory_contract import (
     SEMANTIC_CAPABILITY as MEMORY_SEMANTIC_CAPABILITY,
@@ -47,6 +48,7 @@ from .native import LANGGRAPH_AVAILABLE, NATIVE_SCOPE_STEP_LIMIT, LangGraphFunct
 if TYPE_CHECKING:
     from .native_memory_catalog import NativeMemoryCatalog
     from .native_state import LangGraphStateReader
+    from .replay_control import LangGraphReplayController
     from .state_control import LangGraphStateController
 
 
@@ -66,6 +68,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         self.native_memory: NativeMemoryCatalog | None = None
         self.state_reader: LangGraphStateReader | None = None
         self.state_controller: LangGraphStateController | None = None
+        self.replay_controller: LangGraphReplayController | None = None
 
     async def initialize(self, services: Any) -> None:
         database_path = services.engine_database_path("langgraph", create_namespace=False)
@@ -125,6 +128,16 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 self.state_controller = LangGraphStateController(services, self)
                 await self.state_controller.open()
                 services.native_state_controller = self.state_controller
+            if services.config.native_state_replay is not None:
+                if not self.native.task_nodes_available:
+                    raise ConfigurationError(
+                        "native state replay requires durable native LangGraph"
+                    )
+                from .replay_control import LangGraphReplayController
+
+                self.replay_controller = LangGraphReplayController(services, self)
+                await self.replay_controller.open()
+                services.native_replay_controller = self.replay_controller
             if services.config.native_state is not None:
                 from .native_state import LangGraphStateReader
 
@@ -144,6 +157,9 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 if self.state_controller is not None:
                     await self.state_controller.close()
                     self.state_controller = None
+                if self.replay_controller is not None:
+                    await self.replay_controller.close()
+                    self.replay_controller = None
                 if services.native_state_reader is self.state_reader:
                     services.native_state_reader = None
                 self.state_reader = None
@@ -156,6 +172,9 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         try:
             await super().shutdown()
         finally:
+            if self.replay_controller is not None:
+                await self.replay_controller.close()
+                self.replay_controller = None
             if self.state_controller is not None:
                 await self.state_controller.close()
                 self.state_controller = None
@@ -307,6 +326,11 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 raise ConfigurationError("native state update installation is unavailable")
             self.state_controller.verify(services.config.native_state_updates)
             extensions += (STATE_UPDATE_CAPABILITY,)
+        if services is not None and services.config.native_state_replay is not None:
+            if self.replay_controller is None:
+                raise ConfigurationError("native state replay installation is unavailable")
+            self.replay_controller.verify(services.config.native_state_replay)
+            extensions += (STATE_REPLAY_CAPABILITY,)
         if services is not None and services.config.observability.native_streams is not None:
             if (
                 services.native_streams is None
