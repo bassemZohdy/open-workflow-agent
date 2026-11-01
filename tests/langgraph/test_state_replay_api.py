@@ -66,7 +66,9 @@ async def replay_runtime(request, tmp_path, monkeypatch, policy, replay_config):
     for actor in ("alice", "bob"):
         monkeypatch.setenv("OWA_NATIVE_STREAM_TEST_" + actor.upper(), "replay-state-" + actor)
     config = configuration()
-    config.execution_authorization.policy.rules[0].actions.append("state.replay")
+    config.execution_authorization.policy.rules[0].actions.extend(
+        ["state.replay", "invocations.cancel"]
+    )
     config.native_state_replay = replay_config
     if request.param == "postgresql":
         datasource = os.getenv("OWA_TEST_POSTGRES_URL")
@@ -526,3 +528,43 @@ async def test_a_process_stop_at_each_stage_recovers_through_the_same_request(
         assert repeated.status_code == 202, repeated.text
         assert repeated.json()["invocation_id"] == target
         assert len(services.model.calls) == expected_calls
+
+
+@pytest.mark.asyncio
+async def test_a_running_replay_target_obeys_cancellation_and_never_resumes_late(replay_runtime):
+    services, engine, handle, plan = replay_runtime
+    if plan.native_state_replay.effect_policy != "reexecute":
+        pytest.skip("a running continuation needs re-execution of an effect")
+    entered = asyncio.Event()
+    release = asyncio.Event()
+
+    async def held(_prompt):
+        entered.set()
+        await release.wait()
+        return {"response": "released"}
+
+    path = f"/v1/invocations/{handle.invocation_id}/state-replays"
+    async with client_for(replay_runtime) as client:
+        reference = await first_task_reference(client, handle)
+        calls = len(services.model.calls)
+        services.model.response = held
+        body = request_body(reference, "reexecute")
+        accepted = await client.post(path, json=body, headers={"Idempotency-Key": "cancel-me"})
+        assert accepted.status_code == 202, accepted.text
+        target = accepted.json()["invocation_id"]
+        async with asyncio.timeout(30):
+            await entered.wait()
+        assert services.invocations.get(target).status not in TERMINAL
+        cancelled = await client.post(f"/v1/invocations/{target}/cancel")
+        assert cancelled.status_code == 200, cancelled.text
+        release.set()
+        await asyncio.sleep(1)
+        assert services.invocations.get(target).status == "cancelled"
+        assert len(services.model.calls) == calls + 1
+        # Repeating the replay request neither resurrects the target nor runs any work.
+        repeat = await client.post(path, json=body, headers={"Idempotency-Key": "cancel-me"})
+        assert repeat.status_code == 202, repeat.text
+        assert repeat.json()["invocation_id"] == target
+        await asyncio.sleep(1)
+        assert services.invocations.get(target).status == "cancelled"
+        assert len(services.model.calls) == calls + 1
