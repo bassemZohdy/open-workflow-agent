@@ -1,0 +1,24 @@
+document:
+  dsl: '1.0.3'
+  namespace: examples
+  name: native-state-replay
+  version: '1.0.0'
+  title: Replay a completed task prefix into a new invocation
+  metadata:
+    owa:
+      nativeExtensions:
+        - name: langgraph.state.read
+          version: '1.0.0'
+          required: true
+        - name: langgraph.state.replay
+          version: '1.0.0'
+          required: true
+      nativeExtensionData:
+        langgraph.state.replay@1.0.0:
+          authorizationPolicyRef: native-state-replay-example
+          replayEffectPolicy: reexecute
+do:
+  - first:
+      call: agent:1.0.0@default
+  - second:
+      call: agent:1.0.0@default

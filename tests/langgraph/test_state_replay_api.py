@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import asyncio
 import os
+from pathlib import Path
 from uuid import uuid4
 
 import httpx
 import pytest
+import yaml
 from native_state_test_support import authority, configuration
 from open_workflow_agent.api import create_app
 from open_workflow_agent.catalog import FakeModel
-from open_workflow_agent.config import NativeStateReplayConfig
+from open_workflow_agent.config import NativeStateReplayConfig, RuntimeConfig
 from open_workflow_agent.execution_authority import authority_scope
 from open_workflow_agent.native_extensions import LANGGRAPH_STATE_REPLAY
 from open_workflow_agent.services import RuntimeServices
@@ -384,3 +386,66 @@ async def test_per_source_limit_holds_under_concurrent_distinct_requests(replay_
         await wait_terminal(services, admitted.json()["invocation_id"])
         # Only the admitted request ran any work.
         assert len(services.model.calls) == (3 if policy == "reexecute" else 2)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+async def test_configuration_only_app_invokes_and_replays_with_public_requests(
+    tmp_path, monkeypatch, backend
+):
+    monkeypatch.setenv("OWA_NATIVE_STATE_TOKEN", "controlled-state-owner")
+    examples = Path(__file__).resolve().parents[2] / "examples"
+    config = RuntimeConfig.model_validate(
+        yaml.safe_load((examples / "native-state-replay.yaml").read_text(encoding="utf-8"))
+    )
+    if backend == "postgresql":
+        datasource = os.getenv("OWA_TEST_POSTGRES_URL")
+        if not datasource:
+            pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
+        config.persistence.datasource = datasource
+    mounted = tmp_path / "native-state-replay-workflow.yaml"
+    mounted.write_bytes((examples / mounted.name).read_bytes())
+    config.workflow.path = str(mounted)
+    config.knowledge.reload.mode = "manual"
+    services = RuntimeServices(
+        config, model=FakeModel(), database_root=tmp_path if backend == "sqlite" else None
+    )
+    engine = LangGraphWorkflowEngine()
+    app = create_app(config=config, services=services, engine=engine)
+    try:
+        async with app.router.lifespan_context(app):
+            await engine._timer_dispatcher.stop()
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app),
+                base_url="http://test",
+                headers={"Authorization": "Bearer controlled-state-owner"},
+            ) as client:
+                created = await client.post("/v1/invoke", json={"input": {}})
+                assert created.status_code == 200, created.text
+                assert created.json()["status"] == "completed", created.text
+                source = created.json()["invocation_id"]
+                assert len(services.model.calls) == 2
+                capabilities = (await client.get("/v1/capabilities")).json()
+                assert capabilities["features"]["nativeStateReplay"]["branch"] is False
+                history = await client.get(f"/v1/invocations/{source}/states")
+                assert history.status_code == 200, history.text
+                reference = next(
+                    item["reference"]
+                    for item in history.json()["items"]
+                    if item.get("root_task_visits") == {"/do/0/first": 1}
+                )
+                replayed = await client.post(
+                    f"/v1/invocations/{source}/state-replays",
+                    json={"reference": reference, "acknowledge_reexecution": True},
+                    headers={"Idempotency-Key": "config-only"},
+                )
+                assert replayed.status_code == 202, replayed.text
+                target = replayed.json()["invocation_id"]
+                assert target != source
+                finished = await wait_terminal(services, target)
+                assert finished.status == "completed"
+                # Re-execution of the remaining task ran exactly one more model call.
+                assert len(services.model.calls) == 3
+        assert services.native_replay_controller is None
+    finally:
+        services.close()
