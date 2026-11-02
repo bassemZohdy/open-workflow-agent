@@ -26,8 +26,9 @@ from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
 @pytest.mark.parametrize("policy", ["read_only", "reexecute"])
 @pytest.mark.parametrize("kind", ["replay", "branch"])
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+@pytest.mark.parametrize("iterations", [1, 2])
 async def test_root_lineage_after_completed_nested_scope_preserves_effects(
-    tmp_path, monkeypatch, policy, kind, backend
+    tmp_path, monkeypatch, policy, kind, backend, iterations
 ):
     for actor in ("alice", "bob"):
         monkeypatch.setenv("OWA_NATIVE_STREAM_TEST_" + actor.upper(), "replay-state-" + actor)
@@ -78,8 +79,11 @@ async def test_root_lineage_after_completed_nested_scope_preserves_effects(
             },
             "authorizationPolicyRef": config.execution_authorization.id,
         }
+    nested = {"do": [{"inner": {"do": [{"effect": {"call": "agent:1.0.0@default"}}]}}]}
+    if iterations > 1:
+        nested["for"] = {"each": "turn", "in": list(range(iterations))}
     source["do"] = [
-        {"nested": {"do": [{"inner": {"do": [{"effect": {"call": "agent:1.0.0@default"}}]}}]}},
+        {"nested": nested},
         {"change": {"set": {"value": 1}}},
         {"after": {"call": "agent:1.0.0@default"}},
     ]
@@ -97,7 +101,7 @@ async def test_root_lineage_after_completed_nested_scope_preserves_effects(
     try:
         with authority_scope(authority(services, "alice")):
             assert (await engine.invoke(plan, handle, {})).status == "completed"
-        assert len(services.model.calls) == 2
+        assert len(services.model.calls) == iterations + 1
         async with client_for((services, engine)) as client:
             history = await client.get(f"/v1/invocations/{handle.invocation_id}/states")
             assert history.status_code == 200, history.text
@@ -121,7 +125,7 @@ async def test_root_lineage_after_completed_nested_scope_preserves_effects(
             assert response.status_code == 202, response.text
             target = await wait_terminal(services, response.json()["invocation_id"])
             assert target.status == ("faulted" if policy == "read_only" else "completed")
-            assert len(services.model.calls) == (2 if policy == "read_only" else 3)
+            assert len(services.model.calls) == iterations + (1 if policy == "read_only" else 2)
             target_history = await client.get(f"/v1/invocations/{target.invocation_id}/states")
             assert target_history.status_code == 200, target_history.text
             if kind == "branch":

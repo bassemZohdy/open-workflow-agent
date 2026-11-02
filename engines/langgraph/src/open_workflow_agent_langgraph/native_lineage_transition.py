@@ -101,7 +101,7 @@ def _validate_root_basis(
                 or child_bindings.get("version") != 2
                 or not scope.tasks
                 or any(
-                    child_visits.get(task.execution_reference or task.reference) != 1
+                    child_visits.get(task.execution_reference or task.reference) != item.occurrence
                     for task in scope.tasks
                 )
                 or any(

@@ -591,10 +591,11 @@ intentional lease-expiry waits, explaining its long periods without test output.
 
 The bounded root replay and attributed branch profiles now retain completed
 child-scope checkpoints and remap their receipt and scope-digest bindings to the
-new invocation. The fork writes the entire closure atomically. Admission requires
-at most 64 retained scopes and exactly one visit to each task in each completed
-child scope. Timing, native channels, Command/Send, state-control bindings,
-partially completed or repeated child scopes and deeper lineage remain excluded.
+new invocation. The fork writes the entire closure atomically. This initial
+profile required at most 64 retained scopes and exactly one visit to each task
+in each completed child scope. Timing, native channels, Command/Send,
+state-control bindings, partially completed or repeated child scopes and deeper
+lineage were excluded at this stage.
 
 On local Windows, four SQLite and four PostgreSQL cases passed separately for
 two nested levels, both operations and both effect policies. They verify that a
@@ -620,3 +621,16 @@ an invalid branch fixture that attributed to a nested task rather than a root se
 task, a runtime-profile mismatch caused by editing engine source during a test,
 and a malformed test route returning 404. An earlier PostgreSQL run was cancelled
 after that route error was identified. None of those attempts is counted green.
+
+## Repeated completed child scopes — 2026-11-02
+
+The root replay and branch profiles also accept repeated completed child-scope
+occurrences when the cumulative task visit count matches each occurrence. Each
+occurrence keeps its own native checkpoint, receipt identities and scope digest;
+the 64-snapshot limit and other admission boundaries still apply. A two-iteration,
+two-level loop passes four local SQLite and four local PostgreSQL cases across both
+operations and effect policies, including failure when an occurrence's checkpoint
+is removed. The SQLite and PostgreSQL branch cases also pass a fresh-engine read
+and an injected post-fork interruption with idempotent recovery. The initial loop replay returned
+409 under the previous single-visit restriction; it is retained as the expected
+pre-change failure. This expanded profile has not been hosted-qualified.
