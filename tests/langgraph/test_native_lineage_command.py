@@ -24,6 +24,7 @@ from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor, _node_name
 from open_workflow_agent_langgraph.native_lineage_transition import (
     _scope_lineage_position,
+    _verify_child_route,
     root_lineage_position,
 )
 
@@ -228,6 +229,49 @@ def test_completed_child_scope_requires_a_verified_forward_path(damage):
     else:
         with pytest.raises(OwaError):
             _scope_lineage_position(scope, native, allow_complex_prefix=False)
+
+
+@pytest.mark.parametrize(
+    "damage", ["none", "changed_path", "missing_previous", "decrease", "repeated", "wrong_path"]
+)
+def test_repeated_child_route_requires_consecutive_visit_evidence(damage):
+    source = generate_default_workflow()
+    source["do"] = [
+        {
+            "nested": {
+                "do": [
+                    {"start": {"set": {"value": 1}, "then": "finish"}},
+                    {"never": {"set": {"value": 2}}},
+                    {"finish": {"set": {"value": 3}}},
+                ]
+            }
+        }
+    ]
+    if damage == "changed_path":
+        source["do"][0]["nested"]["do"][0]["start"] = {
+            "switch": [{"choice": {"when": "${ true }", "then": "finish"}}]
+        }
+    scope = next(
+        item for item in compile_workflow(source).scopes if item.reference.endswith("/nested/do")
+    )
+    refs = [task.execution_reference or task.reference for task in scope.tasks]
+    prior = {refs[0]: 1, refs[2]: 1}
+    current = {refs[0]: 2, refs[2]: 2}
+    if damage == "decrease":
+        current[refs[2]] = 0
+    if damage == "repeated":
+        current[refs[2]] = 3
+    if damage in {"wrong_path", "changed_path"}:
+        current[refs[1]] = 1
+    packet = {"snapshot": json.dumps({"task_visits": current}), "next_node": "__end__"}
+    previous = {"snapshot": json.dumps({"task_visits": prior})}
+    if damage in {"none", "changed_path"}:
+        _verify_child_route(scope, packet, previous, 2)
+    else:
+        with pytest.raises(OwaError):
+            _verify_child_route(
+                scope, packet, None if damage == "missing_previous" else previous, 2
+            )
 
 
 @pytest.mark.asyncio

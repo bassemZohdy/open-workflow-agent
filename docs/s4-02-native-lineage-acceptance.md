@@ -1032,3 +1032,19 @@ skips. This does not complete S4-02 or qualify broad time travel.
 Hosted qualification of frozen source `b5d5535` is running on
 `codex/s4-02-child-route-b5d5535`:
 [workflow run 41404706219](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41404706219).
+
+## Forward routing across repeated child occurrences — 2026-11-02
+
+Completed repeated child scopes can retain forward routes that skip tasks.
+The validator compares cumulative task-visit counters in consecutive retained
+scope checkpoints to establish the path of each occurrence. Missing predecessor
+evidence, decreasing or repeated per-occurrence visits, impossible paths and
+backward routes fail closed. Scope closure, source receipts and checkpoint proofs
+remain required. This does not admit partial scopes or non-root checkpoint selection.
+
+The initial repeated-child replay returned the unsupported-profile 409. A focused
+SQLite and PostgreSQL test then verified two iterations chose different routes,
+including explicit inspection of both retained visit counters. All four SQLite
+replay/branch and effect-policy cases passed for both the same-route and varying-route
+fixtures on SQLite and PostgreSQL. The shared admission and receipt selection
+passed 27 cases with 19 other-backend skips. Hosted qualification is separate.

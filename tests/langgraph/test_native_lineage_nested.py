@@ -1,5 +1,6 @@
 """Completed nested scopes retain their evidence when a root checkpoint is replayed."""
 
+import json
 import os
 from uuid import uuid4
 
@@ -32,8 +33,8 @@ from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
 async def test_root_lineage_after_completed_nested_scope_preserves_effects(
     tmp_path, monkeypatch, policy, kind, backend, iterations, forward_route, child_forward
 ):
-    if child_forward and (iterations != 1 or forward_route):
-        pytest.skip("child forward routing is verified for a single completed occurrence")
+    if child_forward and forward_route:
+        pytest.skip("child forward routing is verified without a root route jump")
     for actor in ("alice", "bob"):
         monkeypatch.setenv("OWA_NATIVE_STREAM_TEST_" + actor.upper(), "replay-state-" + actor)
     config = configuration(timeout_seconds=30)
@@ -90,6 +91,10 @@ async def test_root_lineage_after_completed_nested_scope_preserves_effects(
             {"never": {"set": {"value": -1}}},
             *nested["do"],
         ]
+        if iterations > 1:
+            nested["do"][0]["start"] = {
+                "switch": [{"first": {"when": "${ $turn == 0 }", "then": "inner"}}]
+            }
     if iterations > 1:
         nested["for"] = {"each": "turn", "in": list(range(iterations))}
     source["do"] = [
@@ -133,6 +138,31 @@ async def test_root_lineage_after_completed_nested_scope_preserves_effects(
                 for item in history.json()["items"]
                 if item.get("root_task_visits") == expected_visits
             )
+            if child_forward and iterations > 1 and kind == "replay" and policy == "reexecute":
+                from open_workflow_agent_langgraph.native_lineage_preflight import (
+                    prepare_native_lineage,
+                )
+
+                evidence = await prepare_native_lineage(
+                    services,
+                    handle,
+                    authority(services, "alice"),
+                    kind="replay",
+                    target_invocation_id=str(uuid4()),
+                    request_id=uuid4().hex * 2,
+                    source_reference=reference,
+                    acknowledge_reexecution=True,
+                )
+                counts = {
+                    item.occurrence: json.loads(json.loads(item.native_json)["snapshot"])[
+                        "task_visits"
+                    ]
+                    for item in evidence.snapshots
+                    if item.reference == nested_reference + "/do"
+                }
+                skipped = nested_reference + "/do/1/never"
+                assert counts[1].get(skipped, 0) == 0
+                assert counts[2].get(skipped, 0) == 1
             body = {"reference": reference, "acknowledge_reexecution": policy == "reexecute"}
             if kind == "branch":
                 body.update({"task_reference": change_reference, "values": {"value": 7}})

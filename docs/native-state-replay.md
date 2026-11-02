@@ -97,8 +97,9 @@ another replay or branch must belong to that target invocation.
 ## Not implemented
 
 Completed nested scope occurrences can accompany a root checkpoint, up to 64
-retained scope snapshots. A first occurrence may also follow a verified forward
-route that skips tasks; repeated occurrences still require every task to be visited.
+retained scope snapshots. An occurrence may also follow a verified forward
+route that skips tasks; repeated occurrences require consecutive checkpoint
+evidence to establish each occurrence's visits.
 Declared native channel values are retained at the selected checkpoint, and later
 channel writes continue from those values. Native Command routing is retained for
 contiguous root-task prefixes and verifiable forward routes through `set`, `call`,

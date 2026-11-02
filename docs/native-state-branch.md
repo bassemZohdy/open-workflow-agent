@@ -72,8 +72,9 @@ or a verifiable forward route through `set`, `call`, `switch` and completed
 non-routing nested `do` or `for` tasks and non-competing fan-outs with
 non-routing branches, and up to 64 retained
 scope snapshots. Routes that may go backward are rejected. Completed nested scope occurrences
-are included when every task has been visited once per occurrence; a first
-occurrence can instead follow a verified forward route that skips tasks. Declared native
+are included when every task has been visited once per occurrence; an
+occurrence can instead follow a verified forward route that skips tasks when
+consecutive checkpoint evidence establishes its visits. Declared native
 channel values are retained at the selected checkpoint; replacing task data does
 not rewrite those channel values. Native Command routing is retained for these
 supported checkpoints. Bounded, non-competing native Send fan-outs can occur
