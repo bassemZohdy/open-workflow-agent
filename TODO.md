@@ -233,6 +233,10 @@ treated as a deferred task or as additional feature completion.
   A separate debug-stream source profile projects timestamped native task and
   root-checkpoint events without SDK identifiers, state or internal scheduler
   details; other native stream modes and full T50 remain open.
+  A separate custom-stream source profile uses native SDK writes for declared
+  root-task diagnostics, with bounded literal or task-output data and no
+  publication to the Open Workflow business event bus. Observation failures
+  do not change workflow execution.
   PR #93 (`b363f10`) adds immutable replay/branch policies, explicit effect
   acknowledgement and selected-checkpoint preflight with historical root/scope
   closure and original/current authority. The private SDK writer now commits

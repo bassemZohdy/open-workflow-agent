@@ -205,6 +205,7 @@ on:
       - "tests/core/test_native_streams.py"
       - "tests/core/test_native_stream_registry.py"
       - "tests/core/test_native_stream_transport.py"
+      - "tests/core/test_native_custom_stream_config.py"
       - "tests/ci/test_native_stream_selection.py"
       - "tests/langgraph/native_replay_route_worker.py"
       - "tests/langgraph/test_native_lineage_replay_integration.py"
@@ -529,6 +530,7 @@ jobs:
             ../../tests/core/test_native_streams.py \
             ../../tests/core/test_native_stream_registry.py \
             ../../tests/core/test_native_stream_transport.py \
+            ../../tests/core/test_native_custom_stream_config.py \
             -q --durations=20 --junitxml="$RUNNER_TEMP/native-stream.xml"
           python - "$RUNNER_TEMP/native-stream.xml" <<'PY'
           import sys
@@ -554,6 +556,11 @@ jobs:
               "test_debug_stream_requires_base_profile_before_invocation",
               "test_debug_stream_replays_after_resume_without_repeating_effect",
               "test_debug_projection_fails_closed_for_malformed_sdk_events",
+              "test_custom_stream_emits_workflow_declared_payload_through_native_writer",
+              "test_custom_observation_failure_does_not_change_workflow_execution",
+              "test_custom_observation_does_not_publish_or_duplicate_business_events",
+              "test_custom_stream_replays_after_resume_without_repeating_effect",
+              "test_custom_projection_rejects_native_events_without_declared_binding",
               "test_actual_process_exit_loses_observation_replay_but_not_native_resume",
           } <= names
           PY
@@ -615,7 +622,9 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: PostgreSQL native state branch
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    # The 3134d58 hosted run reached 94% at the prior 35-minute suite bound.
+    # Preserve the complete selection and allow room for the separate fork check.
+    timeout-minutes: 70
     services:
       postgres:
         image: postgres:16
@@ -647,7 +656,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          timeout --signal=TERM --kill-after=30s 35m \
+          timeout --signal=TERM --kill-after=30s 50m \
             uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres --extra sqlite \
             --with pytest --with pytest-asyncio --with httpx pytest \
             ../../tests/langgraph/test_native_lineage_branch_projection.py \

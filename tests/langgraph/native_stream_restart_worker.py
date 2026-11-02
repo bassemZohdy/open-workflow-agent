@@ -45,6 +45,7 @@ async def run() -> None:
         task_stream=True if request.get("task_stream") else None,
         checkpoint_stream=True if request.get("checkpoint_stream") else None,
         debug_stream=True if request.get("debug_stream") else None,
+        custom_stream=bool(request.get("custom_stream")),
     )
     handle = services.invocations.create(
         engine="langgraph",

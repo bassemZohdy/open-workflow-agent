@@ -1,5 +1,30 @@
 # S4-02 native stream observations
 
+## Declared custom diagnostic source profile — 2026-11-02
+
+The separate required `langgraph.streams.custom@1.0.0` profile uses the native
+SDK custom writer for workflow-declared root-task diagnostics. It requires the
+base stream profile and one to 64 immutable bindings. Each binding selects a
+bounded literal JSON value or the completed task's output. Literal strings are
+not evaluated as jq. Events are bounded, original-owner observations; they are
+not published to the Open Workflow business event bus and do not prove a
+checkpoint committed. A writer failure or oversized frame ends observation
+without changing the workflow outcome. The [operator guide](native-streams.md)
+documents the configuration and its limits.
+
+Local SQLite/PostgreSQL checks cover native writer use, optional declarations,
+admission limits, original-owner access, failure isolation, separate business
+event delivery, resume, replay, process exit and malformed native events. The
+complete stream/API, projection, buffer, registry, transport and custom-config
+selection passed **189 cases with zero skips** against a fresh PostgreSQL
+database; its JUnit report passed the hosted job's witness gates. Common
+workflow/admission and CI selection checks passed 82 cases, the ADK adapter
+rejected the required extension, and strict type checking passed on 194 source
+files. An earlier PostgreSQL attempt on a database used by a prior candidate
+returned `runtime_profile_changed`; a subsequent fresh-database selection
+passed. Hosted qualification, remaining native stream modes, T50 and full
+S4-02 remain open.
+
 ## Timestamped debug source profile — 2026-11-02
 
 The separate required `langgraph.streams.debug@1.0.0` declaration observes a

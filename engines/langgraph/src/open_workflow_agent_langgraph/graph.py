@@ -11,6 +11,7 @@ from importlib import import_module
 from typing import Annotated, Any, TypedDict, cast
 from uuid import UUID
 
+from langgraph.config import get_stream_writer
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 from open_workflow_agent.child_rescan import child_rescan_wake, verify_child_rescan_wake
@@ -345,6 +346,9 @@ class LangGraphScopeExecutor:
         self.native_stream_debug = any(
             item.required and item.capability_id == LANGGRAPH_STREAM_DEBUG
             for item in plan.native_extensions
+        )
+        self.native_custom_events = (
+            plan.native_custom_stream.events if plan.native_custom_stream is not None else ()
         )
         self._channels_by_id = (
             {channel.channel_id: channel for channel in plan.native_channels.channels}
@@ -1409,19 +1413,52 @@ class LangGraphScopeExecutor:
                 if state.jump_to is not None and not halted:
                     target = names[state.jump_to]
                 state.jump_to = None
-                return routed(
-                    self._write(
-                        state,
-                        target,
-                        reference=scope.reference,
-                        native_channels=channel_values,
-                        native_channel_updates=(
-                            channel_updates
-                            if self.native_channels is not None and scope.reference == "/do"
-                            else None
-                        ),
-                    )
+                update = self._write(
+                    state,
+                    target,
+                    reference=scope.reference,
+                    native_channels=channel_values,
+                    native_channel_updates=(
+                        channel_updates
+                        if self.native_channels is not None and scope.reference == "/do"
+                        else None
+                    ),
                 )
+                if (
+                    self.stream_observer is not None
+                    and self.stream_observer.available
+                    and scope.reference == "/do"
+                ):
+                    try:
+                        events = [
+                            item
+                            for item in self.native_custom_events
+                            if item.task == task.reference
+                        ]
+                        if events:
+                            writer = get_stream_writer()
+                            for item in events:
+                                value = state.data if item.from_output else item.data
+                                chunks: list[str] = []
+                                size = 0
+                                encoder = json.JSONEncoder(
+                                    ensure_ascii=False, allow_nan=False, separators=(",", ":")
+                                )
+                                for chunk in encoder.iterencode(value):
+                                    size += len(chunk.encode("utf-8"))
+                                    if size > self.stream_observer.limits.max_event_bytes:
+                                        self.stream_observer.fail("frame_limit")
+                                        break
+                                    chunks.append(chunk)
+                                else:
+                                    frozen = json.loads("".join(chunks))
+                                    validate_expression_data(frozen)
+                                    writer({"task": item.task, "name": item.name, "data": frozen})
+                                if not self.stream_observer.available:
+                                    break
+                    except Exception:
+                        self.stream_observer.fail("projection_failure")
+                return routed(update)
 
             return execute
 
@@ -1562,6 +1599,8 @@ class LangGraphScopeExecutor:
             modes.append("checkpoints")
         if self.native_stream_debug:
             modes.append("debug")
+        if self.native_custom_events and scope.reference == "/do":
+            modes.append("custom")
         async for mode, payload in graph.astream(
             native_input,
             config=config,
@@ -1624,6 +1663,24 @@ class LangGraphScopeExecutor:
                     data = {"type": "task", "timestamp": timestamp, "status": status}
                 else:
                     raise ValueError("unsupported native debug event")
+            elif mode == "custom":
+                if (
+                    scope.reference != "/do"
+                    or not isinstance(payload, dict)
+                    or set(payload) != {"task", "name", "data"}
+                ):
+                    raise ValueError("unsupported native custom projection")
+                reference = payload["task"]
+                if (
+                    not isinstance(reference, str)
+                    or not isinstance(payload["name"], str)
+                    or not any(
+                        item.task == reference and item.name == payload["name"]
+                        for item in self.native_custom_events
+                    )
+                ):
+                    raise ValueError("native custom binding is unavailable")
+                data = {"name": payload["name"], "data": payload["data"]}
             else:
                 raise ValueError("unsupported native stream mode")
         except (KeyError, TypeError, ValueError, OwaError):

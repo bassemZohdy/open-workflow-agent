@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
@@ -16,7 +17,7 @@ from uuid import uuid4
 
 from .expressions import validate_expression_data
 
-NativeStreamMode = Literal["values", "updates", "tasks", "checkpoints", "debug"]
+NativeStreamMode = Literal["values", "updates", "tasks", "checkpoints", "debug", "custom"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -147,6 +148,7 @@ class NativeStreamLog:
             "tasks",
             "checkpoints",
             "debug",
+            "custom",
         }:
             raise ValueError("native observation mode is unsupported")
         for reference in (scope, task_reference):
@@ -156,7 +158,7 @@ class NativeStreamLog:
                 or len(reference.encode("utf-8")) > 4096
             ):
                 raise ValueError("native observation task reference is invalid")
-        if scope is None or (mode in {"updates", "tasks"} and task_reference is None):
+        if scope is None or (mode in {"updates", "tasks", "custom"} and task_reference is None):
             raise ValueError("native observation requires its public scope/task reference")
         if mode == "tasks" and (
             not isinstance(data, dict)
@@ -205,6 +207,14 @@ class NativeStreamLog:
                 or data["status"] not in {"started", "completed", "faulted", "interrupted"}
             ):
                 raise ValueError("native debug task must contain only its public status")
+        if mode == "custom" and (
+            scope != "/do"
+            or not isinstance(data, dict)
+            or set(data) != {"name", "data"}
+            or not isinstance(data["name"], str)
+            or not re.fullmatch(r"[a-z][a-z0-9_.-]{0,63}", data["name"])
+        ):
+            raise ValueError("native custom observation must contain a named root event")
         validate_expression_data(data)
         sequence = self._sequence + 1
         event_id = f"{self._epoch}:{sequence}"

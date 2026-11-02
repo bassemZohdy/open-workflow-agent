@@ -22,6 +22,11 @@ requires the base stream profile. It does not expose native step numbers,
 identifiers, task inputs or outputs, exceptions, checkpoint contents or
 nested-scope checkpoint events.
 
+The separate `langgraph.streams.custom@1.0.0` profile uses the native SDK's
+custom writer for workflow-declared diagnostic events. It requires the base
+stream profile. These observations are separate from Open Workflow business
+event delivery and do not publish to the event bus.
+
 Mount [the configuration](../examples/native-stream.yaml) and [workflow](../examples/native-stream-workflow.yaml)
 at the configured paths, provide `OWA_NATIVE_STREAM_TOKEN` through deployment
 secrets, and retain the normal SQLite `/data` volume. PostgreSQL is optional.
@@ -87,6 +92,32 @@ To include debug observations, require `langgraph.streams.debug@1.0.0` in
 addition to the base stream declaration. The debug profile does not require
 state-read access and does not emit checkpoint references.
 
+To include custom observations, require `langgraph.streams.custom@1.0.0` and
+declare one to 64 root task bindings in `nativeExtensionData`:
+
+```yaml
+document:
+  metadata:
+    owa:
+      nativeExtensions:
+        - {name: langgraph.streams, version: '1.0.0', required: true}
+        - {name: langgraph.streams.custom, version: '1.0.0', required: true}
+      nativeExtensionData:
+        langgraph.streams.custom@1.0.0:
+          events:
+            - {task: /do/0, name: prepared, data: {from: task_output}}
+            - {task: /do/1, name: finished, data: {literal: {phase: done}}}
+```
+
+Each binding emits after its root task completes. `task` is the root sequence
+index, `name` is a lowercase identifier, and `data` selects either the complete
+task output or a literal JSON value. Literal strings are not evaluated as jq.
+These data-bearing events use the same owner and stream permission boundary as
+values and updates; task output may contain sensitive application data. The
+emission precedes native checkpoint confirmation, can repeat on recovery, and
+is not a durable business event. Oversized data or a failed native writer ends
+observation without failing the workflow.
+
 | Deployment setting | Default | Bound |
 | --- | --- | --- |
 | `max_logs` | 16 | 1–128 retained invocation logs |
@@ -106,7 +137,7 @@ Responses keep their slot until closed, including after their log is evicted.
 
 ## Stream and replay behavior
 
-`mode` selects `values`, `updates`, `tasks`, `checkpoints`, `debug` or `all` (default).
+`mode` selects `values`, `updates`, `tasks`, `checkpoints`, `debug`, `custom` or `all` (default).
 Other modes are rejected.
 Each `native.observation` SSE event contains an immutable JSON envelope with
 schema `owa/native-observation/v1`, event ID, invocation ID, mode, public OWS
@@ -124,7 +155,8 @@ which independently verifies owner, authorization and retained native evidence.
 An emitted reference is an observation, not proof of a committed or retained
 checkpoint; the read may be unavailable. A debug event carries a timestamp and
 either a public task reference with lifecycle status or an opaque root
-checkpoint occurrence without a checkpoint reference. Messages, custom and JavaScript
+checkpoint occurrence without a checkpoint reference. A custom event carries
+its declared name and selected data with the public task reference. Messages and JavaScript
 tool stream modes remain unsupported.
 
 Events follow native emission order and are observations, not proof that a

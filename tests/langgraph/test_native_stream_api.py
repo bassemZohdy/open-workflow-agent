@@ -29,7 +29,10 @@ async def stream_runtime(request, tmp_path, monkeypatch):
     lineage = options.pop("lineage", False)
     state = options.pop("state", False)
     state_denied = options.pop("state_denied", False)
+    allow_emit = options.pop("allow_emit", False)
     config = configuration(**{"max_events": 4, **options})
+    if allow_emit:
+        config.execution_authorization.policy.rules[0].actions.append("event.emit")
     if lineage:
         enable_lineage(config)
         config.execution_authorization.policy.rules[0].actions.extend(
@@ -94,6 +97,233 @@ def frames(response):
         for line in response.text.splitlines()
         if line.startswith("data: ") and '"schema"' in line
     ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stream_runtime",
+    [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
+    indirect=True,
+)
+async def test_custom_stream_emits_workflow_declared_payload_through_native_writer(
+    stream_runtime, monkeypatch
+):
+    from open_workflow_agent.workflow import compile_workflow
+    from open_workflow_agent_langgraph import graph as native_graph
+
+    services, _ = stream_runtime
+    writers = []
+    original_writer = native_graph.get_stream_writer
+
+    def track_writer():
+        writers.append(True)
+        return original_writer()
+
+    monkeypatch.setattr(native_graph, "get_stream_writer", track_writer)
+    source = copy.deepcopy(workflow().source)
+    metadata = source["document"]["metadata"]["owa"]
+    metadata["nativeExtensions"].append({"name": "langgraph.streams.custom", "version": "1.0.0"})
+    metadata["nativeExtensionData"] = {
+        "langgraph.streams.custom@1.0.0": {
+            "events": [
+                {"task": "/do/0", "name": "prepared", "data": {"from": "task_output"}},
+                {"task": "/do/2", "name": "finished", "data": {"literal": {"label": "ready"}}},
+            ]
+        }
+    }
+    owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
+    async with client_for(stream_runtime) as client:
+        caps = (await client.get("/v1/capabilities")).json()
+        assert "langgraph.streams.custom@1.0.0" in caps["nativeExtensions"]
+        assert (
+            caps["features"]["nativeStreaming"]["customModeProfile"]
+            == "langgraph.streams.custom@1.0.0"
+        )
+        response = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "custom"}
+        )
+        assert response.status_code == 200, response.text
+        events = frames(response)
+        assert [(item["task_reference"], item["data"]) for item in events] == [
+            ("/do/0/first", {"name": "prepared", "data": {"value": "alice"}}),
+            ("/do/2/last", {"name": "finished", "data": {"label": "ready"}}),
+        ]
+        assert all(item["scope"] == "/do" and item["mode"] == "custom" for item in events)
+        replay = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream",
+            params={"mode": "custom"},
+            headers={"Last-Event-ID": events[0]["id"]},
+        )
+        assert [item["id"] for item in frames(replay)] == [events[1]["id"]]
+        async with client_for(stream_runtime, "bob") as other:
+            denied = await other.get(
+                f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "custom"}
+            )
+            assert denied.status_code == 404
+        assert len(services.model.calls) == 1
+        assert len(writers) == 2
+        assert services.invocations.get(owner.invocation_id).output == {"done": True}
+
+
+@pytest.mark.asyncio
+async def test_optional_custom_profile_does_not_emit_custom_events(stream_runtime, monkeypatch):
+    from open_workflow_agent.workflow import compile_workflow
+    from open_workflow_agent_langgraph import graph as native_graph
+
+    source = copy.deepcopy(workflow().source)
+    source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+        {"name": "langgraph.streams.custom", "version": "1.0.0", "required": False}
+    )
+
+    def forbidden_writer():
+        raise AssertionError("unexpected writer")
+
+    monkeypatch.setattr(native_graph, "get_stream_writer", forbidden_writer)
+    owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
+    async with client_for(stream_runtime) as client:
+        observed = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "custom"}
+        )
+        assert observed.status_code == 200, observed.text
+        assert frames(observed) == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("stream_runtime", "failure"),
+    [((backend, {"max_events": 64}), "writer") for backend in ("sqlite", "postgresql")]
+    + [
+        ((backend, {"max_events": 64, "max_event_bytes": 1024}), "frame")
+        for backend in ("sqlite", "postgresql")
+    ],
+    indirect=["stream_runtime"],
+)
+async def test_custom_observation_failure_does_not_change_workflow_execution(
+    stream_runtime, failure, monkeypatch
+):
+    from open_workflow_agent.workflow import compile_workflow
+
+    services, _ = stream_runtime
+    source = copy.deepcopy(workflow().source)
+    metadata = source["document"]["metadata"]["owa"]
+    metadata["nativeExtensions"].append({"name": "langgraph.streams.custom", "version": "1.0.0"})
+    data = "ready" if failure == "writer" else "x" * 60_000
+    metadata["nativeExtensionData"] = {
+        "langgraph.streams.custom@1.0.0": {
+            "events": [
+                {"task": "/do/0", "name": "progress", "data": {"literal": data}},
+                {"task": "/do/2", "name": "after", "data": {"literal": "later"}},
+            ]
+        }
+    }
+    attempts = []
+    if failure == "writer":
+        from open_workflow_agent_langgraph import graph as native_graph
+
+        def unavailable_writer():
+            attempts.append(True)
+            raise RuntimeError("controlled observation failure")
+
+        monkeypatch.setattr(native_graph, "get_stream_writer", unavailable_writer)
+    owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
+    assert services.invocations.get(owner.invocation_id).status == "completed"
+    assert services.invocations.get(owner.invocation_id).output == {"done": True}
+    assert len(services.model.calls) == 1
+    if failure == "writer":
+        assert len(attempts) == 1
+    async with client_for(stream_runtime) as client:
+        observed = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "custom"}
+        )
+        assert observed.status_code == 409, observed.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stream_runtime",
+    [
+        ("sqlite", {"max_events": 64, "allow_emit": True}),
+        ("postgresql", {"max_events": 64, "allow_emit": True}),
+    ],
+    indirect=True,
+)
+async def test_custom_observation_does_not_publish_or_duplicate_business_events(stream_runtime):
+    from open_workflow_agent.workflow import compile_workflow
+
+    services, _ = stream_runtime
+    source = copy.deepcopy(workflow().source)
+    metadata = source["document"]["metadata"]["owa"]
+    metadata["nativeExtensions"].append({"name": "langgraph.streams.custom", "version": "1.0.0"})
+    metadata["nativeExtensionData"] = {
+        "langgraph.streams.custom@1.0.0": {
+            "events": [
+                {
+                    "task": "/do/0",
+                    "name": "diagnostic",
+                    "data": {"literal": {"kind": "observation"}},
+                }
+            ]
+        }
+    }
+    source["do"] = [
+        {
+            "publish": {
+                "emit": {
+                    "event": {
+                        "with": {
+                            "id": "business-event",
+                            "type": "case.created",
+                            "data": {"kind": "business"},
+                        }
+                    }
+                }
+            }
+        },
+        {"last": {"set": {"done": True}}},
+    ]
+    owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
+    assert services.event_store is not None
+    rows = services.event_store.connection.execute(
+        "SELECT identity FROM event_outbox WHERE invocation_id = ?", (owner.invocation_id,)
+    ).fetchall()
+    assert len(rows) == 1
+    async with client_for(stream_runtime) as client:
+        observed = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "custom"}
+        )
+        assert observed.status_code == 200, observed.text
+        events = frames(observed)
+        assert len(events) == 1
+        assert events[0]["data"] == {"name": "diagnostic", "data": {"kind": "observation"}}
+    assert len(services.model.calls) == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stream_runtime",
+    [("sqlite", {"max_events": 32}), ("postgresql", {"max_events": 32})],
+    indirect=True,
+)
+async def test_custom_stream_replays_after_resume_without_repeating_effect(stream_runtime):
+    services, engine = stream_runtime
+    owner, plan = await invoke(stream_runtime, plan=workflow(waiting=True, custom_stream=True))
+    path = f"/v1/invocations/{owner.invocation_id}/stream"
+    async with client_for(stream_runtime) as client:
+        paused = await client.get(path, params={"mode": "custom"})
+        assert paused.status_code == 200, paused.text
+        before = frames(paused)
+        assert [item["data"] for item in before] == [{"name": "before", "data": "start"}]
+        with authority_scope(authority(services, "alice")):
+            result = await engine.resume(owner, {}, plan)
+        assert result.status == "completed", result.error
+        resumed = await client.get(
+            path, params={"mode": "custom"}, headers={"Last-Event-ID": before[-1]["id"]}
+        )
+        assert resumed.status_code == 200, resumed.text
+        assert [item["data"] for item in frames(resumed)] == [
+            {"name": "after", "data": {"done": True}}
+        ]
+    assert len(services.model.calls) == 1
 
 
 @pytest.mark.asyncio
@@ -584,7 +814,9 @@ async def test_task_stream_observes_replay_target_without_repeating_retained_eff
 
     services, _ = stream_runtime
     source = copy.deepcopy(
-        workflow(task_stream=True, checkpoint_stream=True, debug_stream=True).source
+        workflow(
+            task_stream=True, checkpoint_stream=True, debug_stream=True, custom_stream=True
+        ).source
     )
     metadata = source["document"]["metadata"]["owa"]
     metadata["nativeExtensions"].extend(
@@ -592,11 +824,9 @@ async def test_task_stream_observes_replay_target_without_repeating_retained_eff
             {"name": "langgraph.state.replay", "version": "1.0.0"},
         ]
     )
-    metadata["nativeExtensionData"] = {
-        "langgraph.state.replay@1.0.0": {
-            "authorizationPolicyRef": services.config.execution_authorization.id,
-            "replayEffectPolicy": "reexecute",
-        }
+    metadata["nativeExtensionData"]["langgraph.state.replay@1.0.0"] = {
+        "authorizationPolicyRef": services.config.execution_authorization.id,
+        "replayEffectPolicy": "reexecute",
     }
     owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
     async with client_for(stream_runtime) as client:
@@ -649,6 +879,13 @@ async def test_task_stream_observes_replay_target_without_repeating_retained_eff
             for item in frames(debug_response)
             if item["data"]["type"] == "task"
         ] == [("/do/2/last", "started"), ("/do/2/last", "completed")]
+        custom_response = await client.get(
+            f"/v1/invocations/{target}/stream", params={"mode": "custom"}
+        )
+        assert custom_response.status_code == 200, custom_response.text
+        assert [(item["task_reference"], item["data"]) for item in frames(custom_response)] == [
+            ("/do/2/last", {"name": "after", "data": {"done": True}})
+        ]
         assert len(services.model.calls) == 1
 
 
@@ -737,7 +974,7 @@ async def test_owner_stream_is_bounded_mode_filtered_and_has_explicit_replay_gap
         assert '"reason":"event_limit"' in selected.text
         small = await client.get(path, params={"max_bytes": 256})
         assert not frames(small) and '"reason":"byte_limit"' in small.text
-        assert (await client.get(path, params={"mode": "custom"})).status_code == 422
+        assert (await client.get(path, params={"mode": "messages"})).status_code == 422
     assert len(services.model.calls) == 1
     assert not services.native_streams._consumers
 
@@ -896,21 +1133,28 @@ async def test_cancelled_http_observer_releases_capacity_without_cancelling_exec
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("stream_runtime", "task_stream", "checkpoint_stream", "debug_stream"),
+    ("stream_runtime", "task_stream", "checkpoint_stream", "debug_stream", "custom_stream"),
     [
-        ((backend, {"max_events": 32}), tasks, False, False)
+        ((backend, {"max_events": 32}), tasks, False, False, False)
         for backend in ("sqlite", "postgresql")
         for tasks in (False, True)
     ]
     + [
-        ((backend, {"max_events": 32, "state": True}), False, True, False)
+        ((backend, {"max_events": 32, "state": True}), False, True, False, False)
         for backend in ("sqlite", "postgresql")
     ]
-    + [((backend, {"max_events": 32}), False, False, True) for backend in ("sqlite", "postgresql")],
+    + [
+        ((backend, {"max_events": 32}), False, False, True, False)
+        for backend in ("sqlite", "postgresql")
+    ]
+    + [
+        ((backend, {"max_events": 32}), False, False, False, True)
+        for backend in ("sqlite", "postgresql")
+    ],
     indirect=["stream_runtime"],
 )
 async def test_actual_process_exit_loses_observation_replay_but_not_native_resume(
-    stream_runtime, tmp_path, task_stream, checkpoint_stream, debug_stream
+    stream_runtime, tmp_path, task_stream, checkpoint_stream, debug_stream, custom_stream
 ):
     services, engine = stream_runtime
     config_path = tmp_path / "worker-config.json"
@@ -923,6 +1167,7 @@ async def test_actual_process_exit_loses_observation_replay_but_not_native_resum
                 "task_stream": task_stream,
                 "checkpoint_stream": checkpoint_stream,
                 "debug_stream": debug_stream,
+                "custom_stream": custom_stream,
             }
         ),
         encoding="utf-8",
@@ -959,6 +1204,7 @@ async def test_actual_process_exit_loses_observation_replay_but_not_native_resum
                     task_stream=True if task_stream else None,
                     checkpoint_stream=True if checkpoint_stream else None,
                     debug_stream=True if debug_stream else None,
+                    custom_stream=custom_stream,
                 ),
             )
         assert result.status == "completed", result.error
@@ -985,6 +1231,11 @@ async def test_actual_process_exit_loses_observation_replay_but_not_native_resum
         if debug_stream:
             debug_events = frames(await client.get(path, params={"mode": "debug"}))
             assert any(item["data"].get("status") == "completed" for item in debug_events)
+        if custom_stream:
+            custom_events = frames(await client.get(path, params={"mode": "custom"}))
+            assert [item["data"] for item in custom_events] == [
+                {"name": "after", "data": {"done": True}}
+            ]
     assert services.model.calls == []
 
 

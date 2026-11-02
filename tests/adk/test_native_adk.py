@@ -89,6 +89,7 @@ async def test_native_adk_dynamic_plan_invocation(tmp_path):
         "langgraph.streams.tasks",
         "langgraph.streams.checkpoints",
         "langgraph.streams.debug",
+        "langgraph.streams.custom",
     ],
 )
 async def test_adk_rejects_required_langgraph_channel_extension_before_native_mutation(
@@ -131,6 +132,15 @@ async def test_adk_rejects_required_langgraph_channel_extension_before_native_mu
             "nativeExtensions": [{"name": extension, "version": "1.0.0"}]
         }
         workflow["do"] = [{"never": {"call": "llm:1.0.0@default"}}]
+        if extension == "langgraph.streams.custom":
+            workflow["document"]["metadata"]["owa"]["nativeExtensions"].insert(
+                0, {"name": "langgraph.streams", "version": "1.0.0"}
+            )
+            workflow["document"]["metadata"]["owa"]["nativeExtensionData"] = {
+                "langgraph.streams.custom@1.0.0": {
+                    "events": [{"task": "/do/0", "name": "progress", "data": {"literal": "safe"}}]
+                }
+            }
     plan = compile_workflow(workflow)
     services = RuntimeServices(
         RuntimeConfig(), model=FakeModel({"response": "must-not-run"}), database_root=tmp_path

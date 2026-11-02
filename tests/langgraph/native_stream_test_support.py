@@ -79,6 +79,7 @@ def workflow(
     nested=False,
     checkpoint_stream=None,
     debug_stream=None,
+    custom_stream=False,
 ):
     definition = generate_default_workflow()
     definition["document"]["name"] = "native-stream-test"
@@ -113,6 +114,17 @@ def workflow(
             definition["document"]["metadata"]["owa"]["nativeExtensions"].append(
                 {"name": "langgraph.streams.debug", "version": "1.0.0", "required": debug_stream}
             )
+        if custom_stream:
+            owa = definition["document"]["metadata"]["owa"]
+            owa["nativeExtensions"].append({"name": "langgraph.streams.custom", "version": "1.0.0"})
+            offset = 1 if nested else 0
+            last = offset + (3 if waiting else 2)
+            owa.setdefault("nativeExtensionData", {})["langgraph.streams.custom@1.0.0"] = {
+                "events": [
+                    {"task": f"/do/{offset}", "name": "before", "data": {"literal": "start"}},
+                    {"task": f"/do/{last}", "name": "after", "data": {"from": "task_output"}},
+                ]
+            }
     definition["do"] = [
         *([{"outer": {"do": [{"child": {"set": {"value": "${ .value }"}}}]}}] if nested else []),
         {"first": {"set": {"value": "${ .value }"}}},

@@ -1195,9 +1195,10 @@ continues, and an exact retry returns the same target. Nineteen route/counter
 checks and four unsafe-child admission regressions on each store also passed; the shared
 lineage selection passed 27 with 19 other-backend skips. The earlier static guard
 rejected the valid scope exit. Hosted evidence is tracked separately.
-Hosted qualification of frozen source `67e5f9f` is running on
-`codex/s4-02-child-exit-67e5f9f`:
-[workflow run 41410674591](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41410674591).
+Hosted qualification of frozen source `67e5f9f` on
+`codex/s4-02-child-exit-67e5f9f` completed successfully: all 18 jobs in
+[workflow run 41410674591](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41410674591)
+passed. Later changes and full S4-02 remain separately gated.
 
 ## Completed nested-prefix successor validation — 2026-11-02
 
@@ -1214,6 +1215,13 @@ on SQLite and PostgreSQL; six SQLite Send regressions passed with two intentiona
 skips. The common admission/receipt selection passed 27 with 19 other-backend
 skips. The focused pre-fix run failed two assertions because invalid successors
 were accepted. Hosted qualification remains separate.
-Hosted qualification of frozen source `3134d58` is running on
-`codex/s4-02-scope-successor-3134d58`:
-[workflow run 41411500844](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41411500844).
+Hosted qualification of frozen source `3134d58` on
+`codex/s4-02-scope-successor-3134d58` did not pass:
+[workflow run 41411500844](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41411500844)
+has 17 successful jobs and a failed native state-branch job. Its first bounded
+selection reached 94% before the 35-minute command timeout (exit 124); the
+remaining cases and separate fork check did not run. No test assertion failure
+is established by that partial run. The branch job now retains the same tests
+with a 50-minute command bound and 70-minute job bound, leaving room for the
+unchanged separately bounded fork check. A later frozen qualification is still
+required; this is not a green result for `3134d58` or full S4-02.

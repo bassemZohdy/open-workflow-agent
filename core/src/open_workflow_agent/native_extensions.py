@@ -12,7 +12,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from .errors import UnsupportedWorkflowFeature, WorkflowSemanticError
+from .errors import ExpressionError, UnsupportedWorkflowFeature, WorkflowSemanticError
 from .expressions import validate_expression_data
 
 _EXTENSION_NAME = re.compile(r"^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$")
@@ -34,6 +34,7 @@ LANGGRAPH_STREAMS = "langgraph.streams@1.0.0"
 LANGGRAPH_STREAM_TASKS = "langgraph.streams.tasks@1.0.0"
 LANGGRAPH_STREAM_CHECKPOINTS = "langgraph.streams.checkpoints@1.0.0"
 LANGGRAPH_STREAM_DEBUG = "langgraph.streams.debug@1.0.0"
+LANGGRAPH_STREAM_CUSTOM = "langgraph.streams.custom@1.0.0"
 LANGGRAPH_STATE_UPDATE = "langgraph.state.update@1.0.0"
 LANGGRAPH_STATE_REPLAY = "langgraph.state.replay@1.0.0"
 LANGGRAPH_STATE_BRANCH = "langgraph.state.branch@1.0.0"
@@ -78,6 +79,92 @@ class NativeChannelConfig:
     reads: tuple[NativeChannelRead, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class NativeCustomStreamEvent:
+    task: str
+    name: str
+    data_json: str
+    from_output: bool
+
+    @property
+    def data(self) -> Any:
+        return json.loads(self.data_json)
+
+
+@dataclass(frozen=True, slots=True)
+class NativeCustomStreamConfig:
+    events: tuple[NativeCustomStreamEvent, ...]
+
+
+def native_custom_stream_config(
+    workflow: Mapping[str, Any], requirements: tuple[NativeExtensionRequirement, ...]
+) -> NativeCustomStreamConfig | None:
+    document = workflow.get("document")
+    metadata = document.get("metadata") if isinstance(document, Mapping) else None
+    owa = metadata.get("owa") if isinstance(metadata, Mapping) else None
+    if not isinstance(owa, Mapping):
+        return None
+    payloads = owa.get("nativeExtensionData", {})
+    required = {item.capability_id for item in requirements if item.required}
+    if not isinstance(payloads, Mapping) or LANGGRAPH_STREAM_CUSTOM not in payloads:
+        if LANGGRAPH_STREAM_CUSTOM in required:
+            raise WorkflowSemanticError("required native custom stream needs event bindings")
+        return None
+    if not {LANGGRAPH_STREAM_CUSTOM, LANGGRAPH_STREAMS} <= required:
+        raise WorkflowSemanticError(
+            "native custom stream data requires both required stream profiles"
+        )
+    payload = payloads[LANGGRAPH_STREAM_CUSTOM]
+    if not isinstance(payload, Mapping) or set(payload) != {"events"}:
+        raise WorkflowSemanticError("native custom stream data must contain only events")
+    entries = payload["events"]
+    do = workflow.get("do")
+    if not isinstance(entries, list) or not 1 <= len(entries) <= 64 or not isinstance(do, list):
+        raise WorkflowSemanticError(
+            "native custom stream events must contain 1 to 64 root bindings"
+        )
+    events: list[NativeCustomStreamEvent] = []
+    seen: set[tuple[str, str]] = set()
+    total_bytes = 0
+    for entry in entries:
+        if not isinstance(entry, Mapping) or set(entry) != {"task", "name", "data"}:
+            raise WorkflowSemanticError("native custom event must contain only task, name and data")
+        task, name, source = entry["task"], entry["name"], entry["data"]
+        if not isinstance(task, str) or len(task) > 64 or not _TASK_REFERENCE.fullmatch(task):
+            raise WorkflowSemanticError("native custom event task must be a direct root reference")
+        index = int(task.rsplit("/", 1)[1])
+        if index >= len(do) or not isinstance(do[index], Mapping) or len(do[index]) != 1:
+            raise WorkflowSemanticError("native custom event references an unknown root task")
+        if not isinstance(name, str) or not re.fullmatch(r"[a-z][a-z0-9_.-]{0,63}", name):
+            raise WorkflowSemanticError("native custom event name is invalid")
+        pair = (task, name)
+        if pair in seen:
+            raise WorkflowSemanticError("duplicate native custom event binding")
+        seen.add(pair)
+        if not isinstance(source, Mapping) or (
+            set(source) != {"literal"} and source != {"from": "task_output"}
+        ):
+            raise WorkflowSemanticError(
+                "native custom event data must select literal or task_output"
+            )
+        from_output = source == {"from": "task_output"}
+        data = None if from_output else source["literal"]
+        try:
+            validate_expression_data(data)
+            encoded = json.dumps(
+                data, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":")
+            )
+        except (ExpressionError, TypeError, ValueError) as exc:
+            raise WorkflowSemanticError("native custom event data is invalid") from exc
+        size = len(encoded.encode("utf-8"))
+        total_bytes += size
+        if size > 65_536 or total_bytes > 262_144:
+            raise WorkflowSemanticError("native custom event templates exceed their size bounds")
+        task_name = str(next(iter(do[index]))).replace("~", "~0").replace("/", "~1")
+        events.append(NativeCustomStreamEvent(f"{task}/{task_name}", name, encoded, from_output))
+    return NativeCustomStreamConfig(tuple(events))
+
+
 def native_channel_config(
     workflow: Mapping[str, Any], requirements: tuple[NativeExtensionRequirement, ...]
 ) -> NativeChannelConfig | None:
@@ -98,6 +185,7 @@ def native_channel_config(
         LANGGRAPH_STATE_UPDATE,
         LANGGRAPH_STATE_REPLAY,
         LANGGRAPH_STATE_BRANCH,
+        LANGGRAPH_STREAM_CUSTOM,
     }:
         raise WorkflowSemanticError("native extension data is not supported")
     if LANGGRAPH_CHANNELS not in payloads:

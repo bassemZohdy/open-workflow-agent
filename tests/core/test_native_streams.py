@@ -231,3 +231,20 @@ def test_checkpoint_stream_accepts_only_opaque_root_references(data, scope, refe
 def test_debug_stream_rejects_private_payloads_or_invalid_timestamps(data, scope, reference):
     with pytest.raises(ValueError):
         NativeStreamLog("invocation-a").append("debug", data, scope=scope, task_reference=reference)
+
+
+@pytest.mark.parametrize(
+    "data,scope,reference",
+    [
+        ({}, "/do", "/do/0/task"),
+        ({"name": "ok", "data": 1, "native": "secret"}, "/do", "/do/0/task"),
+        ({"name": "bad/name", "data": 1}, "/do", "/do/0/task"),
+        ({"name": "ok", "data": 1}, "/do", None),
+        ({"name": "ok", "data": 1}, "/do/0/nested", "/do/0/task"),
+    ],
+)
+def test_custom_stream_rejects_unbound_or_malformed_envelopes(data, scope, reference):
+    with pytest.raises(ValueError):
+        NativeStreamLog("invocation-a").append(
+            "custom", data, scope=scope, task_reference=reference
+        )

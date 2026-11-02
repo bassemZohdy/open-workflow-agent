@@ -22,6 +22,7 @@ from open_workflow_agent.native_extensions import (
     LANGGRAPH_COMMAND,
     LANGGRAPH_SEND,
     LANGGRAPH_STREAM_CHECKPOINTS,
+    LANGGRAPH_STREAM_CUSTOM,
     LANGGRAPH_STREAM_DEBUG,
     LANGGRAPH_STREAM_TASKS,
     LANGGRAPH_STREAMS,
@@ -384,7 +385,12 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             services.native_streams.verify(services.config.observability.native_streams)
             streams = self.native.task_nodes_available
             if streams:
-                extensions += (LANGGRAPH_STREAMS, LANGGRAPH_STREAM_TASKS, LANGGRAPH_STREAM_DEBUG)
+                extensions += (
+                    LANGGRAPH_STREAMS,
+                    LANGGRAPH_STREAM_TASKS,
+                    LANGGRAPH_STREAM_DEBUG,
+                    LANGGRAPH_STREAM_CUSTOM,
+                )
                 if STATE_READ_CAPABILITY in extensions:
                     extensions += (LANGGRAPH_STREAM_CHECKPOINTS,)
         functions = SUPPORTED_FUNCTION_CALLS + (

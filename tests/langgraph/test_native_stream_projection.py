@@ -128,6 +128,39 @@ async def test_debug_projection_fails_closed_for_malformed_sdk_events(damage):
         log.subscribe()
 
 
+@pytest.mark.parametrize("damage", ["task", "name", "extra"])
+async def test_custom_projection_rejects_native_events_without_declared_binding(damage):
+    from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
+
+    source = generate_default_workflow()
+    source["document"]["metadata"] = {
+        "owa": {
+            "nativeExtensions": [
+                {"name": "langgraph.streams", "version": "1.0.0"},
+                {"name": "langgraph.streams.custom", "version": "1.0.0"},
+            ],
+            "nativeExtensionData": {
+                "langgraph.streams.custom@1.0.0": {
+                    "events": [{"task": "/do/0", "name": "progress", "data": {"literal": "safe"}}]
+                }
+            },
+        }
+    }
+    plan = compile_workflow(source)
+    log = NativeStreamLog("invocation-a")
+    executor = LangGraphScopeExecutor(plan, None, "invocation-a", stream_observer=log)
+    payload = {"task": "/do/0/respond", "name": "progress", "data": "safe"}
+    if damage == "task":
+        payload["task"] = "/do/0/other"
+    elif damage == "name":
+        payload["name"] = "other"
+    else:
+        payload["native"] = "private"
+    executor._observe_scope_event("custom", payload, plan.scopes[0])
+    with pytest.raises(BufferError):
+        log.subscribe()
+
+
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 @pytest.mark.parametrize("observation", ["normal", "closed", "oversized"])
 async def test_native_stream_driver_preserves_effects_and_hides_private_state(

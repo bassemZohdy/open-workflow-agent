@@ -110,7 +110,10 @@ def test_forward_switch_lineage_is_covered_by_the_postgres_branch_job():
         (ROOT / ".github/workflows/postgres-ci.yml").read_text(), Loader=yaml.BaseLoader
     )
     job = workflow["jobs"]["postgres-native-branch"]
+    assert job["timeout-minutes"] == "70"
     commands = "\n".join(step.get("run", "") for step in job["steps"])
+    assert "timeout --signal=TERM --kill-after=30s 50m" in commands
+    assert "timeout --signal=TERM --kill-after=30s 12m" in commands
     assert "../../tests/langgraph/test_native_lineage_switch.py" in commands
     assert "../../tests/langgraph/test_native_lineage_nested.py" in commands
     assert "../../tests/langgraph/test_native_lineage_child_catchup.py" in commands

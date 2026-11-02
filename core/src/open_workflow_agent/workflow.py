@@ -85,8 +85,10 @@ from .lifecycle import LifecycleControl
 from .native_extensions import (
     NATIVE_CHANNEL_VARIABLE,
     NativeChannelConfig,
+    NativeCustomStreamConfig,
     NativeExtensionRequirement,
     native_channel_config,
+    native_custom_stream_config,
     native_extension_requirements,
 )
 from .native_lineage_policy import NativeLineagePolicy, native_lineage_policies
@@ -994,6 +996,7 @@ class WorkflowPlan:
     script_resources: tuple[ExecutableScriptBinding, ...] = ()
     native_extensions: tuple[NativeExtensionRequirement, ...] = ()
     native_channels: NativeChannelConfig | None = None
+    native_custom_stream: NativeCustomStreamConfig | None = None
     native_state_updates: NativeStateUpdatePolicy | None = None
     native_state_replay: NativeLineagePolicy | None = None
     native_state_branch: NativeLineagePolicy | None = None
@@ -1206,6 +1209,7 @@ def normalize_workflow(
     root = scope(effective["do"], "/do")
     native_extensions = native_extension_requirements(workflow)
     native_channels = native_channel_config(workflow, native_extensions)
+    native_custom_stream = native_custom_stream_config(workflow, native_extensions)
     state_updates = native_state_update_policy(workflow, native_extensions)
     replay_policy, branch_policy = native_lineage_policies(
         workflow, native_extensions, state_updates
@@ -1227,6 +1231,7 @@ def normalize_workflow(
         script_resources=script_resources,
         native_extensions=native_extensions,
         native_channels=native_channels,
+        native_custom_stream=native_custom_stream,
         native_state_updates=state_updates,
         native_state_replay=replay_policy,
         native_state_branch=branch_policy,
