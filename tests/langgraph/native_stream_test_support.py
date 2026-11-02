@@ -1,6 +1,12 @@
 """Deterministic original-principal native streaming configuration."""
 
-from open_workflow_agent.config import RuntimeConfig
+from open_workflow_agent.config import (
+    NativeStateBranchConfig,
+    NativeStateConfig,
+    NativeStateReplayConfig,
+    NativeStateUpdateConfig,
+    RuntimeConfig,
+)
 from open_workflow_agent.execution_authority import ExecutionAuthority
 from open_workflow_agent.security import static_principal
 from open_workflow_agent.workflow import compile_workflow, generate_default_workflow
@@ -52,6 +58,16 @@ def authority(services, actor):
     return ExecutionAuthority.capture(
         static_principal(services.config.security.profile(profile)), security_profile=profile
     )
+
+
+def enable_lineage(config, *, branch=False):
+    """Install the same required capabilities used by private lineage fixtures."""
+    bounds = NativeStateConfig(max_native_bytes=4_194_304)
+    config.native_state = bounds
+    config.native_state_replay = NativeStateReplayConfig(bounds=bounds)
+    if branch:
+        config.native_state_updates = NativeStateUpdateConfig(bounds=bounds)
+        config.native_state_branch = NativeStateBranchConfig(bounds=bounds)
 
 
 def workflow(*, required=True, declared=True, waiting=False):

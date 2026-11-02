@@ -10,7 +10,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from native_stream_test_support import authority, configuration
+from native_stream_test_support import authority, configuration, enable_lineage
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import NativeStateConfig
 from open_workflow_agent.errors import OwaError
@@ -47,6 +47,7 @@ async def test_private_branch_replaces_data_at_last_completed_task_and_preserves
     config = configuration()
     config.observability.native_streams = None
     config.execution_authorization.policy.rules[0].actions.extend(["state.branch", "state.replay"])
+    enable_lineage(config, branch=True)
     if backend == "postgresql":
         datasource = os.getenv("OWA_TEST_POSTGRES_URL")
         if not datasource:

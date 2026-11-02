@@ -268,9 +268,10 @@ treated as a deferred task or as additional feature completion.
   effect policy to later ones.
   Updated root checkpoints now retain their attested source control dependencies;
   later source updates do not alter the selected state or prevent an exact retry.
-  The private preflight test for rejection of a manually admitted unsupported
-  nested workflow fails on the unchanged `4ac1e21` baseline; investigate the
-  coordinator's pre-reservation capability gate before full qualification.
+  The coordinator now rechecks all required workflow capabilities before a new
+  replay or branch reservation and again before recovering a reservation. The
+  previously failing unsupported-source rejection test is retained as regression
+  evidence; broader full qualification remains open.
   Broader nested scope and real process-stop qualification remain open.
   The frozen public branch PostgreSQL job passed;
   broader profiles and full hosted qualification remain open; see the

@@ -800,9 +800,34 @@ with 30 other-backend skips. Another selection passed 25 cases with 17 skips and
 deselections. The PostgreSQL workflow-selection checks passed 60 cases.
 One excluded test, which expects a private coordinator to reject a
 manually admitted unsupported nested workflow before reservation, also fails on
-unchanged `4ac1e21`; its capability-gate question remains open in `TODO.md`.
+unchanged `4ac1e21`; the subsequent capability-gate repair is described below.
 These results do not qualify process stops or full S4-02 acceptance for this
 profile.
 Hosted qualification of frozen source `ab43bef` is running on
 `codex/s4-02-updated-lineage-qualification-ab43bef`:
 [workflow run 41389345302](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41389345302).
+Its dedicated Send and updated-checkpoint lineage job passed; the overall
+workflow is still running.
+
+## Required capability recheck — 2026-11-02
+
+The replay and branch coordinators now recheck the original workflow's required
+capabilities before reserving a new target and when recovering a reservation.
+The checks run before the target is continued, so an unavailable required
+extension cannot silently pass this admission path. The previously failing
+private-fixture test now checks both coordinators; its source is deliberately
+admitted through the native adapter with the required public profiles disabled.
+Separate recovery tests interrupt after reservation, temporarily make a required
+capability unavailable, and then verify recovery of the same target after the
+capability returns. The private coordinator fixtures and their process workers
+now install the capabilities declared by their workflows.
+
+Local SQLite and PostgreSQL rejection cases passed for replay and branch before
+reservation. An updated-checkpoint reservation-recovery case passed for each
+operation and backend. The SQLite public replay/branch regressions passed four
+cases with four PostgreSQL skips; the private branch suite passed four cases,
+including process stops, with four other-backend deselections. The SQLite
+preflight, receipt and admission selection passed 27 cases with 19 skips,
+including the formerly failing test. Private PostgreSQL replay and branch
+coordinator regressions passed two cases.
+The PostgreSQL workflow-selection checks passed 60 cases.

@@ -6,7 +6,7 @@ import sys
 import time
 from pathlib import Path
 
-from native_stream_test_support import authority, configuration
+from native_stream_test_support import authority, configuration, enable_lineage
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import NativeStateConfig
 from open_workflow_agent.services import RuntimeServices
@@ -20,6 +20,7 @@ async def main():
     config = configuration()
     config.observability.native_streams = None
     config.execution_authorization.policy.rules[0].actions.extend(["state.branch", "state.replay"])
+    enable_lineage(config, branch=True)
     datasource = os.getenv("OWA_TEST_POSTGRES_URL")
     if datasource:
         config.persistence.datasource = datasource

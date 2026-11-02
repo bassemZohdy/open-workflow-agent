@@ -120,6 +120,7 @@ class NativeReplayCoordinator:
                 bounds=self.bounds,
             )
             plan = await self.services.recovery_definitions.resolve_inspection(source)
+            self.engine._verify_workflow_capabilities(plan)
             validate_basis = (
                 validate_root_replay_basis if kind == "replay" else validate_root_branch_basis
             )
@@ -154,6 +155,7 @@ class NativeReplayCoordinator:
                 _reserved_request=request,
             )
             plan = await self.services.recovery_definitions.resolve_inspection(source)
+            self.engine._verify_workflow_capabilities(plan)
         notify("reserved", target.invocation_id)
         original = self.services.execution_authorizations.verify_invocation(source)
         if original is None:

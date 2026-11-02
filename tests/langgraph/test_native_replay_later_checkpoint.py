@@ -5,7 +5,7 @@ import os
 from uuid import uuid4
 
 import pytest
-from native_stream_test_support import authority, configuration
+from native_stream_test_support import authority, configuration, enable_lineage
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import NativeStateConfig
 from open_workflow_agent.execution_authority import authority_scope
@@ -31,6 +31,7 @@ async def test_replay_from_later_root_checkpoint_reexecutes_only_remaining_tasks
     config = configuration()
     config.observability.native_streams = None
     config.execution_authorization.policy.rules[0].actions.append("state.replay")
+    enable_lineage(config)
     if backend == "postgresql":
         datasource = os.getenv("OWA_TEST_POSTGRES_URL")
         if not datasource:

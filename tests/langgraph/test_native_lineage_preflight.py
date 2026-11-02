@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import pytest
 from open_workflow_agent.config import NativeStateConfig
-from open_workflow_agent.errors import OwaError
+from open_workflow_agent.errors import OwaError, UnsupportedWorkflowFeature
 from open_workflow_agent.state_lineage import StateLineageRequest
 from open_workflow_agent.storage import open_storage
 from test_native_state_preflight import counts
@@ -18,7 +18,10 @@ pytest.importorskip("langgraph.graph")
 from open_workflow_agent_langgraph import native_lineage_preflight as module
 from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
 from open_workflow_agent_langgraph.native_lineage_preflight import prepare_native_lineage
-from open_workflow_agent_langgraph.native_replay_coordinator import NativeReplayCoordinator
+from open_workflow_agent_langgraph.native_replay_coordinator import (
+    NativeBranchCoordinator,
+    NativeReplayCoordinator,
+)
 from open_workflow_agent_langgraph.native_state import state_reference
 
 preflight = _preflight
@@ -63,27 +66,32 @@ async def test_current_basis_has_completed_child_evidence_without_creating_any_b
 
 
 @pytest.mark.asyncio
-async def test_unsupported_nested_timed_source_does_not_reserve_a_target(preflight):
+@pytest.mark.parametrize("kind", ["replay", "branch"])
+async def test_unsupported_required_extensions_do_not_reserve_a_target(preflight, kind):
     services, engine, handle, actor, reference, *_ = preflight
-    coordinator = NativeReplayCoordinator(engine, NativeStateConfig())
+    coordinator = (
+        NativeReplayCoordinator(engine, NativeStateConfig())
+        if kind == "replay"
+        else NativeBranchCoordinator(engine, NativeStateConfig())
+    )
     before = counts(preflight)
     reservations = coordinator.reservations.connection
-    before_reservations = reservations.execute(
-        "SELECT COUNT(*) FROM native_replay_reservations_v1"
-    ).fetchone()[0]
+    table = "native_replay_reservations_v1"
+    before_reservations = reservations.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
     phases = []
-    with pytest.raises(OwaError):
-        await coordinator.run(
-            handle,
-            actor,
-            request_id=uuid4().hex * 2,
-            source_reference=reference,
-            _phase=lambda name, target: phases.append((name, target)),
-        )
+    options = {
+        "request_id": uuid4().hex * 2,
+        "source_reference": reference,
+        "_phase": lambda name, target: phases.append((name, target)),
+    }
+    if kind == "branch":
+        options.update({"task_reference": "/do/0/first", "values": {"value": 7}})
+    operation = coordinator.run if kind == "replay" else coordinator.run_branch
+    with pytest.raises(UnsupportedWorkflowFeature):
+        await operation(handle, actor, **options)
     assert counts(preflight) == before
     assert (
-        reservations.execute("SELECT COUNT(*) FROM native_replay_reservations_v1").fetchone()[0]
-        == before_reservations
+        reservations.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == before_reservations
     )
     assert phases == [] and services.model.calls == []
 

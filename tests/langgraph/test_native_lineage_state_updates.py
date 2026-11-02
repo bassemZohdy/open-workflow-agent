@@ -12,6 +12,7 @@ from open_workflow_agent.config import (
     NativeStateReplayConfig,
     NativeStateUpdateConfig,
 )
+from open_workflow_agent.errors import UnsupportedWorkflowFeature
 from open_workflow_agent.execution_authority import authority_scope
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow, generate_default_workflow
@@ -178,6 +179,15 @@ async def test_lineage_from_updated_waiting_checkpoint(
             )
             assert later.status_code == 200, later.text
             if interrupted:
+
+                def unsupported(_plan):
+                    raise UnsupportedWorkflowFeature("required capability unavailable")
+
+                with monkeypatch.context() as context:
+                    context.setattr(engine, "_verify_workflow_capabilities", unsupported)
+                    with pytest.raises(UnsupportedWorkflowFeature):
+                        await invoke(handle, authority(services, "alice"), **command)
+                assert services.invocations.get(interrupted[0]).status == "running"
                 recovered = await invoke(handle, authority(services, "alice"), **command)
                 assert recovered.invocation_id == interrupted[0]
                 assert recovered.status == "waiting"
