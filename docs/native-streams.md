@@ -29,11 +29,13 @@ event delivery and do not publish to the event bus.
 
 The separate `langgraph.streams.subgraphs@1.0.0` profile projects native
 updates from directly nested `do` scopes. It requires the base stream profile.
-It also admits a `for` task with a literal `in` array of at most 32 items,
-provided it has no `while` condition and its body contains no child scopes.
-The loop body may contain `set`, `call` and `wait` tasks.
+It also admits up to two nested `for` tasks, each with a literal `in` array of
+at most 32 items and no `while` condition. For nested loops, the outer item
+count multiplied by the sum of its inner loop item counts must not exceed 64.
+Loop bodies may contain `set`, `call`, `wait`, and permitted inner `for` tasks;
+other child scopes inside loops are rejected.
 `try`/`catch` scopes, including their retry behavior, are not admitted.
-Dynamic or larger loops, nested child scopes inside a loop and fork child scopes
+Dynamic or larger loops, deeper child scopes inside a loop and fork child scopes
 are rejected at admission. Each event identifies the public child scope and task,
 without exposing SDK checkpoint identifiers.
 

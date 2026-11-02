@@ -56,6 +56,7 @@ from open_workflow_agent.workflow import (
 )
 
 from .native import NATIVE_SCOPE_STEP_LIMIT
+from .subgraph_scopes import ancestor_references
 
 _NATIVE_CHANNEL_UPDATES = "__owa_native_channel_updates__"
 
@@ -364,6 +365,14 @@ class LangGraphScopeExecutor:
             for scope in plan.scopes for task in scope.tasks
             if "do" in task.definition
         } if self.native_stream_subgraphs else {}
+        loop_scopes = {
+            reference for reference, (_, task) in self._subgraph_parents.items()
+            if "for" in task.definition
+        }
+        self.native_nested_loop_stream = any(
+            ancestor in loop_scopes
+            for inner in loop_scopes for ancestor in ancestor_references(inner)
+        )
         self.native_custom_events = (
             plan.native_custom_stream.events if plan.native_custom_stream is not None else ()
         )
@@ -1584,13 +1593,24 @@ class LangGraphScopeExecutor:
                     pending_plan = next(
                         task for task in scope.tasks if _node_name(task) == pending_task.name
                     )
-                    native_input = Command(
-                        resume=self._validate_native_wake(
-                            suspension,
-                            fork_reference=pending_plan.execution_reference
-                            or pending_plan.reference,
-                        )
+                    wake = self._validate_native_wake(
+                        suspension,
+                        fork_reference=pending_plan.execution_reference or pending_plan.reference,
                     )
+                    if self.native_nested_loop_stream:
+                        identifier = saved.interrupts[0].id
+                        if (
+                            not isinstance(identifier, str)
+                            or re.fullmatch(r"[0-9a-f]{32}", identifier) is None
+                            or len(pending_task.interrupts) != 1
+                            or pending_task.interrupts[0].id != identifier
+                        ):
+                            raise InvocationStateError(
+                                "native pending interruption identity is invalid"
+                            )
+                        native_input = Command(resume={identifier: wake})
+                    else:
+                        native_input = Command(resume=wake)
                     checkpoint = await self.saver.aget_tuple(physical_config)
                     if checkpoint is None:
                         raise InvocationStateError("native pending timer checkpoint is absent")
@@ -1680,7 +1700,7 @@ class LangGraphScopeExecutor:
         if observer is None:
             return
         try:
-            if not isinstance(namespace, tuple) or not 1 <= len(namespace) <= 33:
+            if not isinstance(namespace, tuple) or not 1 <= len(namespace) <= 34:
                 raise ValueError("native subgraph namespace is invalid")
             if isinstance(payload, dict) and set(payload) == {"__interrupt__"}:
                 return

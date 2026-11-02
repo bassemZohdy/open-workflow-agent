@@ -50,6 +50,7 @@ from open_workflow_agent.workflow import (
 from . import native as native_module
 from .agent import LangGraphAgentFactory
 from .native import LANGGRAPH_AVAILABLE, NATIVE_SCOPE_STEP_LIMIT, LangGraphFunctionalAdapter
+from .subgraph_scopes import ancestor_references
 
 if TYPE_CHECKING:
     from .branch_control import LangGraphBranchController
@@ -319,8 +320,8 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 for scope in plan.scopes for task in scope.tasks
                 if "do" in task.definition and "for" not in task.definition
             }
-            loop_scopes = {
-                task.reference + "/do"
+            loop_counts = {
+                task.reference + "/do": len(task.definition["for"]["in"])
                 for scope in plan.scopes for task in scope.tasks
                 if "do" in task.definition and "for" in task.definition
                 and isinstance(task.definition["for"], dict)
@@ -328,26 +329,45 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 and len(task.definition["for"]["in"]) <= 32
                 and "while" not in task.definition
             }
-            if any(
-                scope.reference.startswith(loop_scope + "/")
-                for scope in plan.scopes for loop_scope in loop_scopes
-            ):
-                raise UnsupportedWorkflowFeature(
-                    "native subgraph observations do not support nested loop scopes"
-                )
-            if any(
-                not any(operation in task.definition for operation in ("set", "call", "wait"))
-                for scope in plan.scopes if scope.reference in loop_scopes for task in scope.tasks
-            ):
-                raise UnsupportedWorkflowFeature(
-                    "native subgraph loop observations require set, call or wait tasks"
-                )
+            loop_scopes = set(loop_counts)
             allowed |= loop_scopes
             if any(
                 scope.reference != "/do" and scope.reference not in allowed for scope in plan.scopes
             ):
                 raise UnsupportedWorkflowFeature(
                     "native subgraph observations require direct nested do scopes"
+                )
+            nested_counts: dict[str, int] = {}
+            for scope in plan.scopes:
+                parents = [
+                    ancestor for ancestor in ancestor_references(scope.reference)
+                    if ancestor in loop_scopes
+                ]
+                if parents and scope.reference not in loop_scopes:
+                    raise UnsupportedWorkflowFeature(
+                        "native subgraph observations do not support child scopes inside loops"
+                    )
+                if len(parents) > 1:
+                    raise UnsupportedWorkflowFeature(
+                        "native subgraph observations allow at most two nested loops"
+                    )
+                if parents:
+                    parent = parents[0]
+                    nested_counts[parent] = (
+                        nested_counts.get(parent, 0) + loop_counts[scope.reference]
+                    )
+            for parent, count in nested_counts.items():
+                if loop_counts[parent] * count > 64:
+                    raise UnsupportedWorkflowFeature(
+                        "native subgraph nested loops exceed the occurrence limit"
+                    )
+            if any(
+                not any(operation in task.definition for operation in ("set", "call", "wait"))
+                and task.reference + "/do" not in loop_scopes
+                for scope in plan.scopes if scope.reference in loop_scopes for task in scope.tasks
+            ):
+                raise UnsupportedWorkflowFeature(
+                    "native subgraph loop observations require set, call or wait tasks"
                 )
         if (
             LANGGRAPH_STREAM_CHECKPOINTS in required

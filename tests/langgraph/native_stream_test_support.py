@@ -189,3 +189,23 @@ def loop_subgraph_waiting_workflow():
         {"done": {"set": {"done": True}}},
     ]
     return compile_workflow(source)
+
+
+def nested_loop_subgraph_waiting_workflow():
+    import copy
+
+    source = copy.deepcopy(workflow().source)
+    source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
+    )
+    source["do"] = [
+        {"outer": {"for": {"each": "a", "in": [0, 1]}, "do": [
+            {"inner": {"for": {"each": "b", "in": [0, 1]}, "do": [
+                {"call": {"call": "llm:1.0.0@default", "with": {"prompt": "${ [$a, $b] }"}}},
+                {"pause": {"wait": {"seconds": 300}}},
+                {"last": {"set": {"a": "${ $a }", "b": "${ $b }"}}},
+            ]}},
+        ]}},
+        {"done": {"set": {"done": True}}},
+    ]
+    return compile_workflow(source)

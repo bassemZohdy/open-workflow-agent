@@ -22,6 +22,7 @@ from native_stream_test_support import (
     configuration,
     enable_lineage,
     loop_subgraph_waiting_workflow,
+    nested_loop_subgraph_waiting_workflow,
     repeated_subgraph_waiting_workflow,
     subgraph_waiting_workflow,
     workflow,
@@ -36,6 +37,7 @@ async def stream_runtime(request, tmp_path, monkeypatch):
     backend, options = request.param if isinstance(request.param, tuple) else (request.param, {})
     options = dict(options)
     lineage = options.pop("lineage", False)
+    lineage_timeout = options.pop("lineage_timeout", None)
     state = options.pop("state", False)
     state_denied = options.pop("state_denied", False)
     allow_emit = options.pop("allow_emit", False)
@@ -44,6 +46,9 @@ async def stream_runtime(request, tmp_path, monkeypatch):
         config.execution_authorization.policy.rules[0].actions.append("event.emit")
     if lineage:
         enable_lineage(config)
+        if lineage_timeout is not None:
+            config.native_state.timeout_seconds = lineage_timeout
+            config.native_state_replay.bounds.timeout_seconds = lineage_timeout
         config.execution_authorization.policy.rules[0].actions.extend(
             ["state.inspect", "state.replay"]
         )
@@ -219,8 +224,8 @@ async def test_subgraph_stream_resume_preserves_child_checkpoint_and_effect(stre
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "kind", [
-        "missing_base", "dynamic_loop", "large_loop", "nested_loop", "while_loop",
-        "retry_scope", "run_body", "fork",
+        "missing_base", "dynamic_loop", "large_loop", "deep_loop", "large_nested",
+        "wide_nested", "nested_scope", "while_loop", "retry_scope", "run_body", "fork",
     ]
 )
 async def test_subgraph_stream_rejects_unsupported_scope_before_execution(stream_runtime, kind):
@@ -234,14 +239,26 @@ async def test_subgraph_stream_rejects_unsupported_scope_before_execution(stream
         extensions.clear()
     extensions.append({"name": "langgraph.streams.subgraphs", "version": "1.0.0"})
     if kind in {
-        "dynamic_loop", "large_loop", "nested_loop", "while_loop", "retry_scope", "run_body"
+        "dynamic_loop", "large_loop", "deep_loop", "large_nested", "wide_nested",
+        "nested_scope", "while_loop", "retry_scope", "run_body"
     }:
         values = "${ [1, 2] }" if kind == "dynamic_loop" else list(
-            range(33 if kind == "large_loop" else 2)
+            range(33 if kind == "large_loop" else 9 if kind == "large_nested" else
+                  16 if kind == "wide_nested" else 2)
         )
         body = [{"child": {"set": {"value": 1}}}]
-        if kind == "nested_loop":
-            body = [{"inner": {"for": {"each": "other", "in": [1, 2]}, "do": body}}]
+        if kind in {"deep_loop", "large_nested", "wide_nested"}:
+            if kind == "deep_loop":
+                body = [{"deep": {"for": {"each": "third", "in": [1, 2]}, "do": body}}]
+            inner_values = list(
+                range(8 if kind == "large_nested" else 3 if kind == "wide_nested" else 2)
+            )
+            body = [{"inner": {"for": {"each": "other", "in": inner_values}, "do": body}}]
+            if kind == "wide_nested":
+                body.append({"second": {"for": {"each": "other", "in": inner_values},
+                                        "do": [{"child": {"set": {"value": 1}}}]}})
+        elif kind == "nested_scope":
+            body = [{"inner": {"do": body}}]
         elif kind == "run_body":
             body = [{"child": {"run": {"workflow": {
                 "namespace": "tests", "name": "child", "version": "1.0.0",
@@ -263,6 +280,29 @@ async def test_subgraph_stream_rejects_unsupported_scope_before_execution(stream
     with pytest.raises(UnsupportedWorkflowFeature):
         await engine.compile(compile_workflow(source))
     assert services.model.calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stream_runtime", [("sqlite", {"max_events": 64})], indirect=True)
+async def test_subgraph_admission_accepts_many_independent_loop_scopes(stream_runtime):
+    from open_workflow_agent.workflow import compile_workflow
+    from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
+
+    _, engine = stream_runtime
+    source = copy.deepcopy(workflow().source)
+    source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
+    )
+    source["do"] = [
+        {f"loop_{index}": {"for": {"each": "value", "in": [0]}, "do": [
+            {"item": {"set": {"value": "${ $value }"}}},
+        ]}}
+        for index in range(128)
+    ]
+    plan = compile_workflow(source)
+    await engine.compile(plan)
+    assert len(plan.scopes) == 129
+    assert not LangGraphScopeExecutor(plan, None, "invocation-a").native_nested_loop_stream
 
 
 @pytest.mark.asyncio
@@ -356,6 +396,259 @@ async def test_subgraph_stream_accepts_the_maximum_literal_loop(stream_runtime):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("waiting", [False, True])
+@pytest.mark.parametrize(
+    "stream_runtime", [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
+    indirect=True,
+)
+async def test_subgraph_stream_projects_two_nested_loops(stream_runtime, waiting):
+    from open_workflow_agent.workflow import compile_workflow
+    from open_workflow_agent_langgraph import native
+    from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
+
+    services, engine = stream_runtime
+    source = copy.deepcopy(workflow().source)
+    source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
+    )
+    leaf = [
+        {"call": {"call": "llm:1.0.0@default", "with": {"prompt": "${ [$a, $b] }"}}},
+        *([{"pause": {"wait": {"seconds": 300}}}] if waiting else []),
+        {"last": {"set": {"a": "${ $a }", "b": "${ $b }"}}},
+    ]
+    source["do"] = [
+        {"outer": {"for": {"each": "a", "in": [0, 1]}, "do": [
+            {"inner": {"for": {"each": "b", "in": [0, 1]}, "do": leaf}},
+        ]}},
+        {"done": {"set": {"done": True}}},
+    ]
+    owner, plan = await invoke(stream_runtime, plan=compile_workflow(source))
+    if waiting:
+        assert services.invocations.get(owner.invocation_id).status == "waiting"
+        for count in range(1, 5):
+            with authority_scope(authority(services, "alice")):
+                result = await engine.resume(owner, {}, plan)
+            assert result.status == ("completed" if count == 4 else "waiting"), result.error
+            assert len(services.model.calls) == min(count + 1, 4)
+    assert services.invocations.get(owner.invocation_id).status == "completed"
+    assert len(services.model.calls) == 4
+    async with client_for(stream_runtime) as client:
+        observed = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "subgraphs"}
+        )
+        assert observed.status_code == 200, observed.text
+        results = [
+            item["data"]["data"] for item in frames(observed)
+            if item["task_reference"].endswith("/last")
+        ]
+        assert results == [{"a": a, "b": b} for a in (0, 1) for b in (0, 1)]
+        assert re.search(r"task_[0-9a-f]{64}", observed.text) is None
+    path = services.engine_database_path("langgraph", create_namespace=False)
+    saver_type = (
+        native.AsyncPostgresSaver if path.startswith("postgres") else native.AsyncSqliteSaver
+    )
+    executor = LangGraphScopeExecutor(plan, None, owner.invocation_id)
+    async with saver_type.from_conn_string(path) as saver:
+        for scope, occurrences in [
+            ("/do/0/outer/do", 2), ("/do/0/outer/do/0/inner/do", 4)
+        ]:
+            for occurrence in range(1, occurrences + 1):
+                checkpoint = await saver.aget_tuple(executor.checkpoint_config(scope, occurrence))
+                assert checkpoint is not None
+                assert checkpoint.config["configurable"]["checkpoint_ns"] == ""
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stream_runtime", [("sqlite", {"max_events": 512}), ("postgresql", {"max_events": 512})],
+    indirect=True,
+)
+async def test_subgraph_stream_accepts_the_maximum_nested_loop_occurrences(stream_runtime):
+    from open_workflow_agent.workflow import compile_workflow
+
+    source = copy.deepcopy(workflow().source)
+    source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
+    )
+    source["do"] = [{"outer": {"for": {"each": "a", "in": list(range(8))}, "do": [
+        {"inner": {"for": {"each": "b", "in": list(range(8))}, "do": [
+            {"item": {"set": {"a": "${ $a }", "b": "${ $b }"}}},
+        ]}},
+    ]}}]
+    owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
+    async with client_for(stream_runtime) as client:
+        observed = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "subgraphs"}
+        )
+        assert observed.status_code == 200, observed.text
+        results = [
+            item["data"]["data"] for item in frames(observed)
+            if item["task_reference"].endswith("/item")
+        ]
+        assert results == [{"a": a, "b": b} for a in range(8) for b in range(8)]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stream_runtime", [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
+    indirect=True,
+)
+async def test_subgraph_stream_resumes_sibling_nested_loops(stream_runtime):
+    from open_workflow_agent.workflow import compile_workflow
+
+    services, engine = stream_runtime
+    source = copy.deepcopy(workflow().source)
+    source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
+    )
+    siblings = []
+    for name in ("left", "right"):
+        siblings.append({name: {"for": {"each": "b", "in": [0]}, "do": [
+            {"call": {"call": "llm:1.0.0@default", "with": {"prompt": "${ $a }"}}},
+            {"pause": {"wait": {"seconds": 300}}},
+            {"last": {"set": {"a": "${ $a }", "side": name}}},
+        ]}})
+    source["do"] = [
+        {"outer": {"for": {"each": "a", "in": [0, 1]}, "do": siblings}},
+        {"done": {"set": {"done": True}}},
+    ]
+    owner, plan = await invoke(stream_runtime, plan=compile_workflow(source))
+    for count in range(1, 5):
+        with authority_scope(authority(services, "alice")):
+            result = await engine.resume(owner, {}, plan)
+        assert result.status == ("completed" if count == 4 else "waiting"), result.error
+        assert len(services.model.calls) == min(count + 1, 4)
+    async with client_for(stream_runtime) as client:
+        observed = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "subgraphs"}
+        )
+        assert observed.status_code == 200, observed.text
+        results = [
+            item["data"]["data"] for item in frames(observed)
+            if item["task_reference"].endswith("/last")
+        ]
+        assert results == [
+            {"a": a, "side": name} for a in (0, 1) for name in ("left", "right")
+        ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stream_runtime", [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
+    indirect=True,
+)
+async def test_nested_loop_resume_rejects_mismatched_interrupt_identity(
+    stream_runtime, monkeypatch
+):
+    from langgraph.graph.state import CompiledStateGraph
+    from langgraph.types import Interrupt
+    from open_workflow_agent.errors import InvocationStateError
+
+    services, engine = stream_runtime
+    owner, plan = await invoke(stream_runtime, plan=nested_loop_subgraph_waiting_workflow())
+    assert services.invocations.get(owner.invocation_id).status == "waiting"
+    original = CompiledStateGraph.aget_state
+
+    async def corrupt_identity(graph, *args, **kwargs):
+        saved = await original(graph, *args, **kwargs)
+        if saved.interrupts:
+            wrong = Interrupt(value=saved.interrupts[0].value, id="0" * 32)
+            return saved._replace(interrupts=(wrong,))
+        return saved
+
+    monkeypatch.setattr(CompiledStateGraph, "aget_state", corrupt_identity)
+    with authority_scope(authority(services, "alice")):
+        try:
+            result = await engine.resume(owner, {}, plan)
+        except InvocationStateError:
+            pass
+        else:
+            assert result.status == "faulted"
+            assert result.error is not None
+            assert "0" * 32 not in str(result.error)
+    assert len(services.model.calls) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("skip_nested", [False, True])
+@pytest.mark.parametrize(
+    "stream_runtime", [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
+    indirect=True,
+)
+async def test_nested_loop_profile_resumes_an_unrelated_scope(stream_runtime, skip_nested):
+    from open_workflow_agent.workflow import compile_workflow
+
+    services, engine = stream_runtime
+    source = copy.deepcopy(workflow().source)
+    source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
+    )
+    nested = {"for": {"each": "a", "in": [0]}, "do": [
+        {"inner": {"for": {"each": "b", "in": [0]}, "do": [
+            {"value": {"set": {"value": 1}}},
+        ]}},
+    ]}
+    if skip_nested:
+        nested["if"] = "${ false }"
+    source["do"] = [
+        {"nested": nested},
+        {"later": {"do": [
+            {"call": {"call": "llm:1.0.0@default"}},
+            {"pause": {"wait": {"seconds": 300}}},
+            {"last": {"set": {"done": True}}},
+        ]}},
+    ]
+    owner, plan = await invoke(stream_runtime, plan=compile_workflow(source))
+    assert services.invocations.get(owner.invocation_id).status == "waiting"
+    with authority_scope(authority(services, "alice")):
+        result = await engine.resume(owner, {}, plan)
+    assert result.status == "completed", result.error
+    assert result.output == {"done": True}
+    assert len(services.model.calls) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stream_runtime", [("sqlite", {"max_events": 256, "state": True}),
+                       ("postgresql", {"max_events": 256, "state": True})],
+    indirect=True,
+)
+async def test_nested_loop_stream_profiles_can_coexist(stream_runtime):
+    from open_workflow_agent.workflow import compile_workflow
+
+    source = copy.deepcopy(workflow(
+        task_stream=True, checkpoint_stream=True, debug_stream=True, custom_stream=True
+    ).source)
+    metadata = source["document"]["metadata"]["owa"]
+    metadata["nativeExtensions"].append(
+        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
+    )
+    metadata["nativeExtensionData"]["langgraph.streams.custom@1.0.0"]["events"] = [
+        {"task": "/do/1", "name": "done", "data": {"literal": "ready"}}
+    ]
+    source["do"] = [
+        {"outer": {"for": {"each": "a", "in": [0]}, "do": [
+            {"inner": {"for": {"each": "b", "in": [0]}, "do": [
+                {"value": {"set": {"a": "${ $a }", "b": "${ $b }"}}},
+            ]}},
+        ]}},
+        {"last": {"set": {"done": True}}},
+    ]
+    owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
+    path = f"/v1/invocations/{owner.invocation_id}/stream"
+    async with client_for(stream_runtime) as client:
+        for mode in ("values", "updates", "tasks", "checkpoints", "debug", "custom", "subgraphs"):
+            response = await client.get(path, params={"mode": mode})
+            assert response.status_code == 200, (mode, response.text)
+            assert frames(response), mode
+            assert re.search(r"task_[0-9a-f]{64}", response.text) is None
+        checkpoint_events = frames(await client.get(path, params={"mode": "checkpoints"}))
+        assert all(item["scope"] == "/do" for item in checkpoint_events)
+        custom_events = frames(await client.get(path, params={"mode": "custom"}))
+        assert [item["data"] for item in custom_events] == [{"name": "done", "data": "ready"}]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "stream_runtime", [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
     indirect=True,
@@ -431,11 +724,12 @@ async def test_loop_subgraph_checkpoint_history_preserves_logical_namespace(stre
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "stream_runtime",
-    [("sqlite", {"max_events": 64, "lineage": True}),
-     ("postgresql", {"max_events": 64, "lineage": True})],
+    [("sqlite", {"max_events": 64, "lineage": True, "lineage_timeout": 30}),
+     ("postgresql", {"max_events": 64, "lineage": True, "lineage_timeout": 30})],
     indirect=True,
 )
-async def test_loop_subgraph_stream_preserves_replay_evidence(stream_runtime):
+@pytest.mark.parametrize("nested", [False, True])
+async def test_loop_subgraph_stream_preserves_replay_evidence(stream_runtime, nested):
     from open_workflow_agent.workflow import compile_workflow
 
     services, _ = stream_runtime
@@ -452,14 +746,20 @@ async def test_loop_subgraph_stream_preserves_replay_evidence(stream_runtime):
             "replayEffectPolicy": "reexecute",
         }
     }
-    source["do"] = [
-        {"loop": {"for": {"each": "turn", "in": [0, 1]}, "do": [
-            {"call": {"call": "llm:1.0.0@default", "with": {"prompt": "${ $turn }"}}}
-        ]}},
-        {"done": {"set": {"done": True}}},
-    ]
+    if nested:
+        loop = {"loop": {"for": {"each": "a", "in": [0, 1]}, "do": [
+            {"inner": {"for": {"each": "b", "in": [0, 1]}, "do": [
+                {"call": {"call": "llm:1.0.0@default", "with": {"prompt": "${ [$a, $b] }"}}},
+            ]}},
+        ]}}
+    else:
+        loop = {"loop": {"for": {"each": "turn", "in": [0, 1]}, "do": [
+            {"call": {"call": "llm:1.0.0@default", "with": {"prompt": "${ $turn }"}}},
+        ]}}
+    source["do"] = [loop, {"done": {"set": {"done": True}}}]
     owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
-    assert len(services.model.calls) == 2
+    expected_calls = 4 if nested else 2
+    assert len(services.model.calls) == expected_calls
     async with client_for(stream_runtime) as client:
         history = await client.get(f"/v1/invocations/{owner.invocation_id}/states")
         assert history.status_code == 200, history.text
@@ -480,7 +780,7 @@ async def test_loop_subgraph_stream_preserves_replay_evidence(stream_runtime):
             }:
                 await asyncio.sleep(0.1)
         assert services.invocations.get(target).status == "completed"
-        assert len(services.model.calls) == 2
+        assert len(services.model.calls) == expected_calls
         target_state = await client.get(f"/v1/invocations/{target}/states")
         assert target_state.status_code == 200, target_state.text
 
@@ -1280,8 +1580,8 @@ async def test_task_stream_resume_keeps_cursor_and_does_not_repeat_effect(stream
 @pytest.mark.parametrize(
     "stream_runtime",
     [
-        ("sqlite", {"max_events": 32, "lineage": True}),
-        ("postgresql", {"max_events": 32, "lineage": True}),
+        ("sqlite", {"max_events": 32, "lineage": True, "lineage_timeout": 30}),
+        ("postgresql", {"max_events": 32, "lineage": True, "lineage_timeout": 30}),
     ],
     indirect=True,
 )
@@ -1722,7 +2022,7 @@ async def test_actual_process_exit_loses_observation_replay_but_not_native_resum
     "stream_runtime", [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
     indirect=True,
 )
-@pytest.mark.parametrize("shape", ["direct", "repeated", "loop"])
+@pytest.mark.parametrize("shape", ["direct", "repeated", "loop", "nested_loop"])
 async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_path, shape):
     services, engine = stream_runtime
     config_path = tmp_path / "worker-config.json"
@@ -1733,12 +2033,14 @@ async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_
         "subgraph_stream": shape == "direct",
         "repeated_subgraph_stream": shape == "repeated",
         "loop_subgraph_stream": shape == "loop",
+        "nested_loop_subgraph_stream": shape == "nested_loop",
     }), encoding="utf-8")
     completed = await asyncio.to_thread(
         subprocess.run,
         [sys.executable, str(Path(__file__).with_name("native_stream_restart_worker.py")),
          str(config_path), str(result_path)],
-        capture_output=True, text=True, timeout=60, cwd=Path(__file__).resolve().parents[2],
+        capture_output=True, text=True, timeout=180 if shape == "nested_loop" else 60,
+        cwd=Path(__file__).resolve().parents[2],
     )
     assert completed.returncode == 0, completed.stderr[-4000:]
     previous = json.loads(result_path.read_text(encoding="utf-8"))
@@ -1753,6 +2055,7 @@ async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_
                 "direct": subgraph_waiting_workflow,
                 "repeated": repeated_subgraph_waiting_workflow,
                 "loop": loop_subgraph_waiting_workflow,
+                "nested_loop": nested_loop_subgraph_waiting_workflow,
             }[shape]()
             result = await engine.resume(owner, {}, plan)
         assert result.status == "completed", result.error
@@ -1762,6 +2065,9 @@ async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_
             "direct": ["/do/0/outer/do/1/pause", "/do/0/outer/do/2/childlast"],
             "repeated": ["/do/1/outer/do/1/pause", "/do/1/outer/do/2/increment"],
             "loop": ["/do/0/loop/do/1/pause", "/do/0/loop/do/2/last"],
+            "nested_loop": ["/do/0/outer/do/0/inner/do/1/pause",
+                            "/do/0/outer/do/0/inner/do/2/last",
+                            "/do/0/outer/do/0/inner"],
         }[shape]
         assert [item["task_reference"] for item in frames(observed)] == expected
     assert services.model.calls == []

@@ -1,5 +1,58 @@
 # S4-02 native stream observations
 
+## Two-level literal nested-loop candidate — 2026-11-02
+
+The in-progress candidate admits at most two nested literal `for` levels, each
+limited to 32 items. The outer item count times the sum of its inner item counts
+cannot exceed 64; inner bodies admit `set`, `call` and `wait`, with no additional
+child scopes. Dynamic arrays, deeper loops and larger products remain rejected.
+When multiple SDK interruptions are retained, the adapter uses the validated
+pending interruption's internal identifier to target the known wake. The ID is
+not exposed in the public observation or checkpoint contract.
+
+The earlier untargeted nested-loop probe reproduced an ambiguous-resume fault;
+the same four-wait probe passed on SQLite and PostgreSQL after test-only targeted
+resume. The runtime candidate passed 15 focused SQLite cases, including four
+waits, the 64-occurrence limit, unsupported admission and a mismatched internal
+interruption identity. The corresponding nested execution and 64-occurrence
+boundary cases also passed on PostgreSQL. The full source-matched selection and
+hosted qualification are in progress.
+The first PostgreSQL process-stop run passed 37 preceding cases but its
+four-wait worker exceeded the single-wait harness's 60-second limit. The nested
+case now has a separate 180-second bound; the original 60-second bound remains
+for the smaller cases. The corrected fresh-process test passed on both stores
+without skips or repeated model calls.
+The first nested replay attempt on PostgreSQL exhausted the test fixture's
+default five-second state/replay bound. That specific, larger replay case now
+uses the supported 30-second bound and passed on a fresh PostgreSQL database;
+the initial timeout is retained separately.
+An initial full selection then stopped after 121 passes when an existing task
+stream replay history read hit the same five-second fixture bound. That
+semantic integration test also now uses 30 seconds; dedicated timeout tests and
+production defaults are unchanged.
+Six subsequent cases passed with zero skips across both stores, covering
+sequential sibling loops and both single- and nested-loop replay evidence.
+The shared LangGraph checkpoint and fencing contracts passed 80 cases with zero
+skips on both stores for the two-level runtime candidate.
+Six additional cases passed on both stores, covering unrelated waits with the
+nested loop executed or skipped and coexistence with task, checkpoint, debug,
+custom, values and updates observations.
+An initial full selection was stopped after its 23% progress marker when review
+identified quadratic scans across unrelated scopes. A local synthetic scan of
+8,000 sibling loops took about 5.9 seconds with the pairwise check and 0.006
+seconds with ancestor traversal. Admission and execution setup now inspect
+actual reference ancestors. The revised source passed 51 focused cases with
+zero skips across both databases, including admission, nested loops, bounded
+iteration, sibling waits, malformed interruption IDs, replay and process exit.
+An earlier full-run report also recorded a process-recovery profile mismatch;
+that report does not qualify the revised source. A fresh shared checkpoint,
+fencing and native-state consistency selection passed 144 LangGraph cases with
+zero skips across SQLite and PostgreSQL on the revised source. A fresh complete
+stream, projection, saver, lineage and core-transport selection then passed 311
+cases with zero skips on both stores and included all 49 hosted-job witnesses.
+The previously failing process-recovery profile case passed in that full run.
+Hosted qualification of this candidate remains pending.
+
 ## Bounded literal loop candidate — 2026-11-02
 
 The candidate extends the subgraph profile to a `for` task with an explicit
@@ -16,7 +69,8 @@ The initial SDK probe failed on the second loop occurrence because its logical
 namespace gained an occurrence suffix. A test-only translation passed simple
 SQLite/PostgreSQL loops with and without waits. A deeper nested-loop probe with
 waits faulted on ambiguous SDK interruptions while the same workflow passed
-without the experimental streaming profile; that deeper shape remains rejected.
+without the experimental streaming profile; that earlier revision rejected the
+deeper shape. The later targeted-resume candidate is described above.
 The initial runtime candidate passed 67 focused cases with zero skips across
 both stores, covering root and nested-parent loops, waits, 32 items, admission,
 process exit, saver identity and projection. Four additional SQLite/PostgreSQL
@@ -28,8 +82,10 @@ the corrected full-sequence test uses a sufficient buffer and preserves the
 normal bounded-retention contract. After narrowing the admission gate, a fresh
 complete stream, projection, saver, lineage and core-transport selection passed
 284 cases with zero skips on SQLite/PostgreSQL and satisfied all 42 hosted-job
-witness names. Source-matched hosted qualification remains open; this does not
-complete T50 or S4-02.
+witness names. The source-matched hosted native-stream job at `24ee552` also
+passed 284 cases with zero skips, and its complete GitHub PostgreSQL workflow
+finished successfully.
+This does not complete T50 or S4-02.
 An early full run was deliberately stopped after seven passing cases while retry
 admission was reviewed; it is not counted as a pass. An initial direct `retry`
 test was rejected by the official schema, so the admission test uses a valid
