@@ -29,6 +29,12 @@ from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 async def test_channel_values_survive_lineage_and_continue_reducing(
     tmp_path, monkeypatch, backend, kind, policy, nested, command
 ):
+    await _exercise_channel_lineage(tmp_path, monkeypatch, backend, kind, policy, nested, command)
+
+
+async def _exercise_channel_lineage(
+    tmp_path, monkeypatch, backend, kind, policy, nested, command, source_initial=False
+):
     if command and (kind != "branch" or policy != "reexecute"):
         pytest.skip("command/channel combinations use the reexecuting branch case")
     if nested and policy == "read_only":
@@ -137,12 +143,19 @@ async def test_channel_values_survive_lineage_and_continue_reducing(
             if nested:
                 visits["/do/0/nested"] = 1
             selected = next(
-                item for item in history.json()["items"] if item["root_task_visits"] == visits
+                item
+                for item in history.json()["items"]
+                if (
+                    item["phase"] == "initial"
+                    if source_initial
+                    else item["root_task_visits"] == visits
+                )
             )
-            assert selected["channels"] == {
-                "items": ["seed", "first", "second"],
-                "last": ["second"],
-            }
+            assert selected["channels"] == (
+                {"items": ["seed"], "last": []}
+                if source_initial
+                else {"items": ["seed", "first", "second"], "last": ["second"]}
+            )
             body = {
                 "reference": selected["reference"],
                 "acknowledge_reexecution": policy == "reexecute",
@@ -243,3 +256,11 @@ async def test_channel_values_survive_lineage_and_continue_reducing(
     finally:
         await engine.shutdown()
         services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+async def test_initial_replay_preserves_declared_channel_seeds(tmp_path, monkeypatch, backend):
+    await _exercise_channel_lineage(
+        tmp_path, monkeypatch, backend, "replay", "reexecute", False, False, True
+    )

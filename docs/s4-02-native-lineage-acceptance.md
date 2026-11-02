@@ -28,6 +28,12 @@ cause was not independently established. A subsequent test setup exceeded the
 combined decoding budget; using the existing lineage test's 4 MiB native bound
 resolved that setup error. These runs do not establish hosted qualification.
 
+An initializer replay with declared append and last-value channels also passed
+locally on SQLite and PostgreSQL. It starts from the declared channel seeds,
+continues all three writes, and exposes the expected reduced values without
+reapplying source writes. A pre-existing SQLite branch/channel case passed after
+the shared test setup was extracted. Hosted qualification remains open.
+
 Updated 2026-10-27. S4-02 and T49 remain open. The preparation component validates
 the basis for a future native replay or branch. A separate private transaction
 unit now writes selected scopes under a pre-reserved target identity. Neither
