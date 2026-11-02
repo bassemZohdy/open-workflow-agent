@@ -270,6 +270,8 @@ treated as a deferred task or as additional feature completion.
   later source updates do not alter the selected state or prevent an exact retry.
   Waiting replay/branch targets can receive declared, authorized root updates
   while retaining both source lineage and ordered target-control proofs.
+  Bounded replay and branch generations retain and reverify their ancestor
+  effects and lineage proofs; lineage cycles and depth overflow fail closed.
   The coordinator now rechecks all required workflow capabilities before a new
   replay or branch reservation and again before recovering a reservation. The
   previously failing unsupported-source rejection test is retained as regression

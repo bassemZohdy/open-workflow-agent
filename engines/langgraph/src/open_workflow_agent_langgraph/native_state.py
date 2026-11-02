@@ -30,6 +30,19 @@ def state_reference(invocation_id: str, fingerprint: str, checkpoint_id: str) ->
     return hashlib.sha256(value.encode()).hexdigest()
 
 
+class _VerifiedLineageView:
+    """Reuse one proof only within the synchronous, read-only projection phase."""
+
+    def __init__(self, registry: Any, handle: ExecutionHandle) -> None:
+        self._handle = handle
+        self._proof = registry.read(handle)
+
+    def read(self, handle: ExecutionHandle) -> Any:
+        if handle != self._handle:
+            raise ValueError("lineage projection target changed")
+        return self._proof
+
+
 class LangGraphStateReader:
     def __init__(self, services: RuntimeServices) -> None:
         if services.config.native_state is None:
@@ -145,6 +158,8 @@ class LangGraphStateReader:
                 lineage = lineage_registry_for_target(
                     self.services, handle, bounds, available_bytes=budget
                 )
+                if lineage is not None:
+                    lineage = _VerifiedLineageView(lineage, handle)
                 items = [
                     self._project(
                         handle,

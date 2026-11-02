@@ -450,7 +450,7 @@ async def test_per_source_limit_rejects_a_new_replay_but_not_a_repeat(replay_run
 
 
 @pytest.mark.asyncio
-async def test_a_replay_target_cannot_itself_be_replayed(replay_runtime, policy):
+async def test_replay_target_rejects_another_invocations_reference(replay_runtime, policy):
     services, engine, handle, plan = replay_runtime
     async with client_for(replay_runtime) as client:
         reference = await first_task_reference(client, handle)
@@ -463,8 +463,7 @@ async def test_a_replay_target_cannot_itself_be_replayed(replay_runtime, policy)
         target = first.json()["invocation_id"]
         await wait_terminal(services, target)
         calls = len(services.model.calls)
-        # Any well-formed reference is refused up front: the depth rule is checked before
-        # any preflight work, so no target state is read or created.
+        # A source reference is bound to its invocation and cannot select target state.
         again = await client.post(
             f"/v1/invocations/{target}/state-replays",
             json=request_body(reference, policy),

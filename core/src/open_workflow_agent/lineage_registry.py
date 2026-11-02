@@ -32,8 +32,22 @@ from .state_updates import PREFIX as STATE_UPDATE_PREFIX
 PROFILE = "owa/lineage-binding/v1"
 OPERATION = "policy:lineage-binding:v1"
 MAX_DEPENDENCIES = 64
+MAX_LINEAGE_DEPTH = 64
 _HEX = re.compile(r"[a-f0-9]{64}")
 _CURRENT_LINEAGE: ContextVar[LineageRegistry | None] = ContextVar("owa_lineage", default=None)
+_LINEAGE_READ_STACK: ContextVar[tuple[str, ...]] = ContextVar("owa_lineage_read_stack", default=())
+
+
+@contextmanager
+def _reading_lineage(invocation_id: str) -> Iterator[None]:
+    stack = _LINEAGE_READ_STACK.get()
+    if invocation_id in stack or len(stack) >= MAX_LINEAGE_DEPTH:
+        raise lineage_error("lineage_depth_or_cycle")
+    token = _LINEAGE_READ_STACK.set((*stack, invocation_id))
+    try:
+        yield
+    finally:
+        _LINEAGE_READ_STACK.reset(token)
 
 
 @contextmanager
@@ -79,6 +93,11 @@ class RemappedReceipt:
                 or (
                     identity.task_reference == "/do"
                     and identity.occurrence == (("/do", 1),)
+                    and identity.operation == OPERATION
+                )
+                or (
+                    identity.task_reference == "/do"
+                    and identity.occurrence == (("/do", 1),)
                     and identity.operation.startswith(STATE_UPDATE_PREFIX)
                 )
             )
@@ -86,10 +105,35 @@ class RemappedReceipt:
             raise lineage_error("receipt_origin_invalid")
         return cls(replace(identity, invocation_id=request.target_invocation_id), dependency)
 
-    def verify(self, request: StateLineageRequest, journal: EffectJournal) -> None:
+    def verify(
+        self,
+        request: StateLineageRequest,
+        journal: EffectJournal,
+        inherited: dict[str, RemappedReceipt] | None = None,
+    ) -> None:
         if self != self.capture(request, self.source):
             raise lineage_error("receipt_mapping_changed")
-        self.source.verify(journal)
+        inherited_item = (inherited or {}).get(self.source.identity.key)
+        receipt = journal.get(self.source.identity)
+        if receipt is None:
+            if (
+                inherited_item is None
+                or inherited_item.target != self.source.identity
+                or inherited_item.source.receipt_digest != self.source.receipt_digest
+                or self.source.identity.operation == OPERATION
+            ):
+                raise lineage_error("source_receipt_unavailable")
+        else:
+            if receipt.status == "pending" or ReceiptDependency._digest(receipt) != (
+                self.source.receipt_digest
+            ):
+                raise lineage_error("source_receipt_unavailable")
+            if (
+                inherited_item is not None
+                and self.source.identity.operation != OPERATION
+                and inherited_item.source.receipt_digest != self.source.receipt_digest
+            ):
+                raise lineage_error("source_receipt_ambiguous")
         if self.source.identity.operation.startswith(STATE_UPDATE_PREFIX):
             if journal._state_updates is None:
                 raise lineage_error("source_control_unavailable")
@@ -131,6 +175,31 @@ class LineageRegistry:
             raise ValueError("lineage requires the original common services")
         self.journal, self.invocations, self.authorizations = journal, invocations, authorizations
         self.native_proof_verifier = native_proof_verifier
+
+    def _source_mappings(self, source: ExecutionHandle) -> dict[str, RemappedReceipt] | None:
+        marker = lineage_identity(source)
+        indexed = self.journal.connection.execute(
+            "SELECT 1 FROM workflow_effect_invocations WHERE identity=?", (marker.key,)
+        ).fetchone()
+        if indexed is None and self.journal.get(marker) is None:
+            return None
+        _, mappings, _ = self.read(source)
+        return {item.target.key: item for item in mappings}
+
+    def verify_source_for_new_target(self, source: ExecutionHandle, target_id: str) -> None:
+        """Verify ancestry with room for one more bounded lineage generation."""
+        with _reading_lineage(target_id):
+            self.read(source)
+
+    @staticmethod
+    def _require_source_marker(
+        source: ExecutionHandle,
+        mappings: tuple[RemappedReceipt, ...],
+        inherited: dict[str, RemappedReceipt] | None,
+    ) -> None:
+        markers = [item for item in mappings if item.source.identity == lineage_identity(source)]
+        if len(markers) != (1 if inherited is not None else 0):
+            raise lineage_error("source_lineage_binding_missing")
 
     def _handles(
         self, request: StateLineageRequest, target: ExecutionHandle
@@ -188,8 +257,11 @@ class LineageRegistry:
         mapped = tuple(RemappedReceipt.capture(request, item) for item in dependencies)
         if len({item.target.key for item in mapped}) != len(mapped):
             raise lineage_error("receipt_mapping_duplicate")
+        with _reading_lineage(target.invocation_id):
+            inherited = self._source_mappings(source)
+        self._require_source_marker(source, mapped, inherited)
         for item in mapped:
-            item.verify(request, self.journal)
+            item.verify(request, self.journal, inherited)
         record = {
             "profile": PROFILE,
             "request": request.descriptor,
@@ -234,6 +306,12 @@ class LineageRegistry:
         self, target: ExecutionHandle
     ) -> tuple[StateLineageRequest, tuple[RemappedReceipt, ...], str]:
         """Require and verify the immutable record and every referenced receipt."""
+        with _reading_lineage(target.invocation_id):
+            return self._read(target)
+
+    def _read(
+        self, target: ExecutionHandle
+    ) -> tuple[StateLineageRequest, tuple[RemappedReceipt, ...], str]:
         try:
             identity = lineage_identity(target)
             receipt = self.journal.get(identity)
@@ -291,8 +369,10 @@ class LineageRegistry:
             mapped = tuple(RemappedReceipt.from_value(item) for item in value["receipts"])
             if len({item.target.key for item in mapped}) != len(mapped):
                 raise lineage_error("receipt_mapping_duplicate")
+            inherited = self._source_mappings(source)
+            self._require_source_marker(source, mapped, inherited)
             for item in mapped:
-                item.verify(request, self.journal)
+                item.verify(request, self.journal, inherited)
             return request, mapped, marker
         except Exception as error:
             from .errors import OwaError

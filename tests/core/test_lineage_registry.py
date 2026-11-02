@@ -1,6 +1,6 @@
 """Common lineage bindings preserve original receipt evidence and effect policy."""
 
-from contextlib import suppress
+from contextlib import ExitStack, suppress
 from dataclasses import replace
 from uuid import uuid4
 
@@ -10,7 +10,13 @@ from open_workflow_agent.errors import InvocationStateConflict, OwaError
 from open_workflow_agent.execution_authority import authority_scope
 from open_workflow_agent.execution_authorization import ExecutionAuthorizationStore
 from open_workflow_agent.execution_context import ExecutionActionContext, action_scope
-from open_workflow_agent.lineage_registry import LineageRegistry, lineage_identity, lineage_scope
+from open_workflow_agent.lineage_registry import (
+    MAX_LINEAGE_DEPTH,
+    LineageRegistry,
+    _reading_lineage,
+    lineage_identity,
+    lineage_scope,
+)
 from open_workflow_agent.persistence import InvocationStore
 from open_workflow_agent.recovery_definitions import RecoveryDefinitionArchive
 from open_workflow_agent.state_lineage import StateLineageRequest
@@ -18,6 +24,20 @@ from test_execution_authorization import _admit, _decision, _finish
 from test_execution_authorization import authority_tree as _authority_tree
 
 authority_tree = _authority_tree
+
+
+def test_lineage_verification_rejects_cycles_and_bounds_depth():
+    with _reading_lineage("one"), pytest.raises(OwaError):
+        with _reading_lineage("one"):
+            pass
+    with ExitStack() as stack:
+        for index in range(MAX_LINEAGE_DEPTH):
+            stack.enter_context(_reading_lineage(str(index)))
+        with pytest.raises(OwaError):
+            stack.enter_context(_reading_lineage("overflow"))
+    # A rejected cycle or depth cannot poison a later independent verification.
+    with _reading_lineage("one"):
+        pass
 
 
 @pytest.fixture

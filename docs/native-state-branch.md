@@ -60,7 +60,8 @@ separately verified.
 Both the current caller and retained original authority must permit `state.branch`;
 only the original owner can select the source. Unsupported checkpoints, invalid
 data and acknowledgement mismatches fail before creating a target. Active-work
-and per-source limits return `429`; a lineage target cannot be branched again.
+and per-source limits return `429`. A lineage target can itself be branched or
+replayed, up to 64 lineage generations; all retained ancestor proofs must verify.
 After a process interruption, repeat the identical request and idempotency key.
 An effect whose outcome is uncertain fails closed rather than being repeated.
 
@@ -79,7 +80,7 @@ state updates can be selected; their source proofs remain dependencies of the
 target. Later source updates do not change the selected data, and pending writes
 are never inherited. Timing policies remain excluded. The branch changes only root task data.
 Arbitrary attribution, partially completed
-nested scopes, branch-of-branch, time travel, independent
+nested scopes, broader time travel, independent
 JavaScript parity and hosted/release qualification remain open. Local validation
 and its retained failures are recorded in the
 [lineage acceptance record](s4-02-native-lineage-acceptance.md).

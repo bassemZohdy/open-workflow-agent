@@ -174,6 +174,11 @@ async def prepare_native_lineage(
             encoded,
         )
         limits = NativeStateConfig.model_validate((bounds or NativeStateConfig()).model_dump())
+        from .native_lineage_inspection import lineage_registry_for_target
+
+        lineage = lineage_registry_for_target(services, source, limits)
+        if lineage is not None:
+            lineage.verify_source_for_new_target(source, target_invocation_id)
         async with (
             asyncio.timeout(limits.timeout_seconds),
             readonly_saver(path, limits) as (saver, postgres),
@@ -197,7 +202,12 @@ async def prepare_native_lineage(
                 raise lineage_error("source_reference_unavailable")
             guarded = _BoundedSaver(saver, limits, postgres, selected={thread: key})
             driver = _InspectionDriver(
-                plan, guarded, source.invocation_id, effect_journal=services.effect_journal
+                plan,
+                guarded,
+                source.invocation_id,
+                effect_journal=services.effect_journal,
+                lineage_registry=lineage,
+                lineage_target=source if lineage is not None else None,
             )
             original_input = services.invocations.read_input(source)
             input_json = _json_identity(original_input)
@@ -257,7 +267,12 @@ async def prepare_native_lineage(
                 if fresh_plan.fingerprint != plan.fingerprint:
                     raise lineage_error("source_definition_changed")
                 fresh = _InspectionDriver(
-                    plan, guarded, source.invocation_id, effect_journal=services.effect_journal
+                    plan,
+                    guarded,
+                    source.invocation_id,
+                    effect_journal=services.effect_journal,
+                    lineage_registry=lineage,
+                    lineage_target=source if lineage is not None else None,
                 )
                 fresh._expected_input_json = input_json
                 observed = {}
@@ -293,7 +308,7 @@ async def prepare_native_lineage(
                 bindings = json.loads(json.loads(root.native_json)["receipt_bindings"])
                 if (
                     (root.reference, root.occurrence) == ("/do", 1)
-                    and bindings.get("version") == 3
+                    and bindings.get("version") in {3, 5}
                     and metadata.get("has_pending_writes") is True
                 ):
                     metadata["has_pending_writes"] = False

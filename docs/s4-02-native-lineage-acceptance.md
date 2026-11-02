@@ -865,3 +865,35 @@ This is a bounded source profile, not full S4-02 qualification.
 Hosted qualification of frozen source `c767b59` is running on
 `codex/s4-02-target-controls-qualification-c767b59`:
 [workflow run 41394273676](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41394273676).
+Its dedicated PostgreSQL lineage state-controls job passed; the full workflow is
+still running.
+
+## Bounded lineage generations — 2026-11-02
+
+Replay and branch targets can themselves be used as sources. Each generation
+retains the immediate parent's lineage binding as a dependency, resolves inherited
+effects through verified ancestor mappings, and checks the applicable authority
+and checkpoint proof. Cycles and a maximum of 64 generations are enforced before
+reserving a further target. The public request format remains unchanged.
+
+Local SQLite validation covered three generations for all four replay/branch
+combinations, exact retries, retained effects and rejection after independently
+damaging an original effect, an intermediate effect or an intermediate binding.
+A reduced test depth confirmed overflow fails before target reservation. Updated
+waiting replay and branch targets were also selected as sources with their
+target-control history retained. Original-reference ownership checks still pass.
+The initial implementation rejected lineage sources; the first local PostgreSQL
+attempt also exceeded the test helper's original 60-second continuation deadline,
+so that deadline was increased for this longer verification scenario. A subsequent
+PostgreSQL run exposed the actual state-read deadline being exceeded because the
+same proof was rechecked for each projected checkpoint. Read-only projection now
+reuses a proof only within its synchronous inspection phase; independent requests
+still recheck ancestry. Two concurrent updated-target tests detected a runtime
+profile change when the source was edited during their run and must be rerun on
+stable source. Both updated-target PostgreSQL cases subsequently passed on stable
+source. The PostgreSQL replay/replay three-generation case also passed, including
+depth overflow, exact retry and ancestor-proof corruption; the other combinations
+and hosted results are tracked separately as they finish. The stable-source
+receipt, preflight and admission selection passed 27 cases with 19 other-backend
+skips; workflow selection passed 63 cases. This bounded profile does not complete
+S4-02 or qualify broader time travel.

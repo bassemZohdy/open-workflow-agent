@@ -64,7 +64,7 @@ class LangGraphReplayController:
                 self.engine,
                 self.config.bounds,
                 max_replays_per_source=self.config.max_replays_per_source,
-                allow_replay_of_replay=False,
+                allow_replay_of_replay=True,
             )
         return self._coordinator
 
@@ -111,11 +111,6 @@ class LangGraphReplayController:
         acknowledge_reexecution: bool,
     ) -> dict[str, Any]:
         self.verify(self.services.config.native_state_replay)
-        if self.coordinator.reservations.is_replay_target(handle.invocation_id):
-            raise InvocationStateError(
-                "a replay target cannot itself be replayed",
-                details={"stage": "state_lineage", "reason": "replay_depth"},
-            )
         plan = await self.services.recovery_definitions.resolve_inspection(handle)
         policy = plan.native_state_replay
         if policy is None:

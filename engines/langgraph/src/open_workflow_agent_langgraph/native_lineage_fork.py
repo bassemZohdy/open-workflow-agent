@@ -225,7 +225,7 @@ async def _source_basis(
         expected_metadata = json.loads(expected.metadata_json)
         if (
             (expected.reference, expected.occurrence) == ("/do", 1)
-            and json.loads(raw["receipt_bindings"]).get("version") == 3
+            and json.loads(raw["receipt_bindings"]).get("version") in {3, 5}
             and metadata["has_pending_writes"] is True
             and expected_metadata.get("has_pending_writes") is False
         ):

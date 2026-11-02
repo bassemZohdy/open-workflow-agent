@@ -6,9 +6,10 @@ import json
 from dataclasses import asdict
 from typing import Any
 
+from open_workflow_agent.config import NativeStateConfig
 from open_workflow_agent.effects import ReceiptDependency
 from open_workflow_agent.execution_authorization import AUTHORITY_OPERATION
-from open_workflow_agent.lineage_registry import RemappedReceipt
+from open_workflow_agent.lineage_registry import RemappedReceipt, lineage_identity
 from open_workflow_agent.native_lineage_policy import LineageKind
 from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.services import RuntimeServices
@@ -17,7 +18,11 @@ from open_workflow_agent.workflow import WorkflowPlan
 
 from .graph import LangGraphScopeExecutor, _json_identity, _node_name
 from .native_lineage_fork import NativeForkPacket, NativeForkProposal
-from .native_lineage_inspection import selected_business_receipts, selected_control_receipts
+from .native_lineage_inspection import (
+    lineage_registry_for_target,
+    selected_business_receipts,
+    selected_control_receipts,
+)
 from .native_lineage_preflight import NativeLineagePreflight
 
 
@@ -123,11 +128,35 @@ def _validate_root_basis(
             raise lineage_error("replay_profile_unsupported")
         native = json.loads(preflight.snapshots[0].native_json)
         bindings = json.loads(native["receipt_bindings"])
-        if bindings.get("version") not in {2, 3}:
+        if bindings.get("version") not in {2, 3, 4, 5}:
             raise lineage_error("replay_profile_unsupported")
-        dependencies = selected_business_receipts(
-            preflight, services.effect_journal
-        ) + selected_control_receipts(preflight, services.effect_journal)
+        source_handle = services.invocations.get(request.source_invocation_id)
+        if source_handle is None:
+            raise lineage_error("source_unavailable")
+        configured = (
+            services.config.native_state_replay
+            if kind == "replay"
+            else services.config.native_state_branch
+        )
+        lineage = lineage_registry_for_target(
+            services, source_handle, configured.bounds if configured else NativeStateConfig()
+        )
+        inherited = None
+        parent = ()
+        if lineage is not None:
+            lineage.verify_source_for_new_target(source_handle, request.target_invocation_id)
+            _, mappings, _ = lineage.read(source_handle)
+            inherited = {item.target.key: item for item in mappings}
+            marker = lineage_identity(source_handle)
+            receipt = services.effect_journal.get(marker)
+            if receipt is None:
+                raise lineage_error("source_lineage_binding_missing")
+            parent = (ReceiptDependency.capture(marker, receipt),)
+        dependencies = (
+            selected_business_receipts(preflight, services.effect_journal, inherited)
+            + selected_control_receipts(preflight, services.effect_journal)
+            + parent
+        )
         if len(dependencies) > 64:
             raise lineage_error("replay_dependency_unsupported")
         business = {item.identity.key for item in dependencies}
@@ -159,7 +188,7 @@ def _validate_root_basis(
             if (
                 item.phase != "checkpoint"
                 or packet["next_node"] != "__end__"
-                or child_bindings.get("version") != 2
+                or child_bindings.get("version") not in {2, 4}
                 or not scope.tasks
                 or any(
                     child_visits.get(task.execution_reference or task.reference) != item.occurrence

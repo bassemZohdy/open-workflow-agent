@@ -61,7 +61,7 @@ class LangGraphBranchController:
                 self.engine,
                 self.config.bounds,
                 max_branches_per_source=self.config.max_branches_per_source,
-                allow_branch_of_lineage=False,
+                allow_branch_of_lineage=True,
             )
         return self._coordinator
 
@@ -110,8 +110,6 @@ class LangGraphBranchController:
         acknowledge_reexecution: bool,
     ) -> dict[str, Any]:
         self.verify(self.services.config.native_state_branch)
-        if self.coordinator.reservations.is_replay_target(handle.invocation_id):
-            raise InvocationStateError("a lineage target cannot itself be branched")
         plan = await self.services.recovery_definitions.resolve_inspection(handle)
         policy, updates = plan.native_state_branch, plan.native_state_updates
         if policy is None or updates is None:

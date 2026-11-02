@@ -229,6 +229,7 @@ async def test_lineage_from_updated_waiting_checkpoint(
                 }:
                     await asyncio.sleep(0.1)
             assert services.invocations.get(target).status == "waiting"
+            updated_descendant = None
             if target_update:
                 target_path = f"/v1/invocations/{target}"
                 first_target_control = ""
@@ -371,6 +372,38 @@ async def test_lineage_from_updated_waiting_checkpoint(
                     (proof, identity),
                 )
                 connection.commit()
+                if policy == "reexecute" and not nested_scope:
+                    descendant_body = {
+                        "reference": target_reference,
+                        "acknowledge_reexecution": True,
+                    }
+                    if kind == "branch":
+                        descendant_body.update(
+                            {"task_reference": update_task, "values": {"value": 17}}
+                        )
+                    descendant = await client.post(
+                        f"/v1/invocations/{target}{route}",
+                        json=descendant_body,
+                        headers={"Idempotency-Key": "updated-descendant"},
+                    )
+                    assert descendant.status_code == 202, descendant.text
+                    updated_descendant = descendant.json()["invocation_id"]
+                    async with asyncio.timeout(60):
+                        while services.invocations.get(updated_descendant).status not in {
+                            "waiting",
+                            "faulted",
+                            "completed",
+                        }:
+                            await asyncio.sleep(0.1)
+                    assert services.invocations.get(updated_descendant).status == "waiting"
+                    descendant_result = await client.post(
+                        f"/v1/invocations/{updated_descendant}/resume", json={"input": None}
+                    )
+                    assert descendant_result.status_code == 200, descendant_result.text
+                    assert descendant_result.json()["status"] == "completed", descendant_result.text
+                    assert descendant_result.json()["output"] == {
+                        "value": 21 if kind == "replay" else 18
+                    }
             coordinator = getattr(services, "native_" + kind + "_controller").coordinator
             invoke = coordinator.run if kind == "replay" else coordinator.run_branch
             interrupted = []
@@ -538,6 +571,9 @@ async def test_lineage_from_updated_waiting_checkpoint(
             )
             inspected = await client.get(f"/v1/invocations/{target}/states")
             assert inspected.status_code != 200, inspected.text
+            if updated_descendant is not None:
+                descendant_view = await client.get(f"/v1/invocations/{updated_descendant}/states")
+                assert descendant_view.status_code != 200, descendant_view.text
             if target_update:
                 denied_retry = await client.post(
                     target_path + "/state-updates",

@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 from open_workflow_agent.config import NativeStateConfig
 from open_workflow_agent.effects import EffectIdentity, EffectJournal, ReceiptDependency
-from open_workflow_agent.lineage_registry import LineageRegistry, lineage_identity
+from open_workflow_agent.lineage_registry import LineageRegistry, RemappedReceipt, lineage_identity
 from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.state_lineage import StateLineageRequest, lineage_error
 from open_workflow_agent.state_updates import PREFIX as STATE_UPDATE_PREFIX
@@ -67,7 +67,9 @@ def lineage_registry_for_target(
 
 
 def selected_business_receipts(
-    preflight: NativeLineagePreflight, journal: EffectJournal
+    preflight: NativeLineagePreflight,
+    journal: EffectJournal,
+    inherited: dict[str, RemappedReceipt] | None = None,
 ) -> tuple[ReceiptDependency, ...]:
     """Extract only verified business dependencies present in the selected basis.
 
@@ -96,7 +98,9 @@ def selected_business_receipts(
                     or identity.operation in {"emit", "listen"}
                 ):
                     continue
-                dependency.verify(journal)
+                RemappedReceipt.capture(preflight.request, dependency).verify(
+                    preflight.request, journal, inherited
+                )
                 previous = selected.setdefault(identity.key, dependency)
                 if previous != dependency or len(selected) > 64:
                     raise lineage_error("source_receipts_invalid")
@@ -115,7 +119,7 @@ def selected_control_receipts(
             item for item in preflight.snapshots if (item.reference, item.occurrence) == ("/do", 1)
         )
         bindings = json.loads(json.loads(root.native_json)["receipt_bindings"])
-        if bindings.get("version") != 3:
+        if bindings.get("version") not in {3, 5}:
             return ()
         controls = bindings["controls"]
         if (

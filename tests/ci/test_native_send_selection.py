@@ -72,3 +72,25 @@ def test_lineage_state_controls_have_a_separate_cross_backend_job():
     assert "tests/langgraph/test_native_lineage_state_updates.py" in paths
     assert "tests/langgraph/lineage_target_update_worker.py" in paths
     assert "tests/langgraph/test_native_lineage_preflight.py" in paths
+
+
+def test_lineage_generations_have_a_bounded_cross_backend_job():
+    workflow = yaml.load(
+        (ROOT / ".github/workflows/postgres-ci.yml").read_text(), Loader=yaml.BaseLoader
+    )
+    job = workflow["jobs"]["postgres-native-lineage-generations"]
+    step = next(
+        step
+        for step in job["steps"]
+        if step.get("name") == "Verify lineage generations on SQLite and PostgreSQL"
+    )
+    assert job["services"]["postgres"]["image"] == "postgres:16"
+    assert job["timeout-minutes"] == "65"
+    assert "OWA_TEST_POSTGRES_URL" in step["env"]
+    assert "timeout --signal=TERM --kill-after=30s 55m" in step["run"]
+    assert "../../tests/langgraph/test_native_lineage_generations.py" in step["run"]
+    assert "--extra postgres" in step["run"] and "--extra sqlite" in step["run"]
+    assert (
+        "tests/langgraph/test_native_lineage_generations.py"
+        in workflow["on"]["pull_request"]["paths"]
+    )

@@ -84,11 +84,15 @@ replays admit concurrently and at most `max_replays_per_source` replays may exis
 source (`429` beyond either). The per-source limit is enforced inside the reservation
 transaction that every replay serializes on, so concurrent distinct requests cannot
 exceed it; a repeat of an admitted request is never a new admission and is never limited.
-A replay target cannot itself be replayed (`409`, checked before any preflight work).
+A replay or branch target can itself be replayed or branched, up to 64 lineage
+generations. Every generation has a distinct invocation identity and the current
+request must pass its applicable authorization and per-source limits. Missing or
+inconsistent ancestor proofs, cycles and depth overflow fail closed before a new
+target is reserved.
 The original owner can read a replay target's retained state and history through the
 ordinary state views. Those reads verify the retained lineage and fail closed if its
-native proof or authority is unavailable or inconsistent. A reference obtained this
-way does not make the target eligible for another replay or branch.
+native proof or authority is unavailable or inconsistent. A reference selected for
+another replay or branch must belong to that target invocation.
 
 ## Not implemented
 

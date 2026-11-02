@@ -313,7 +313,7 @@ async def test_running_branch_obeys_cancellation_without_late_work(branch_runtim
     ],
     indirect=True,
 )
-async def test_per_source_budget_and_lineage_depth_are_enforced(branch_runtime):
+async def test_per_source_budget_and_reference_ownership_are_enforced(branch_runtime):
     services, _, handle, _, _ = branch_runtime
     endpoint = f"/v1/invocations/{handle.invocation_id}/state-branches"
     async with client_for(branch_runtime) as client:

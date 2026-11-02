@@ -215,6 +215,7 @@ on:
       - "tests/langgraph/test_native_lineage_command.py"
       - "tests/langgraph/test_native_lineage_send.py"
       - "tests/langgraph/test_native_lineage_state_updates.py"
+      - "tests/langgraph/test_native_lineage_generations.py"
       - "tests/langgraph/lineage_target_update_worker.py"
       - "tests/langgraph/test_native_lineage_preflight.py"
       - "tests/langgraph/test_native_lineage_fork.py"
@@ -662,6 +663,47 @@ jobs:
             --with pytest --with pytest-asyncio --with httpx pytest \
             ../../tests/langgraph/test_native_lineage_preflight.py \
             -k test_unsupported_required_extensions_do_not_reserve_a_target -vv
+
+  postgres-native-lineage-generations:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
+    name: PostgreSQL lineage generations
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: owa
+          POSTGRES_PASSWORD: owa
+          POSTGRES_DB: owa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U owa -d owa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.3.2
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "$PYTHON_VERSION"
+      - name: Verify lineage generations on SQLite and PostgreSQL
+        env:
+          OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
+          PYTHONUNBUFFERED: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 55m \
+            uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres --extra sqlite \
+            --with pytest --with pytest-asyncio --with httpx pytest \
+            ../../tests/langgraph/test_native_lineage_generations.py -vv --durations=20
 
   postgres-adk:
     if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
