@@ -19,6 +19,7 @@ async def run() -> None:
         nested_loop_subgraph_waiting_workflow,
         repeated_subgraph_waiting_workflow,
         subgraph_waiting_workflow,
+        three_nested_loop_subgraph_waiting_workflow,
         workflow,
     )
     from open_workflow_agent.catalog import FakeModel
@@ -60,6 +61,8 @@ async def run() -> None:
         plan = loop_subgraph_waiting_workflow()
     elif request.get("nested_loop_subgraph_stream"):
         plan = nested_loop_subgraph_waiting_workflow()
+    elif request.get("three_nested_loop_subgraph_stream"):
+        plan = three_nested_loop_subgraph_waiting_workflow()
     handle = services.invocations.create(
         engine="langgraph",
         session_id="same",
@@ -72,7 +75,8 @@ async def run() -> None:
     with authority_scope(authority(services, "alice")):
         result = await engine.invoke(plan, handle, {"value": "worker"})
     assert result.status == "waiting", result.error
-    resumes = 3 if request.get("nested_loop_subgraph_stream") else (
+    resumes = 3 if (request.get("nested_loop_subgraph_stream") or
+                    request.get("three_nested_loop_subgraph_stream")) else (
         1 if request.get("repeated_subgraph_stream") or request.get("loop_subgraph_stream") else 0
     )
     for _ in range(resumes):

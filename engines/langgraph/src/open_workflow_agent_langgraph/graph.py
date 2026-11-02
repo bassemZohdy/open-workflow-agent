@@ -1700,7 +1700,7 @@ class LangGraphScopeExecutor:
         if observer is None:
             return
         try:
-            if not isinstance(namespace, tuple) or not 1 <= len(namespace) <= 34:
+            if not isinstance(namespace, tuple) or not 1 <= len(namespace) <= 35:
                 raise ValueError("native subgraph namespace is invalid")
             if isinstance(payload, dict) and set(payload) == {"__interrupt__"}:
                 return

@@ -337,7 +337,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 raise UnsupportedWorkflowFeature(
                     "native subgraph observations require direct nested do scopes"
                 )
-            nested_counts: dict[str, int] = {}
+            children: dict[str, list[str]] = {}
             for scope in plan.scopes:
                 parents = [
                     ancestor for ancestor in ancestor_references(scope.reference)
@@ -347,20 +347,26 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                     raise UnsupportedWorkflowFeature(
                         "native subgraph observations do not support child scopes inside loops"
                     )
-                if len(parents) > 1:
+                if len(parents) > 2:
                     raise UnsupportedWorkflowFeature(
-                        "native subgraph observations allow at most two nested loops"
+                        "native subgraph observations allow at most three nested loops"
                     )
                 if parents:
                     parent = parents[0]
-                    nested_counts[parent] = (
-                        nested_counts.get(parent, 0) + loop_counts[scope.reference]
-                    )
-            for parent, count in nested_counts.items():
-                if loop_counts[parent] * count > 64:
+                    children.setdefault(parent, []).append(scope.reference)
+            weights: dict[str, int] = {}
+            for reference in sorted(loop_scopes, key=len, reverse=True):
+                descendants = children.get(reference, [])
+                weight = loop_counts[reference] * max(
+                    1,
+                    sum(loop_counts[child] for child in descendants),
+                    sum(weights[child] for child in descendants),
+                )
+                if descendants and weight > 64:
                     raise UnsupportedWorkflowFeature(
                         "native subgraph nested loops exceed the occurrence limit"
                     )
+                weights[reference] = weight
             if any(
                 not any(operation in task.definition for operation in ("set", "call", "wait"))
                 and task.reference + "/do" not in loop_scopes

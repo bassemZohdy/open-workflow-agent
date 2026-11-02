@@ -248,8 +248,9 @@ treated as a deferred task or as additional feature completion.
   PostgreSQL workflow passed. See the same acceptance record for separate
   regression and process-restart evidence.
   A bounded literal-loop source profile preserves per-iteration checkpoints
-  and passed its `24ee552` hosted PostgreSQL workflow; a locally qualified candidate
-  extends it to two nested loop levels and awaits hosted checks. Broader loop shapes remain open.
+  and passed its `24ee552` hosted PostgreSQL workflow. Two nested loop levels
+  passed the `709af1e` hosted PostgreSQL workflow; a locally qualified candidate
+  extends the bound to three levels and awaits hosted checks. Broader loop shapes remain open.
   See [stream acceptance](docs/s4-02-native-streams-acceptance.md).
   PR #93 (`b363f10`) adds immutable replay/branch policies, explicit effect
   acknowledgement and selected-checkpoint preflight with historical root/scope

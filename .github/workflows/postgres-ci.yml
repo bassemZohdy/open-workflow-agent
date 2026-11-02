@@ -581,6 +581,8 @@ jobs:
               "test_subgraph_stream_projects_bounded_loop_occurrences",
               "test_subgraph_stream_accepts_the_maximum_literal_loop",
               "test_subgraph_stream_projects_two_nested_loops",
+              "test_subgraph_stream_projects_three_nested_loops",
+              "test_subgraph_stream_accepts_maximum_three_level_occurrences",
               "test_subgraph_admission_accepts_many_independent_loop_scopes",
               "test_subgraph_stream_accepts_the_maximum_nested_loop_occurrences",
               "test_subgraph_stream_resumes_sibling_nested_loops",

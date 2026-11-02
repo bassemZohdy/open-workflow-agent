@@ -1,5 +1,21 @@
 # S4-02 native stream observations
 
+## Three-level literal nested-loop candidate — 2026-11-02
+
+An isolated admission-bypass probe exercised three nested literal loops with
+four waits and resumes on SQLite and PostgreSQL. The candidate adds a bounded
+third level, preserving the 64-occurrence limit at every nested depth and
+rejecting deeper, dynamic or oversized shapes. A focused selection passed 34
+cases with zero skips across both stores, including the limit, unsupported
+admission and a real process exit. Completed-loop replay evidence then passed
+on both stores. The full source-matched stream, projection, saver, lineage and
+core-transport selection passed 325 cases with zero skips and included all 51
+hosted-job witnesses. The first shared recovery attempt stopped after 21 passes
+when a PostgreSQL resume exceeded its existing ten-second test bound; the exact
+case passed on a fresh database. A complete fresh recovery rerun then passed
+144 LangGraph cases with zero skips across both stores. Hosted qualification
+remains pending.
+
 ## Two-level literal nested-loop candidate — 2026-11-02
 
 The in-progress candidate admits at most two nested literal `for` levels, each
@@ -51,7 +67,8 @@ zero skips across SQLite and PostgreSQL on the revised source. A fresh complete
 stream, projection, saver, lineage and core-transport selection then passed 311
 cases with zero skips on both stores and included all 49 hosted-job witnesses.
 The previously failing process-recovery profile case passed in that full run.
-Hosted qualification of this candidate remains pending.
+The [hosted PostgreSQL workflow at `709af1e`](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41473886505)
+also passed; its native-stream job passed 311 cases with zero skips.
 
 ## Bounded literal loop candidate — 2026-11-02
 

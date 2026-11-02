@@ -25,6 +25,7 @@ from native_stream_test_support import (
     nested_loop_subgraph_waiting_workflow,
     repeated_subgraph_waiting_workflow,
     subgraph_waiting_workflow,
+    three_nested_loop_subgraph_waiting_workflow,
     workflow,
 )
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine
@@ -225,7 +226,8 @@ async def test_subgraph_stream_resume_preserves_child_checkpoint_and_effect(stre
 @pytest.mark.parametrize(
     "kind", [
         "missing_base", "dynamic_loop", "large_loop", "deep_loop", "large_nested",
-        "wide_nested", "nested_scope", "while_loop", "retry_scope", "run_body", "fork",
+        "wide_nested", "large_three_level", "empty_deep_overflow", "nested_scope",
+        "while_loop", "retry_scope", "run_body", "fork",
     ]
 )
 async def test_subgraph_stream_rejects_unsupported_scope_before_execution(stream_runtime, kind):
@@ -240,18 +242,28 @@ async def test_subgraph_stream_rejects_unsupported_scope_before_execution(stream
     extensions.append({"name": "langgraph.streams.subgraphs", "version": "1.0.0"})
     if kind in {
         "dynamic_loop", "large_loop", "deep_loop", "large_nested", "wide_nested",
-        "nested_scope", "while_loop", "retry_scope", "run_body"
+        "large_three_level", "empty_deep_overflow", "nested_scope", "while_loop",
+        "retry_scope", "run_body"
     }:
         values = "${ [1, 2] }" if kind == "dynamic_loop" else list(
-            range(33 if kind == "large_loop" else 9 if kind == "large_nested" else
+            range(33 if kind == "large_loop" else 9 if kind in {
+                "large_nested", "empty_deep_overflow"
+            } else
                   16 if kind == "wide_nested" else 2)
         )
         body = [{"child": {"set": {"value": 1}}}]
-        if kind in {"deep_loop", "large_nested", "wide_nested"}:
+        if kind in {"deep_loop", "large_nested", "wide_nested", "large_three_level",
+                    "empty_deep_overflow"}:
             if kind == "deep_loop":
-                body = [{"deep": {"for": {"each": "third", "in": [1, 2]}, "do": body}}]
+                body = [{"fourth": {"for": {"each": "fourth", "in": [1, 2]}, "do": body}}]
+            if kind in {"deep_loop", "large_three_level", "empty_deep_overflow"}:
+                deep_values = [] if kind == "empty_deep_overflow" else list(
+                    range(5 if kind == "large_three_level" else 2)
+                )
+                body = [{"deep": {"for": {"each": "third", "in": deep_values}, "do": body}}]
             inner_values = list(
-                range(8 if kind == "large_nested" else 3 if kind == "wide_nested" else 2)
+                range(8 if kind in {"large_nested", "large_three_level", "empty_deep_overflow"}
+                      else 3 if kind == "wide_nested" else 2)
             )
             body = [{"inner": {"for": {"each": "other", "in": inner_values}, "do": body}}]
             if kind == "wide_nested":
@@ -459,6 +471,49 @@ async def test_subgraph_stream_projects_two_nested_loops(stream_runtime, waiting
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("waiting", [False, True])
+@pytest.mark.parametrize(
+    "stream_runtime", [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
+    indirect=True,
+)
+async def test_subgraph_stream_projects_three_nested_loops(stream_runtime, waiting):
+    from open_workflow_agent.workflow import compile_workflow
+
+    services, engine = stream_runtime
+    source = copy.deepcopy(workflow().source)
+    source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
+    )
+    source["do"] = [{"outer": {"for": {"each": "a", "in": [0, 1]}, "do": [
+        {"inner": {"for": {"each": "b", "in": [0, 1]}, "do": [
+            {"deep": {"for": {"each": "c", "in": [0]}, "do": [
+                {"call": {"call": "llm:1.0.0@default", "with": {"prompt": "${ [$a, $b, $c] }"}}},
+                *([{"pause": {"wait": {"seconds": 300}}}] if waiting else []),
+                {"last": {"set": {"a": "${ $a }", "b": "${ $b }", "c": "${ $c }"}}},
+            ]}},
+        ]}},
+    ]}}, {"done": {"set": {"done": True}}}]
+    owner, plan = await invoke(stream_runtime, plan=compile_workflow(source))
+    if waiting:
+        for count in range(1, 5):
+            with authority_scope(authority(services, "alice")):
+                result = await engine.resume(owner, {}, plan)
+            assert result.status == ("completed" if count == 4 else "waiting"), result.error
+            assert len(services.model.calls) == min(count + 1, 4)
+    assert services.invocations.get(owner.invocation_id).status == "completed"
+    assert len(services.model.calls) == 4
+    async with client_for(stream_runtime) as client:
+        observed = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "subgraphs"}
+        )
+        assert observed.status_code == 200, observed.text
+        results = [item["data"]["data"] for item in frames(observed)
+                   if item["task_reference"].endswith("/last")]
+        assert results == [{"a": a, "b": b, "c": 0} for a in (0, 1) for b in (0, 1)]
+        assert re.search(r"task_[0-9a-f]{64}", observed.text) is None
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "stream_runtime", [("sqlite", {"max_events": 512}), ("postgresql", {"max_events": 512})],
     indirect=True,
@@ -486,6 +541,38 @@ async def test_subgraph_stream_accepts_the_maximum_nested_loop_occurrences(strea
             if item["task_reference"].endswith("/item")
         ]
         assert results == [{"a": a, "b": b} for a in range(8) for b in range(8)]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stream_runtime", [("sqlite", {"max_events": 512}), ("postgresql", {"max_events": 512})],
+    indirect=True,
+)
+async def test_subgraph_stream_accepts_maximum_three_level_occurrences(stream_runtime):
+    from open_workflow_agent.workflow import compile_workflow
+
+    source = copy.deepcopy(workflow().source)
+    source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
+    )
+    source["do"] = [{"outer": {"for": {"each": "a", "in": list(range(4))}, "do": [
+        {"inner": {"for": {"each": "b", "in": list(range(4))}, "do": [
+            {"deep": {"for": {"each": "c", "in": list(range(4))}, "do": [
+                {"item": {"set": {"a": "${ $a }", "b": "${ $b }", "c": "${ $c }"}}},
+            ]}},
+        ]}},
+    ]}}]
+    owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
+    async with client_for(stream_runtime) as client:
+        observed = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "subgraphs"}
+        )
+        assert observed.status_code == 200, observed.text
+        results = [item["data"]["data"] for item in frames(observed)
+                   if item["task_reference"].endswith("/item")]
+        assert results == [
+            {"a": a, "b": b, "c": c} for a in range(4) for b in range(4) for c in range(4)
+        ]
 
 
 @pytest.mark.asyncio
@@ -728,7 +815,7 @@ async def test_loop_subgraph_checkpoint_history_preserves_logical_namespace(stre
      ("postgresql", {"max_events": 64, "lineage": True, "lineage_timeout": 30})],
     indirect=True,
 )
-@pytest.mark.parametrize("nested", [False, True])
+@pytest.mark.parametrize("nested", [False, True, "three"])
 async def test_loop_subgraph_stream_preserves_replay_evidence(stream_runtime, nested):
     from open_workflow_agent.workflow import compile_workflow
 
@@ -747,10 +834,13 @@ async def test_loop_subgraph_stream_preserves_replay_evidence(stream_runtime, ne
         }
     }
     if nested:
+        leaf = [{"call": {"call": "llm:1.0.0@default", "with": {
+            "prompt": "${ [$a, $b] }"
+        }}}]
+        if nested == "three":
+            leaf = [{"deep": {"for": {"each": "c", "in": [0]}, "do": leaf}}]
         loop = {"loop": {"for": {"each": "a", "in": [0, 1]}, "do": [
-            {"inner": {"for": {"each": "b", "in": [0, 1]}, "do": [
-                {"call": {"call": "llm:1.0.0@default", "with": {"prompt": "${ [$a, $b] }"}}},
-            ]}},
+            {"inner": {"for": {"each": "b", "in": [0, 1]}, "do": leaf}},
         ]}}
     else:
         loop = {"loop": {"for": {"each": "turn", "in": [0, 1]}, "do": [
@@ -2022,7 +2112,9 @@ async def test_actual_process_exit_loses_observation_replay_but_not_native_resum
     "stream_runtime", [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
     indirect=True,
 )
-@pytest.mark.parametrize("shape", ["direct", "repeated", "loop", "nested_loop"])
+@pytest.mark.parametrize(
+    "shape", ["direct", "repeated", "loop", "nested_loop", "three_nested_loop"]
+)
 async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_path, shape):
     services, engine = stream_runtime
     config_path = tmp_path / "worker-config.json"
@@ -2034,12 +2126,13 @@ async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_
         "repeated_subgraph_stream": shape == "repeated",
         "loop_subgraph_stream": shape == "loop",
         "nested_loop_subgraph_stream": shape == "nested_loop",
+        "three_nested_loop_subgraph_stream": shape == "three_nested_loop",
     }), encoding="utf-8")
     completed = await asyncio.to_thread(
         subprocess.run,
         [sys.executable, str(Path(__file__).with_name("native_stream_restart_worker.py")),
          str(config_path), str(result_path)],
-        capture_output=True, text=True, timeout=180 if shape == "nested_loop" else 60,
+        capture_output=True, text=True, timeout=180 if "nested_loop" in shape else 60,
         cwd=Path(__file__).resolve().parents[2],
     )
     assert completed.returncode == 0, completed.stderr[-4000:]
@@ -2056,6 +2149,7 @@ async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_
                 "repeated": repeated_subgraph_waiting_workflow,
                 "loop": loop_subgraph_waiting_workflow,
                 "nested_loop": nested_loop_subgraph_waiting_workflow,
+                "three_nested_loop": three_nested_loop_subgraph_waiting_workflow,
             }[shape]()
             result = await engine.resume(owner, {}, plan)
         assert result.status == "completed", result.error
@@ -2068,6 +2162,10 @@ async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_
             "nested_loop": ["/do/0/outer/do/0/inner/do/1/pause",
                             "/do/0/outer/do/0/inner/do/2/last",
                             "/do/0/outer/do/0/inner"],
+            "three_nested_loop": ["/do/0/outer/do/0/inner/do/0/deep/do/1/pause",
+                                  "/do/0/outer/do/0/inner/do/0/deep/do/2/last",
+                                  "/do/0/outer/do/0/inner/do/0/deep",
+                                  "/do/0/outer/do/0/inner"],
         }[shape]
         assert [item["task_reference"] for item in frames(observed)] == expected
     assert services.model.calls == []

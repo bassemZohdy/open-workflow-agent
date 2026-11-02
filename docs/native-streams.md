@@ -29,9 +29,9 @@ event delivery and do not publish to the event bus.
 
 The separate `langgraph.streams.subgraphs@1.0.0` profile projects native
 updates from directly nested `do` scopes. It requires the base stream profile.
-It also admits up to two nested `for` tasks, each with a literal `in` array of
-at most 32 items and no `while` condition. For nested loops, the outer item
-count multiplied by the sum of its inner loop item counts must not exceed 64.
+It also admits up to three nested `for` tasks, each with a literal `in` array of
+at most 32 items and no `while` condition. For nested loops, a conservative
+recursive bound on descendant occurrences must not exceed 64 for any loop.
 Loop bodies may contain `set`, `call`, `wait`, and permitted inner `for` tasks;
 other child scopes inside loops are rejected.
 `try`/`catch` scopes, including their retry behavior, are not admitted.

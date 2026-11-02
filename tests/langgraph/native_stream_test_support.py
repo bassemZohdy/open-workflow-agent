@@ -209,3 +209,12 @@ def nested_loop_subgraph_waiting_workflow():
         {"done": {"set": {"done": True}}},
     ]
     return compile_workflow(source)
+
+
+def three_nested_loop_subgraph_waiting_workflow():
+    import copy
+
+    source = copy.deepcopy(nested_loop_subgraph_waiting_workflow().source)
+    inner = source["do"][0]["outer"]["do"][0]["inner"]
+    inner["do"] = [{"deep": {"for": {"each": "c", "in": [0]}, "do": inner["do"]}}]
+    return compile_workflow(source)

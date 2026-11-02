@@ -64452,7 +64452,7 @@
         "direction": "LangGraph to OWS",
         "stage": 4,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Partial: direct scopes and bounded loops passed hosted workflow; two nested levels locally qualified, hosted checks pending; full criteria pending",
+        "python_delivery_status": "Partial: two nested loop levels passed hosted workflow; three levels locally qualified, hosted checks pending; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T50",
         "effort": "M",
