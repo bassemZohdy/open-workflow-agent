@@ -542,6 +542,7 @@ jobs:
               "test_task_stream_marks_suspension_without_exposing_native_interrupt",
               "test_task_stream_marks_failure_without_exposing_error_details",
               "test_task_stream_reports_nested_public_scope",
+              "test_task_stream_remains_available_during_native_send_fanout",
               "test_task_stream_resume_keeps_cursor_and_does_not_repeat_effect",
               "test_task_stream_observes_replay_target_without_repeating_retained_effects",
               "test_actual_process_exit_loses_observation_replay_but_not_native_resume",

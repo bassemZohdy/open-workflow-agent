@@ -26,6 +26,7 @@ def test_postgres_job_runs_stream_profiles_on_both_stores_without_skips():
     assert "timeout --signal=TERM --kill-after=30s 15m" in command
     assert "--junitxml=" in command and 'get("skipped", "0")' in command
     assert "test_task_stream_observes_replay_target_without_repeating_retained_effects" in command
+    assert "test_task_stream_remains_available_during_native_send_fanout" in command
     assert "test_actual_process_exit_loses_observation_replay_but_not_native_resume" in command
     for path in (
         "tests/langgraph/test_native_stream_api.py",

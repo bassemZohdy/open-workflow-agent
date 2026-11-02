@@ -340,6 +340,56 @@ async def test_task_stream_observes_replay_target_without_repeating_retained_eff
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stream_runtime",
+    [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
+    indirect=True,
+)
+async def test_task_stream_remains_available_during_native_send_fanout(stream_runtime):
+    from open_workflow_agent.workflow import compile_workflow
+
+    services, _ = stream_runtime
+    source = copy.deepcopy(workflow(task_stream=True).source)
+    source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+        {"name": "langgraph.send", "version": "1.0.0"}
+    )
+    source["do"] = [
+        {
+            "fan": {
+                "fork": {
+                    "branches": [{"left": {"set": {"left": 1}}}, {"right": {"set": {"right": 2}}}]
+                }
+            }
+        },
+        {"last": {"set": {"done": True}}},
+    ]
+    owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
+    async with client_for(stream_runtime) as client:
+        response = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "tasks"}
+        )
+        assert response.status_code == 200, response.text
+        events = frames(response)
+        assert (events[0]["task_reference"], events[0]["data"]) == (
+            "/do/0/fan",
+            {"status": "started"},
+        )
+        assert (events[-1]["task_reference"], events[-1]["data"]) == (
+            "/do/1/last",
+            {"status": "completed"},
+        )
+        assert '"reason":"completed"' in response.text
+        assert all(set(item["data"]) == {"status"} for item in events)
+        for name in ("left", "right"):
+            assert [
+                item["data"]["status"]
+                for item in events
+                if item["task_reference"].endswith("/" + name)
+            ] == ["started", "completed"]
+        assert len(services.model.calls) == 0
+
+
+@pytest.mark.asyncio
 async def test_owner_stream_is_bounded_mode_filtered_and_has_explicit_replay_gaps(stream_runtime):
     services, engine = stream_runtime
     owner, _ = await invoke(stream_runtime)

@@ -30,6 +30,11 @@ after an effect and verifies that the new invocation emits task statuses only
 for its continued task. The source effect is not repeated, and the new target
 remains independently observable by its owner.
 
+Separate local SQLite/PostgreSQL coverage combines the task profile with a
+non-competing native Send fan-out. Both branches emit their own started and
+completed public task events, and observation remains available through the
+join. This follow-on case is newer than the frozen hosted source below.
+
 The dedicated PostgreSQL CI job now selects the complete stream/API,
 projection, buffer, registry and transport suite on both stores, requires at
 least 90 cases, zero skips and the named task-profile lifecycle witnesses, and
