@@ -8,6 +8,7 @@ from pathlib import Path
 
 from native_stream_test_support import authority, configuration
 from open_workflow_agent.catalog import FakeModel
+from open_workflow_agent.config import NativeStateConfig
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 from open_workflow_agent_langgraph.native_lineage_preflight import prepare_native_lineage
@@ -41,6 +42,7 @@ async def main():
         source_reference=reference,
         task_reference="/do/2/second",
         values={"value": 7},
+        bounds=NativeStateConfig(timeout_seconds=30),
     )
     plan = await services.recovery_definitions.resolve_inspection(source)
     target = NativeBranchReservations(services).reserve(source, actor, plan, prepared)

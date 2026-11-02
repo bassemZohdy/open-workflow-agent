@@ -477,5 +477,35 @@ request reconstruction, native fork/continuation, replay reservation regression,
 and per-source limits. A separate authorization and checkpoint contract selection
 passes eight applicable cases with 16 other-engine/backend skips. The process-stop
 witness covers the reservation boundary only, not interruption during fork,
-binding or continuation. Public branch admission, a branch coordinator, broader
-attribution/scopes, hosted qualification and full S4-02/T49 remain open.
+binding or continuation. At this reservation stage a branch coordinator had not
+yet been implemented. Public branch admission, broader attribution/scopes,
+hosted qualification and full S4-02/T49 remain open.
+
+## Private branch coordinator — 2026-11-02
+
+A private coordinator reuses the common lineage stages to reserve, admit, fork,
+bind and continue an attributed root branch. Exact retries recover the same
+target; changed data is rejected. When a lineage binding already exists, recovery
+verifies the retained request and native proof before continuing instead of
+reapplying the initial fork. This matters after continuation has written pending
+state to the original fork checkpoint. The original fork writer's initial-state
+checks remain unchanged, and uncertain effects still fail closed.
+
+Local process-stop tests cover re-execution after reservation, admission, native
+fork, binding and inside a model call, plus read-only recovery after binding, on
+SQLite and PostgreSQL. A stopped in-flight model call faults without a second
+call. The original combined Windows run had 12 passes, two failures and two
+intentional read-only skips: one PostgreSQL preflight exceeded its test's default
+five-second bound and one test-only manual ownership lease expired during the
+long interruption loop. The affected cases were rerun on a fresh PostgreSQL
+database after using the supported 30-second preflight bound and releasing the
+manual lease before the loop: both passed. The separate SQLite five-stage case
+passed after an initial short worker lease failure and a later discovered
+fork-proof recovery failure; both failed attempts remain non-green evidence.
+The authorization/checkpoint selection passes eight cases with 16 other-engine
+or unavailable-backend skips. These are separate local runs, not one green
+cross-platform qualification.
+
+This coordinator is not public admission. Broader branch attribution and scopes,
+concurrent controls, public lifecycle/API tests, hosted qualification and the
+remaining S4-02/T49 criteria are still open.

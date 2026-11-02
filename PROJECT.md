@@ -99,10 +99,10 @@ No task or research row is promoted.
 
 The current branch additionally stages a private root data branch at the last
 completed task, with schema validation, source-receipt remapping and effect
-policy checks. Private reservation and recovery after a process stop immediately
-following reservation pass on SQLite and PostgreSQL. Public admission and
-end-to-end branch crash recovery remain open. See the
-[lineage record](docs/s4-02-native-lineage-acceptance.md#private-branch-reservation--2026-11-02).
+policy checks. A private coordinator now recovers selected process stops from
+reservation through an in-flight model call on SQLite and PostgreSQL. Public
+admission, broader profiles and hosted qualification remain open. See the
+[lineage record](docs/s4-02-native-lineage-acceptance.md#private-branch-coordinator--2026-11-02).
 
 S4-03 has bounded literal set/do/raise, try/catch, non-competing fork, jq `set` expression, `switch` and `for` execution with 111 shared
 success/fault cases (local, not hosted-qualified); public identity, durable services, expressions and full engine behavior

@@ -33,6 +33,7 @@ from open_workflow_agent_langgraph.native_lineage_reservation import (
     NativeReplayReservations,
 )
 from open_workflow_agent_langgraph.native_lineage_transition import stage_root_branch
+from open_workflow_agent_langgraph.native_replay_coordinator import NativeBranchCoordinator
 from open_workflow_agent_langgraph.native_state import state_reference
 
 
@@ -108,7 +109,7 @@ async def test_private_branch_replaces_data_at_last_completed_task_and_preserves
         workflow_version=plan.version,
         workflow_fingerprint=plan.fingerprint,
     )
-    parent._execution_lease = services.execution_ownership.acquire(parent, seconds=300)
+    parent._execution_lease = services.execution_ownership.acquire(parent, seconds=900)
     target = None
     try:
         services.execution_authorizations.reserve_invocation(parent, actor, input_data={})
@@ -160,6 +161,7 @@ async def test_private_branch_replaces_data_at_last_completed_task_and_preserves
             acknowledge_reexecution=policy == "reexecute",
             task_reference="/do/2/second",
             values={"value": 7},
+            bounds=NativeStateConfig(timeout_seconds=30),
         )
         prepared = await prepare_native_lineage(services, parent, actor, **options)
         store = NativeBranchReservations(services)
@@ -270,6 +272,7 @@ async def test_private_branch_replaces_data_at_last_completed_task_and_preserves
                 "target_invocation_id": str(uuid4()),
                 "request_id": prepared.request.request_id,
                 "source_reference": reference,
+                "bounds": NativeStateConfig(timeout_seconds=30),
             }
             collision = await prepare_native_lineage(services, parent, actor, **replay_options)
             with pytest.raises(OwaError):
@@ -390,6 +393,104 @@ async def test_private_branch_replaces_data_at_last_completed_task_and_preserves
         assert [(item.checkpoint["id"], item.checkpoint) for item in retained] == [
             (item.checkpoint["id"], item.checkpoint) for item in checkpoints
         ]
+        services.execution_ownership.release(target._execution_lease)
+        target._execution_lease = None
+        coordinator = NativeBranchCoordinator(engine, bounds)
+        phases = []
+        command = {
+            "request_id": uuid4().hex * 2,
+            "source_reference": reference,
+            "task_reference": "/do/2/second",
+            "values": {"value": 7},
+            "acknowledge_reexecution": policy == "reexecute",
+        }
+        before_calls = len(services.model.calls)
+        coordinated = await coordinator.run_branch(
+            parent, actor, **command, _phase=lambda name, identity: phases.append((name, identity))
+        )
+        assert coordinated.status == (
+            "faulted" if downstream_effect and policy == "read_only" else "completed"
+        )
+        if not downstream_effect:
+            assert coordinated.output == {"value": 8}
+        assert [name for name, _ in phases] == ["reserved", "admitted", "forked", "bound"]
+        assert len({identity for _, identity in phases}) == 1
+        assert len(services.model.calls) == before_calls + (
+            1 if downstream_effect and policy == "reexecute" else 0
+        )
+        repeated = await coordinator.run_branch(parent, actor, **command)
+        assert repeated.invocation_id == coordinated.invocation_id
+        assert repeated.status == coordinated.status
+        assert len(services.model.calls) == before_calls + (
+            1 if downstream_effect and policy == "reexecute" else 0
+        )
+        with pytest.raises(OwaError):
+            await coordinator.run_branch(parent, actor, **(command | {"values": {"value": 8}}))
+        if downstream_effect:
+            phases_to_stop = (
+                ["bound"]
+                if policy == "read_only"
+                else ["reserved", "admitted", "forked", "bound", "effect"]
+            )
+            for phase in phases_to_stop:
+                request_id = uuid4().hex * 2
+                environment = os.environ.copy()
+                if backend == "sqlite":
+                    environment.pop("OWA_TEST_POSTGRES_URL", None)
+                process = subprocess.Popen(
+                    [
+                        sys.executable,
+                        str(Path(__file__).with_name("native_branch_coordinator_worker.py")),
+                        str(tmp_path),
+                        parent.invocation_id,
+                        request_id,
+                        reference,
+                        policy,
+                        phase,
+                    ],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    env=environment,
+                )
+                output = []
+                try:
+
+                    async def read_phase(active_process=process, lines=output, desired_phase=phase):
+                        while True:
+                            line = await asyncio.to_thread(active_process.stdout.readline)
+                            if not line:
+                                raise AssertionError(
+                                    f"worker exited before {desired_phase}: " + "".join(lines)
+                                )
+                            lines.append(line)
+                            if line.startswith("BRANCH_PHASE "):
+                                return line.strip().split()
+
+                    marker = await asyncio.wait_for(read_phase(), timeout=120)
+                    assert marker[1] == phase
+                    process.kill()
+                    await asyncio.to_thread(process.wait, timeout=10)
+                finally:
+                    if process.poll() is None:
+                        process.kill()
+                        await asyncio.to_thread(process.wait, timeout=10)
+                    process.stdout.close()
+                await asyncio.sleep(21 if phase == "effect" else 13)
+                calls = len(services.model.calls)
+                resumed_command = command | {"request_id": request_id}
+                resumed = await coordinator.run_branch(parent, actor, **resumed_command)
+                assert resumed.invocation_id == marker[2]
+                assert resumed.status == (
+                    "faulted" if policy == "read_only" or phase == "effect" else "completed"
+                )
+                expected_calls = calls + (1 if policy == "reexecute" and phase != "effect" else 0)
+                assert len(services.model.calls) == expected_calls
+                again = await coordinator.run_branch(parent, actor, **resumed_command)
+                assert (
+                    again.invocation_id == resumed.invocation_id and again.status == resumed.status
+                )
+                assert len(services.model.calls) == expected_calls
     finally:
         if target is not None and target._execution_lease is not None:
             services.execution_ownership.release(target._execution_lease)
