@@ -35,6 +35,10 @@ projection, buffer, registry and transport suite on both stores, requires at
 least 90 cases, zero skips and the named task-profile lifecycle witnesses, and
 retains its JUnit report. Its exact selection passed locally with **100 cases,
 zero skips**. Hosted results are recorded separately when the frozen run ends.
+The frozen source `568f52d` is being qualified on
+`codex/s4-02-stream-qualification-568f52d` in
+[workflow run 41416534381](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41416534381);
+the dedicated stream job is queued. That run has not yet qualified the profile.
 
 Status: the private foundation is merged through PR #84 (`73778d6`). The opt-in
 public values/updates profile is qualified at `a597134` below. This record owns the stream work;
