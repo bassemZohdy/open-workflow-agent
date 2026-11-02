@@ -259,6 +259,8 @@ treated as a deferred task or as additional feature completion.
   damage, fresh-engine inspection and injected interruption after the fork.
   Completed child occurrences can also retain verified forward routes that skip
   child tasks, with consecutive checkpoints proving each occurrence's visits.
+  Complete-looking cumulative counts are checked against predecessor checkpoints
+  so repeated visits cannot be hidden by an earlier skipped occurrence.
   Declared append and last-value channel snapshots also survive root lineage,
   including a completed nested scope, with local reducer/restart evidence.
   Native Command destinations now survive the fork, with retained SDK scheduling

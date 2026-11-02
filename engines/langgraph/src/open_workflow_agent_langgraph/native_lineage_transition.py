@@ -118,6 +118,32 @@ def _verify_child_route(
     _scope_lineage_position(scope, derived, allow_complex_prefix=False)
 
 
+def _validate_completed_child_visits(
+    scope: ScopePlan, packet: dict[str, Any], previous: dict[str, Any] | None, occurrence: int
+) -> None:
+    """Keep the all-tasks shortcut only when every preceding count agrees."""
+    visits = json.loads(packet["snapshot"])["task_visits"]
+    previous_visits = json.loads(previous["snapshot"])["task_visits"] if previous else {}
+    references = [task.execution_reference or task.reference for task in scope.tasks]
+    if (
+        occurrence >= 1
+        and references
+        and all(type(visits.get(ref)) is int and visits[ref] == occurrence for ref in references)
+        and (
+            occurrence == 1
+            or (
+                previous is not None
+                and all(
+                    type(previous_visits.get(ref)) is int and previous_visits[ref] == occurrence - 1
+                    for ref in references
+                )
+            )
+        )
+    ):
+        return
+    _verify_child_route(scope, packet, previous, occurrence)
+
+
 def root_lineage_position(plan: WorkflowPlan, native: dict[str, Any]) -> int:
     """Identify the last root task in a prefix or a verifiable forward route."""
     return _scope_lineage_position(plan.scopes[0], native, allow_complex_prefix=True)
@@ -324,11 +350,6 @@ def _validate_root_basis(
             scope = next(scope for scope in plan.scopes if scope.reference == item.reference)
             packet = packets[(item.reference, item.occurrence)]
             child_bindings = json.loads(packet["receipt_bindings"])
-            child_visits = json.loads(packet["snapshot"])["task_visits"]
-            all_visited = all(
-                child_visits.get(task.execution_reference or task.reference) == item.occurrence
-                for task in scope.tasks
-            )
             if (
                 item.phase != "checkpoint"
                 or packet["next_node"] != "__end__"
@@ -340,13 +361,12 @@ def _validate_root_basis(
                 )
             ):
                 raise lineage_error("replay_profile_unsupported")
-            if not all_visited:
-                _verify_child_route(
-                    scope,
-                    packet,
-                    packets.get((item.reference, item.occurrence - 1)),
-                    item.occurrence,
-                )
+            _validate_completed_child_visits(
+                scope,
+                packet,
+                packets.get((item.reference, item.occurrence - 1)),
+                item.occurrence,
+            )
         if kind == "branch":
             task = tasks[completed - 1]
             updates = plan.native_state_updates

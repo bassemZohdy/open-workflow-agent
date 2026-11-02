@@ -1015,7 +1015,7 @@ skips. Hosted qualification is separate.
 Hosted qualification of frozen source `51b39ee` is running on
 `codex/s4-02-forward-send-51b39ee`:
 [workflow run 41403590132](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41403590132).
-The native Send-lineage job passed; the full workflow is still running.
+The full workflow passed, including its native Send-lineage job.
 
 ## Forward routing in a completed child scope — 2026-11-02
 
@@ -1086,3 +1086,22 @@ PostgreSQL. Re-executing cases also remove a retained branch receipt and confirm
 that inspection and a new fork fail closed without allocating another target.
 The tests are included in the existing bounded Send-lineage PostgreSQL job;
 this is combination evidence, not full S4-02 qualification.
+
+## Repeated child counter integrity — 2026-11-02
+
+The aggregate all-tasks-visited shortcut previously did not compare the preceding
+occurrence. A task skipped in one occurrence could run twice in the next and
+make the cumulative count look complete. The shortcut now requires matching
+predecessor counts; otherwise each occurrence is checked against its predecessor,
+and missing, decreasing or repeated visits fail closed.
+
+A real two-iteration workflow skips two child tasks in the first occurrence and
+visits each twice in the second. Its retained checkpoints explicitly confirm those
+counts. Replay and branch both return 409 without creating a target or repeating
+an effect on SQLite and PostgreSQL. Thirteen focused route/counter checks passed;
+ordinary and routed two-occurrence replay/branch matrices each passed four cases
+on both stores, including loss of the first or second child checkpoint. The shared
+lineage admission and receipt selection passed 27 with 19 other-backend skips.
+The earlier aggregate-only predicate would accept the complete-looking totals;
+the test that initially imported the new validator failed collection until the
+validator was implemented. Hosted qualification remains separate.

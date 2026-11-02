@@ -247,7 +247,10 @@ async def test_root_lineage_after_completed_nested_scope_preserves_effects(
                     if scope.reference.endswith("/inner/do")
                 )
                 thread = LangGraphScopeExecutor.scope_thread_id(
-                    target.invocation_id, plan.fingerprint, child, iterations
+                    target.invocation_id,
+                    plan.fingerprint,
+                    child,
+                    1 if kind == "branch" else iterations,
                 )
                 connection = open_storage(
                     services.engine_database_path("langgraph", create_namespace=False),

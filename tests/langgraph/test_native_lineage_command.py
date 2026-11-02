@@ -24,6 +24,7 @@ from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor, _node_name
 from open_workflow_agent_langgraph.native_lineage_transition import (
     _scope_lineage_position,
+    _validate_completed_child_visits,
     _verify_child_route,
     root_lineage_position,
 )
@@ -293,6 +294,41 @@ def test_repeated_child_route_requires_consecutive_visit_evidence(damage):
     else:
         with pytest.raises(OwaError):
             _verify_child_route(
+                scope, packet, None if damage == "missing_previous" else previous, 2
+            )
+
+
+@pytest.mark.parametrize("damage", ["none", "catch_up", "missing_previous"])
+def test_complete_child_counts_cannot_hide_repeated_visits(damage):
+    source = generate_default_workflow()
+    source["do"] = [
+        {
+            "nested": {
+                "do": [
+                    {"first": {"set": {"value": 1}}},
+                    {"second": {"set": {"value": 2}}},
+                ]
+            }
+        }
+    ]
+    scope = next(
+        item for item in compile_workflow(source).scopes if item.reference.endswith("/nested/do")
+    )
+    refs = [task.execution_reference or task.reference for task in scope.tasks]
+    previous = {"snapshot": json.dumps({"task_visits": {refs[0]: 1, refs[1]: 1}})}
+    if damage == "catch_up":
+        previous = {"snapshot": json.dumps({"task_visits": {refs[0]: 1}})}
+    packet = {
+        "snapshot": json.dumps({"task_visits": {refs[0]: 2, refs[1]: 2}}),
+        "next_node": "__end__",
+    }
+    # The former aggregate-only shortcut accepted both malformed cases.
+    assert all(json.loads(packet["snapshot"])["task_visits"].get(ref) == 2 for ref in refs)
+    if damage == "none":
+        _validate_completed_child_visits(scope, packet, previous, 2)
+    else:
+        with pytest.raises(OwaError):
+            _validate_completed_child_visits(
                 scope, packet, None if damage == "missing_previous" else previous, 2
             )
 

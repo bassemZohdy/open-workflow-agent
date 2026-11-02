@@ -113,11 +113,16 @@ def test_forward_switch_lineage_is_covered_by_the_postgres_branch_job():
     commands = "\n".join(step.get("run", "") for step in job["steps"])
     assert "../../tests/langgraph/test_native_lineage_switch.py" in commands
     assert "../../tests/langgraph/test_native_lineage_nested.py" in commands
+    assert "../../tests/langgraph/test_native_lineage_child_catchup.py" in commands
     assert (
         "tests/langgraph/test_native_lineage_switch.py" in workflow["on"]["pull_request"]["paths"]
     )
     assert (
         "tests/langgraph/test_native_lineage_nested.py" in workflow["on"]["pull_request"]["paths"]
+    )
+    assert (
+        "tests/langgraph/test_native_lineage_child_catchup.py"
+        in workflow["on"]["pull_request"]["paths"]
     )
     assert job["services"]["postgres"]["image"] == "postgres:16"
     assert "--extra postgres" in commands and "--extra sqlite" in commands
