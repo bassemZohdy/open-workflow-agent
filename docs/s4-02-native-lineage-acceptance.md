@@ -640,8 +640,8 @@ The hosted PostgreSQL workflow was dispatched against frozen source
 `1eca9a547aeed386fcb864ff1ce60249736a98f8` on
 `codex/s4-02-repeated-qualification-1eca9a5`:
 [workflow run 41380271623](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41380271623).
-The dedicated PostgreSQL branch job passed. The overall workflow was still
-running when checked, so no full-workflow result is claimed yet.
+The entire hosted workflow completed successfully, including its dedicated
+PostgreSQL branch job. This result applies to that frozen source only.
 
 ## Declared native channels in root lineage — 2026-11-02
 
