@@ -241,10 +241,10 @@ treated as a deferred task or as additional feature completion.
   A separate SQLite/PostgreSQL process-kill test during a model call fails closed
   without repeating the uncertain effect.
   The private root coordinator also replays from a later completed-task prefix
-  (locally verified on SQLite and PostgreSQL for one- and two-task prefixes). Public admission, broader
-  checkpoint/scope remapping, full
-  lifecycle gate installation, branch attribution and public
-  replay/branch admission remain open. Storage atomicity alone does not make a
+  (locally verified on SQLite and PostgreSQL for one- and two-task prefixes).
+  Broader checkpoint/scope remapping and full lifecycle gate installation remain
+  open. The finite public replay and branch profiles are described below; they do
+  not establish broader attribution or scope support. Storage atomicity alone does not make a
   business fork safe to resume. A private root branch projection now replaces
   schema-validated data at the last completed root task and is exercised through
   a manually staged native fork, receipt binding and continuation on SQLite and

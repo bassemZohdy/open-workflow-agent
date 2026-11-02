@@ -582,3 +582,6 @@ Two additional local state-reader/branch-projection regression selections were
 interrupted after they stopped making visible progress; neither is counted green.
 A subsequent focused SQLite state-reader selection passed four cases, with four
 PostgreSQL cases skipped because that separate run had no configured datasource.
+The SQLite re-execution branch-projection case passed separately with diagnostic
+authorization tracing in 154 seconds. It includes five process-stop stages and
+intentional lease-expiry waits, explaining its long periods without test output.
