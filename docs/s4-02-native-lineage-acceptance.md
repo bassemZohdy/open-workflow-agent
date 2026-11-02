@@ -1073,3 +1073,6 @@ child checkpoint. The prior implementation rejected the combined route before
 target reservation. Twenty-three route tests, four existing SQLite Send cases,
 and 27 shared admission/receipt cases also passed; the latter had 19 other-backend
 skips. Hosted qualification is separate.
+Hosted qualification of frozen source `7e6e016` is running on
+`codex/s4-02-combined-routes-7e6e016`:
+[workflow run 41407027218](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41407027218).
