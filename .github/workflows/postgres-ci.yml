@@ -198,6 +198,14 @@ on:
       - "tests/contract/test_native_checkpoint_fencing.py"
       - "tests/contract/test_native_state_consistency.py"
       - "tests/langgraph/test_state_replay_api.py"
+      - "tests/langgraph/test_native_stream_api.py"
+      - "tests/langgraph/test_native_stream_projection.py"
+      - "tests/langgraph/native_stream_test_support.py"
+      - "tests/langgraph/native_stream_restart_worker.py"
+      - "tests/core/test_native_streams.py"
+      - "tests/core/test_native_stream_registry.py"
+      - "tests/core/test_native_stream_transport.py"
+      - "tests/ci/test_native_stream_selection.py"
       - "tests/langgraph/native_replay_route_worker.py"
       - "tests/langgraph/test_native_lineage_replay_integration.py"
       - "tests/langgraph/native_replay_crash_worker.py"
@@ -479,6 +487,74 @@ jobs:
             ../../tests/contract/test_effect_recovery.py \
             ../../tests/contract/test_invocation_writes.py \
             -k 'postgresql and (langgraph or completed_native_scope_dependencies)' -vv --durations=20
+  postgres-native-stream:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
+    name: Native streams on SQLite and PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: owa
+          POSTGRES_PASSWORD: owa
+          POSTGRES_DB: owa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U owa -d owa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.2
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "$PYTHON_VERSION"
+      - name: Verify native stream profiles on both stores
+        env:
+          OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
+          PYTHONUNBUFFERED: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 15m \
+            uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres --extra sqlite \
+            --with pytest --with pytest-asyncio --with httpx pytest \
+            ../../tests/langgraph/test_native_stream_api.py \
+            ../../tests/langgraph/test_native_stream_projection.py \
+            ../../tests/core/test_native_streams.py \
+            ../../tests/core/test_native_stream_registry.py \
+            ../../tests/core/test_native_stream_transport.py \
+            -q --durations=20 --junitxml="$RUNNER_TEMP/native-stream.xml"
+          python - "$RUNNER_TEMP/native-stream.xml" <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+          suites = list(ET.parse(sys.argv[1]).getroot().iter("testsuite"))
+          assert sum(int(s.get("tests", "0")) for s in suites) >= 90
+          assert sum(int(s.get("skipped", "0")) for s in suites) == 0
+          names = {case.get("name", "").split("[", 1)[0] for s in suites for case in s.iter("testcase")}
+          assert {
+              "test_task_stream_requires_opt_in_and_projects_only_public_status",
+              "test_task_stream_marks_suspension_without_exposing_native_interrupt",
+              "test_task_stream_marks_failure_without_exposing_error_details",
+              "test_task_stream_reports_nested_public_scope",
+              "test_task_stream_resume_keeps_cursor_and_does_not_repeat_effect",
+              "test_task_stream_observes_replay_target_without_repeating_retained_effects",
+              "test_actual_process_exit_loses_observation_replay_but_not_native_resume",
+          } <= names
+          PY
+      - name: Upload native stream results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-stream-results
+          path: ${{ runner.temp }}/native-stream.xml
+          if-no-files-found: error
+
   postgres-native-replay:
     if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: PostgreSQL native state replay

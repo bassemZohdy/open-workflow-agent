@@ -1077,9 +1077,10 @@ passed, including impossible and backward child routes. The existing repeated
 scope selection passed eight SQLite cases with four intentional skips; the common
 lineage admission and receipt selection passed 27 cases with 19 other-backend
 skips. This does not complete S4-02 or qualify broad time travel.
-Hosted qualification of frozen source `b5d5535` is running on
-`codex/s4-02-child-route-b5d5535`:
-[workflow run 41404706219](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41404706219).
+Hosted qualification of frozen source `b5d5535` on
+`codex/s4-02-child-route-b5d5535` completed successfully: all 18 jobs in
+[workflow run 41404706219](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41404706219)
+passed. This qualifies that frozen source, not later repairs or full S4-02.
 
 ## Forward routing across repeated child occurrences — 2026-11-02
 
@@ -1096,9 +1097,10 @@ including explicit inspection of both retained visit counters. All four SQLite
 replay/branch and effect-policy cases passed for both the same-route and varying-route
 fixtures on SQLite and PostgreSQL. The shared admission and receipt selection
 passed 27 cases with 19 other-backend skips. Hosted qualification is separate.
-Hosted qualification of frozen source `2cd6328` is running on
-`codex/s4-02-child-repeated-2cd6328`:
-[workflow run 41406017189](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41406017189).
+Hosted qualification of frozen source `2cd6328` on
+`codex/s4-02-child-repeated-2cd6328` completed successfully: all 18 jobs in
+[workflow run 41406017189](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41406017189)
+passed. Later repairs and full S4-02 remain separately gated.
 
 ## Forward routes at root and child levels — 2026-11-02
 

@@ -30,6 +30,12 @@ after an effect and verifies that the new invocation emits task statuses only
 for its continued task. The source effect is not repeated, and the new target
 remains independently observable by its owner.
 
+The dedicated PostgreSQL CI job now selects the complete stream/API,
+projection, buffer, registry and transport suite on both stores, requires at
+least 90 cases, zero skips and the named task-profile lifecycle witnesses, and
+retains its JUnit report. Its exact selection passed locally with **100 cases,
+zero skips**. Hosted results are recorded separately when the frozen run ends.
+
 Status: the private foundation is merged through PR #84 (`73778d6`). The opt-in
 public values/updates profile is qualified at `a597134` below. This record owns the stream work;
 [memory qualification](s4-02-native-memory-acceptance.md) and [channels/Send](s4-02-native-channels-acceptance.md)
