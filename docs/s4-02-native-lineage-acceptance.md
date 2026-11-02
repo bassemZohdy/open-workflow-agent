@@ -940,3 +940,6 @@ impossible and backward routes, and the existing SQLite routing selection passed
 wrong task and received an allowlist error; allowing a non-set task then failed
 workflow admission. The corrected fixture uses a skipped declared set task and
 tests the intended attribution boundary. Hosted qualification is separate.
+Hosted qualification of frozen source `cfeb0b9` is running on
+`codex/s4-02-forward-switch-cfeb0b9`:
+[workflow run 41400460408](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41400460408).
