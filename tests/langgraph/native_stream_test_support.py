@@ -151,3 +151,23 @@ def subgraph_waiting_workflow():
         {"last": {"set": {"done": True}}},
     ]
     return compile_workflow(source)
+
+
+def repeated_subgraph_waiting_workflow():
+    import copy
+
+    source = copy.deepcopy(workflow().source)
+    source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
+    )
+    source["do"] = [
+        {"first": {"set": {"count": 0}}},
+        {"outer": {"do": [
+            {"call": {"call": "llm:1.0.0@default"}},
+            {"pause": {"wait": {"seconds": 300}}},
+            {"increment": {"set": {"count": "${ .response.count + 1 }"}}},
+        ]}},
+        {"route": {"switch": [{"again": {"when": "${ .count < 2 }", "then": "outer"}}]}},
+        {"last": {"set": {"done": True}}},
+    ]
+    return compile_workflow(source)

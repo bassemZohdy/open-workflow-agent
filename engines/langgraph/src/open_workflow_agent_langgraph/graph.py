@@ -1327,8 +1327,8 @@ class LangGraphScopeExecutor:
                         )
                     )
                 executor._token(state).checkpoint()
-                pending = self._resume_interrupts.get(
-                    (scope.reference, self.counters[scope.reference], _node_name(task))
+                pending = self._resume_interrupts.pop(
+                    (scope.reference, self.counters[scope.reference], _node_name(task)), None
                 )
                 if pending is not None:
                     payload, previous_resumes = pending

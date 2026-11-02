@@ -13,7 +13,12 @@ sys.path[:0] = [str(ROOT / "core/src"), str(ROOT / "engines/langgraph/src")]
 
 
 async def run() -> None:
-    from native_stream_test_support import authority, subgraph_waiting_workflow, workflow
+    from native_stream_test_support import (
+        authority,
+        repeated_subgraph_waiting_workflow,
+        subgraph_waiting_workflow,
+        workflow,
+    )
     from open_workflow_agent.catalog import FakeModel
     from open_workflow_agent.config import RuntimeConfig
     from open_workflow_agent.execution_authority import authority_scope
@@ -47,6 +52,8 @@ async def run() -> None:
         debug_stream=True if request.get("debug_stream") else None,
         custom_stream=bool(request.get("custom_stream")),
     )
+    if request.get("repeated_subgraph_stream"):
+        plan = repeated_subgraph_waiting_workflow()
     handle = services.invocations.create(
         engine="langgraph",
         session_id="same",
@@ -59,8 +66,14 @@ async def run() -> None:
     with authority_scope(authority(services, "alice")):
         result = await engine.invoke(plan, handle, {"value": "worker"})
     assert result.status == "waiting", result.error
+    if request.get("repeated_subgraph_stream"):
+        with authority_scope(authority(services, "alice")):
+            result = await engine.resume(handle, {}, plan)
+        assert result.status == "waiting", result.error
     frames, _ = services.native_streams.subscribe(handle)
-    assert frames and len(services.model.calls) == 1
+    assert frames and len(services.model.calls) == (
+        2 if request.get("repeated_subgraph_stream") else 1
+    )
     with Path(sys.argv[2]).open("w", encoding="utf-8") as output:
         json.dump({"invocation_id": handle.invocation_id, "cursor": frames[-1].event_id}, output)
         output.flush()

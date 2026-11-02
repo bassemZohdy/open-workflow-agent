@@ -302,7 +302,8 @@ async def run(directory: Path, mode: str) -> None:
 if __name__ == "__main__":
     directory, mode = Path(sys.argv[1]), sys.argv[2]
     try:
-        asyncio.run(run(directory, mode))
+        with asyncio.Runner(loop_factory=asyncio.SelectorEventLoop) as runner:
+            runner.run(run(directory, mode))
     except BaseException as exc:
         write_json(
             directory / (mode + "-failure.json"), {"type": type(exc).__name__, "message": str(exc)}

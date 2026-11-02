@@ -22,12 +22,40 @@ after correcting it, a second attempt detected a changed runtime profile when
 source was edited during the run. The clean rerun above used a stable snapshot.
 The ADK required-extension rejection matrix passed eight cases. This is a finite
 source profile, not full T50, broader repeated or competing subgraph support,
-hosted qualification, or completion of S4-02.
+full hosted workflow qualification, or completion of S4-02.
+
+Follow-up repeated-scope checks exposed an existing interruption lifecycle bug
+with and without the subgraph profile. After a child wait resumed, a backward
+route to the same parent task reused its already-consumed interruption marker,
+causing an extra waiting segment before the next occurrence. The adapter now
+consumes that marker once. Six focused SQLite/PostgreSQL cases pass for repeated
+child checkpoints and consecutive waits, with and without the profile, and four
+fresh-process cases pass for single and repeated waits without repeating effects.
+The first Windows PostgreSQL process-stop attempt used a Proactor event loop in
+the test worker and was rejected by the established preflight; the worker now
+selects a supported event loop. Wider regression and hosted checks for this
+follow-up remain separate from the frozen `2b263f9` evidence.
+The shared LangGraph checkpoint and fencing contracts also passed 80 cases on
+SQLite/PostgreSQL without skips after the marker-consumption correction.
+The repeated-timer and actual process-stop selection passed 12 cases on both
+stores without skips after correcting the Windows worker's loop selection.
+The broader LangGraph durable-timer contract selection passed 26 cases on both
+stores without skips, covering manual and due wakes, retries, cancellation and
+deadline behavior.
+An initial broader stream run for the follow-up stopped after 71 passing cases
+when a PostgreSQL replay-target state read timed out. Both backend variants
+passed in an isolated rerun, then a fresh complete stream/projection/saver/core
+selection passed 192 cases with zero skips. The same process-stop worker also
+passed its ten ADK cases on both stores without skips.
 
 A combined stream, SDK boundary, saver, nested lineage and core transport run
 passed 223 cases with zero skips against SQLite and PostgreSQL. The additional
 malformed-projection tests were added after that run started and passed in
 separate focused runs. The hosted job includes these cases as required witnesses.
+The source-matched GitHub Actions native-stream job passed 231 cases at
+`2b263f9`, with zero skips and required-witness gates enforced; the wider workflow
+is still running. The earlier frozen `f0f29a5` PostgreSQL workflow completed
+successfully.
 
 Malformed child namespaces and public projection shapes are independently
 rejected by focused tests. The shared LangGraph checkpoint checks passed 40

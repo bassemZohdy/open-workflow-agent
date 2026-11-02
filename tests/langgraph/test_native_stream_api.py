@@ -21,6 +21,7 @@ from native_stream_test_support import (
     authority,
     configuration,
     enable_lineage,
+    repeated_subgraph_waiting_workflow,
     subgraph_waiting_workflow,
     workflow,
 )
@@ -238,6 +239,98 @@ async def test_subgraph_stream_rejects_unsupported_scope_before_execution(stream
     with pytest.raises(UnsupportedWorkflowFeature):
         await engine.compile(compile_workflow(source))
     assert services.model.calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stream_runtime", [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
+    indirect=True,
+)
+async def test_subgraph_stream_repeated_direct_scope_keeps_distinct_checkpoints(stream_runtime):
+    from open_workflow_agent.workflow import compile_workflow
+    from open_workflow_agent_langgraph import native
+    from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
+
+    services, _ = stream_runtime
+    source = copy.deepcopy(workflow().source)
+    source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
+    )
+    source["do"] = [
+        {"first": {"set": {"count": 0}}},
+        {"outer": {"do": [{"child": {"set": {"count": "${ .count + 1 }"}}}]}},
+        {"route": {"switch": [{"again": {"when": "${ .count < 2 }", "then": "outer"}}]}},
+        {"last": {"set": {"done": True}}},
+    ]
+    owner, plan = await invoke(stream_runtime, plan=compile_workflow(source))
+    async with client_for(stream_runtime) as client:
+        response = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "subgraphs"}
+        )
+        assert response.status_code == 200, response.text
+        events = frames(response)
+        assert [item["task_reference"] for item in events] == ["/do/1/outer/do/0/child"] * 2
+        assert [item["data"]["data"] for item in events] == [{"count": 1}, {"count": 2}]
+    path = services.engine_database_path("langgraph", create_namespace=False)
+    saver_type = (
+        native.AsyncPostgresSaver if path.startswith("postgres") else native.AsyncSqliteSaver
+    )
+    executor = LangGraphScopeExecutor(plan, None, owner.invocation_id)
+    async with saver_type.from_conn_string(path) as saver:
+        for occurrence in (1, 2):
+            config = executor.checkpoint_config("/do/1/outer/do", occurrence)
+            checkpoint = await saver.aget_tuple(config)
+            assert checkpoint is not None
+            assert checkpoint.config["configurable"]["checkpoint_ns"] == ""
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stream_runtime", [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
+    indirect=True,
+)
+@pytest.mark.parametrize("profile", [False, True])
+async def test_repeated_subgraph_wait_resume_preserves_each_effect(stream_runtime, profile):
+    from open_workflow_agent.workflow import compile_workflow
+
+    services, engine = stream_runtime
+    source = copy.deepcopy(workflow().source)
+    if profile:
+        source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+            {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
+        )
+    source["do"] = [
+        {"first": {"set": {"count": 0}}},
+        {"outer": {"do": [
+            {"call": {"call": "llm:1.0.0@default"}},
+            {"pause": {"wait": {"seconds": 300}}},
+            {"increment": {"set": {"count": "${ .response.count + 1 }"}}},
+        ]}},
+        {"route": {"switch": [{"again": {"when": "${ .count < 2 }", "then": "outer"}}]}},
+        {"last": {"set": {"done": True}}},
+    ]
+    owner, plan = await invoke(stream_runtime, plan=compile_workflow(source))
+    assert services.invocations.get(owner.invocation_id).status == "waiting"
+    with authority_scope(authority(services, "alice")):
+        first = await engine.resume(owner, {}, plan)
+    assert first.status == "waiting", first.error
+    assert len(services.model.calls) == 2, services.model.calls
+    with authority_scope(authority(services, "alice")):
+        second = await engine.resume(owner, {}, plan)
+    async with client_for(stream_runtime) as client:
+        response = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "subgraphs"}
+        )
+        assert response.status_code == 200, response.text
+        assert second.status == "completed", (
+            second.error, services.model.calls,
+            [(event["task_reference"], event["data"]) for event in frames(response)],
+        )
+        assert len(services.model.calls) == 2
+        assert [item["task_reference"] for item in frames(response)] == ([
+            "/do/1/outer/do/0/call", "/do/1/outer/do/1/pause",
+            "/do/1/outer/do/2/increment",
+        ] * 2 if profile else [])
 
 
 @pytest.mark.asyncio
@@ -1385,14 +1478,16 @@ async def test_actual_process_exit_loses_observation_replay_but_not_native_resum
     "stream_runtime", [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
     indirect=True,
 )
-async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_path):
+@pytest.mark.parametrize("repeated", [False, True])
+async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_path, repeated):
     services, engine = stream_runtime
     config_path = tmp_path / "worker-config.json"
     result_path = tmp_path / "worker-result.json"
     config_path.write_text(json.dumps({
         "config": services.config.model_dump(mode="json", exclude={"sandbox"}),
         "root": str(services.database_root) if services.database_root is not None else None,
-        "subgraph_stream": True,
+        "subgraph_stream": not repeated,
+        "repeated_subgraph_stream": repeated,
     }), encoding="utf-8")
     completed = await asyncio.to_thread(
         subprocess.run,
@@ -1409,13 +1504,16 @@ async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_
         absent = await client.get(path, headers={"Last-Event-ID": previous["cursor"]})
         assert absent.status_code == 409
         with authority_scope(authority(services, "alice")):
-            result = await engine.resume(owner, {}, subgraph_waiting_workflow())
+            plan = repeated_subgraph_waiting_workflow() if repeated else subgraph_waiting_workflow()
+            result = await engine.resume(owner, {}, plan)
         assert result.status == "completed", result.error
         observed = await client.get(path, params={"mode": "subgraphs"})
         assert observed.status_code == 200, observed.text
-        assert [item["task_reference"] for item in frames(observed)] == [
-            "/do/0/outer/do/1/pause", "/do/0/outer/do/2/childlast"
-        ]
+        expected = (
+            ["/do/1/outer/do/1/pause", "/do/1/outer/do/2/increment"] if repeated else
+            ["/do/0/outer/do/1/pause", "/do/0/outer/do/2/childlast"]
+        )
+        assert [item["task_reference"] for item in frames(observed)] == expected
     assert services.model.calls == []
 
 

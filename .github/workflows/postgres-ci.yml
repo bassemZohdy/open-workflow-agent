@@ -576,6 +576,8 @@ jobs:
               "test_subgraph_stream_preserves_nested_lineage",
               "test_subgraph_projection_fails_closed_on_invalid_sdk_namespace",
               "test_subgraph_observation_rejects_invalid_public_projection",
+              "test_subgraph_stream_repeated_direct_scope_keeps_distinct_checkpoints",
+              "test_repeated_subgraph_wait_resume_preserves_each_effect",
           } <= names
           PY
       - name: Upload native stream results
