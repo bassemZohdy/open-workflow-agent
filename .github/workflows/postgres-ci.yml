@@ -529,6 +529,8 @@ jobs:
             ../../tests/langgraph/test_native_stream_api.py \
             ../../tests/langgraph/test_native_stream_projection.py \
             ../../tests/langgraph/test_native_subgraph_sdk_boundary.py \
+            ../../tests/langgraph/test_native_subgraph_saver.py \
+            ../../tests/langgraph/test_native_lineage_nested.py::test_subgraph_stream_preserves_nested_lineage \
             ../../tests/core/test_native_streams.py \
             ../../tests/core/test_native_stream_registry.py \
             ../../tests/core/test_native_stream_transport.py \
@@ -566,6 +568,14 @@ jobs:
               "test_sdk_nested_streaming_and_checkpoint_namespace_are_independent",
               "test_prototype_resume_after_reopening_preserves_child_checkpoint_and_work",
               "test_actual_process_exit_loses_observation_replay_but_not_native_resume",
+              "test_subgraph_stream_projects_native_child_updates",
+              "test_subgraph_stream_resume_preserves_child_checkpoint_and_effect",
+              "test_subgraph_stream_rejects_unsupported_scope_before_execution",
+              "test_subgraph_stream_survives_actual_process_exit",
+              "test_subgraph_saver_rejects_cross_binding_before_storage_access",
+              "test_subgraph_stream_preserves_nested_lineage",
+              "test_subgraph_projection_fails_closed_on_invalid_sdk_namespace",
+              "test_subgraph_observation_rejects_invalid_public_projection",
           } <= names
           PY
       - name: Upload native stream results

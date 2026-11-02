@@ -31,11 +31,16 @@ from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
 @pytest.mark.parametrize("forward_route", [False, True])
 @pytest.mark.parametrize("child_forward", [False, True])
 async def test_root_lineage_after_completed_nested_scope_preserves_effects(
-    tmp_path, monkeypatch, policy, kind, backend, iterations, forward_route, child_forward
+    tmp_path, monkeypatch, policy, kind, backend, iterations, forward_route, child_forward,
+    subgraph_stream=False,
 ):
     for actor in ("alice", "bob"):
         monkeypatch.setenv("OWA_NATIVE_STREAM_TEST_" + actor.upper(), "replay-state-" + actor)
     config = configuration(timeout_seconds=30)
+    if subgraph_stream:
+        from open_workflow_agent.config import NativeStreamsConfig
+
+        config.observability.native_streams = NativeStreamsConfig(max_events=64)
     config.execution_authorization.policy.rules[0].actions.extend(["state." + kind, "state.update"])
     if kind == "replay":
         config.native_state_replay = NativeStateReplayConfig()
@@ -69,6 +74,11 @@ async def test_root_lineage_after_completed_nested_scope_preserves_effects(
             },
         }
     }
+    if subgraph_stream:
+        source["document"]["metadata"]["owa"]["nativeExtensions"].extend([
+            {"name": "langgraph.streams", "version": "1.0.0"},
+            {"name": "langgraph.streams.subgraphs", "version": "1.0.0"},
+        ])
     if kind == "branch":
         owa = source["document"]["metadata"]["owa"]
         owa["nativeExtensions"].append({"name": "langgraph.state.update", "version": "1.0.0"})
@@ -119,7 +129,8 @@ async def test_root_lineage_after_completed_nested_scope_preserves_effects(
     )
     try:
         with authority_scope(authority(services, "alice")):
-            assert (await engine.invoke(plan, handle, {})).status == "completed"
+            result = await engine.invoke(plan, handle, {})
+            assert result.status == "completed", result.error
         assert len(services.model.calls) == iterations + 1
         async with client_for((services, engine)) as client:
             history = await client.get(f"/v1/invocations/{handle.invocation_id}/states")
@@ -271,3 +282,13 @@ async def test_root_lineage_after_completed_nested_scope_preserves_effects(
     finally:
         await engine.shutdown()
         services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+@pytest.mark.parametrize("kind", ["replay", "branch"])
+async def test_subgraph_stream_preserves_nested_lineage(tmp_path, monkeypatch, backend, kind):
+    await test_root_lineage_after_completed_nested_scope_preserves_effects(
+        tmp_path, monkeypatch, "reexecute", kind, backend, 1, False, False,
+        subgraph_stream=True,
+    )

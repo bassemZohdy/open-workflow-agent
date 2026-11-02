@@ -1,8 +1,43 @@
 # S4-02 native stream observations
 
+## Direct nested subgraph source profile — 2026-11-02
+
+The opt-in `langgraph.streams.subgraphs@1.0.0` source profile projects SDK
+child updates using public workflow scope and task references. A scoped saver
+maps the SDK's logical namespace to the existing physical child checkpoint
+identity. The profile requires the base stream capability and rejects loop and
+fork child scopes at admission. Projection accepts at most 32 nested scopes;
+invalid SDK events end observation without stopping workflow execution. Events
+contain task data and share the original-owner stream authorization boundary.
+They are observations, not evidence that a business effect committed.
+
+Sixteen focused SQLite/PostgreSQL cases passed without skips, covering one and
+two nested levels, resume without repeating a model call, owner isolation,
+cursor behavior, physical checkpoint identity, unsupported scope admission,
+and a real process exit. A separate ten-case run passed without skips on both
+stores: four nested replay/branch cases exercise retained effects and lineage,
+and six saver binding checks reject mismatched checkpoint identities. An early
+lineage attempt failed because the test setup duplicated an authorization action;
+after correcting it, a second attempt detected a changed runtime profile when
+source was edited during the run. The clean rerun above used a stable snapshot.
+The ADK required-extension rejection matrix passed eight cases. This is a finite
+source profile, not full T50, broader repeated or competing subgraph support,
+hosted qualification, or completion of S4-02.
+
+A combined stream, SDK boundary, saver, nested lineage and core transport run
+passed 223 cases with zero skips against SQLite and PostgreSQL. The additional
+malformed-projection tests were added after that run started and passed in
+separate focused runs. The hosted job includes these cases as required witnesses.
+
+Malformed child namespaces and public projection shapes are independently
+rejected by focused tests. The shared LangGraph checkpoint checks passed 40
+SQLite cases; their 40 PostgreSQL cases were skipped in that run. The tracking
+guard initially rejected a changed full-feature status without completion
+evidence; the status was restored to pending and the tracking checks passed.
+
 ## Native subgraph namespace boundary — 2026-11-02
 
-The current runtime's independently configured child scope preserves its
+The earlier runtime's independently configured child scope preserves its
 separate thread and empty checkpoint namespace, but a direct SDK
 `subgraphs=True` probe does not propagate that child's events to the parent
 stream. Conversely, inheriting the SDK parent context propagates nested events
@@ -17,16 +52,16 @@ translates the logical SDK namespace to the existing physical empty namespace
 for a simple child graph. Eight cases passed with zero skips on SQLite and
 PostgreSQL, including a fresh saver reopening the child checkpoint, a
 pending-write round trip and one SDK interrupt/resume without repeating a
-deterministic callback. This is feasibility evidence, not runtime code or a
-supported stream profile. A later focused check also passed a basic `alist`
+deterministic callback. This was feasibility evidence, not the runtime profile
+above. A later focused check also passed a basic `alist`
 history and `before` pagination round trip on both stores. Its first attempt
 incorrectly listed with a selected checkpoint ID and returned one item; the
 corrected check lists by thread and namespace before applying pagination.
 This does not qualify every `alist` filter or limit, OWA's native
 interrupt/recovery contract, real process failure or effect receipts,
 concurrent/repeated scopes, branch routing, lineage verification or safe public
-namespace projection. A runtime implementation must preserve those identities
-and gates before advertising the subgraph capability; S4-02 and T50 remain open.
+namespace projection. The direct nested profile above addresses the stated
+finite cases; broader scope support, S4-02 and T50 remain open.
 
 ## Declared custom diagnostic source profile — 2026-11-02
 

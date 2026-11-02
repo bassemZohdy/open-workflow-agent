@@ -10,6 +10,21 @@ import pytest
 from open_workflow_agent.native_streams import NativeStreamLimits, NativeStreamLog
 
 
+@pytest.mark.parametrize(
+    ("scope", "task", "data"),
+    [
+        ("/do", "/do/0/a", {"mode": "updates", "data": {}}),
+        ("/do/0/a/do", "/do/1/b", {"mode": "updates", "data": {}}),
+        ("/do/0/a/do", "/do/0/a/do/0/b", {"mode": "values", "data": {}}),
+        ("/do/0/a/do", "/do/0/a/do/0/b", {"mode": "updates", "data": {}, "private": 1}),
+    ],
+)
+def test_subgraph_observation_rejects_invalid_public_projection(scope, task, data):
+    log = NativeStreamLog("invocation-a")
+    with pytest.raises(ValueError):
+        log.append("subgraphs", data, scope=scope, task_reference=task)
+
+
 def test_replay_and_live_registration_share_an_order_without_mutable_values():
     log = NativeStreamLog("invocation-a")
     data = {"notes": ["first"]}

@@ -17,7 +17,9 @@ from uuid import uuid4
 
 from .expressions import validate_expression_data
 
-NativeStreamMode = Literal["values", "updates", "tasks", "checkpoints", "debug", "custom"]
+NativeStreamMode = Literal[
+    "values", "updates", "tasks", "checkpoints", "debug", "custom", "subgraphs"
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,6 +151,7 @@ class NativeStreamLog:
             "checkpoints",
             "debug",
             "custom",
+            "subgraphs",
         }:
             raise ValueError("native observation mode is unsupported")
         for reference in (scope, task_reference):
@@ -158,7 +161,9 @@ class NativeStreamLog:
                 or len(reference.encode("utf-8")) > 4096
             ):
                 raise ValueError("native observation task reference is invalid")
-        if scope is None or (mode in {"updates", "tasks", "custom"} and task_reference is None):
+        if scope is None or (
+            mode in {"updates", "tasks", "custom", "subgraphs"} and task_reference is None
+        ):
             raise ValueError("native observation requires its public scope/task reference")
         if mode == "tasks" and (
             not isinstance(data, dict)
@@ -215,6 +220,15 @@ class NativeStreamLog:
             or not re.fullmatch(r"[a-z][a-z0-9_.-]{0,63}", data["name"])
         ):
             raise ValueError("native custom observation must contain a named root event")
+        if mode == "subgraphs" and (
+            scope == "/do"
+            or not isinstance(data, dict)
+            or set(data) != {"mode", "data"}
+            or data["mode"] != "updates"
+            or not isinstance(task_reference, str)
+            or not task_reference.startswith(scope + "/")
+        ):
+            raise ValueError("native subgraph observation requires a public child update")
         validate_expression_data(data)
         sequence = self._sequence + 1
         event_id = f"{self._epoch}:{sequence}"

@@ -4,6 +4,7 @@ import asyncio
 import copy
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -16,7 +17,13 @@ from open_workflow_agent.execution_authority import authority_scope
 from open_workflow_agent.services import RuntimeServices
 
 pytest.importorskip("langgraph.graph")
-from native_stream_test_support import authority, configuration, enable_lineage, workflow
+from native_stream_test_support import (
+    authority,
+    configuration,
+    enable_lineage,
+    subgraph_waiting_workflow,
+    workflow,
+)
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 
 
@@ -97,6 +104,140 @@ def frames(response):
         for line in response.text.splitlines()
         if line.startswith("data: ") and '"schema"' in line
     ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stream_runtime", [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
+    indirect=True,
+)
+@pytest.mark.parametrize("deep", [False, True])
+async def test_subgraph_stream_projects_native_child_updates(stream_runtime, deep):
+    from open_workflow_agent.workflow import compile_workflow
+
+    services, _ = stream_runtime
+    source = copy.deepcopy(workflow(nested=True).source)
+    if deep:
+        source["do"][0]["outer"]["do"].append(
+            {"nested": {"do": [{"grand": {"set": {"value": "${ .value }"}}}]}}
+        )
+    source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
+    )
+    owner, plan = await invoke(stream_runtime, plan=compile_workflow(source))
+    async with client_for(stream_runtime) as client:
+        observed = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "subgraphs"}
+        )
+        assert observed.status_code == 200, observed.text
+        events = frames(observed)
+        assert [(item["scope"], item["task_reference"]) for item in events] == (
+            [("/do/0/outer/do", "/do/0/outer/do/0/child")]
+            + ([
+                ("/do/0/outer/do/1/nested/do", "/do/0/outer/do/1/nested/do/0/grand"),
+                ("/do/0/outer/do", "/do/0/outer/do/1/nested"),
+            ] if deep else [])
+        )
+        assert all(
+            item["data"] == {"mode": "updates", "data": {"value": "alice"}} for item in events
+        )
+        assert re.search(r"task_[0-9a-f]{64}", observed.text) is None
+        assert "owa-scope" not in observed.text
+        replay = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "subgraphs"},
+            headers={"Last-Event-ID": events[0]["id"]},
+        )
+        assert [item["id"] for item in frames(replay)] == [item["id"] for item in events[1:]]
+        async with client_for(stream_runtime, "bob") as other:
+            assert (await other.get(
+                f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "subgraphs"}
+            )).status_code == 404
+        assert services.invocations.get(owner.invocation_id).output == {"done": True}
+        assert len(services.model.calls) == 1
+    from open_workflow_agent_langgraph import native
+    from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
+
+    path = services.engine_database_path("langgraph", create_namespace=False)
+    saver_type = (
+        native.AsyncPostgresSaver if path.startswith("postgres") else native.AsyncSqliteSaver
+    )
+    executor = LangGraphScopeExecutor(plan, None, owner.invocation_id)
+    async with saver_type.from_conn_string(path) as saver:
+        for scope in plan.scopes:
+            checkpoint = await saver.aget_tuple(executor.checkpoint_config(scope.reference, 1))
+            assert checkpoint is not None, scope.reference
+            assert checkpoint.config["configurable"]["checkpoint_ns"] == ""
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stream_runtime", [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
+    indirect=True,
+)
+@pytest.mark.parametrize("deep", [False, True])
+async def test_subgraph_stream_resume_preserves_child_checkpoint_and_effect(stream_runtime, deep):
+    from open_workflow_agent.workflow import compile_workflow
+
+    services, engine = stream_runtime
+    source = copy.deepcopy(workflow().source)
+    source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
+    )
+    tasks = [
+            {"call": {"call": "llm:1.0.0@default"}},
+            {"pause": {"wait": {"seconds": 300}}},
+            {"childlast": {"set": {"child": True}}},
+    ]
+    source["do"] = [
+        {"outer": {"do": [{"inner": {"do": tasks}}] if deep else tasks}},
+        {"last": {"set": {"done": True}}},
+    ]
+    owner, plan = await invoke(stream_runtime, plan=compile_workflow(source))
+    assert services.invocations.get(owner.invocation_id).status == "waiting"
+    path = f"/v1/invocations/{owner.invocation_id}/stream"
+    async with client_for(stream_runtime) as client:
+        paused = await client.get(path, params={"mode": "subgraphs"})
+        assert paused.status_code == 200, paused.text
+        before = frames(paused)
+        scope = "/do/0/outer/do/0/inner/do" if deep else "/do/0/outer/do"
+        assert [item["task_reference"] for item in before] == [scope + "/0/call"]
+        with authority_scope(authority(services, "alice")):
+            result = await engine.resume(owner, {}, plan)
+        assert result.status == "completed", result.error
+        resumed = await client.get(
+            path, params={"mode": "subgraphs"}, headers={"Last-Event-ID": before[-1]["id"]}
+        )
+        assert resumed.status_code == 200, resumed.text
+        assert [item["task_reference"] for item in frames(resumed)] == [
+            scope + "/1/pause", scope + "/2/childlast"
+        ] + (["/do/0/outer/do/0/inner"] if deep else [])
+    assert len(services.model.calls) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["missing_base", "loop", "fork"])
+async def test_subgraph_stream_rejects_unsupported_scope_before_execution(stream_runtime, kind):
+    from open_workflow_agent.errors import UnsupportedWorkflowFeature
+    from open_workflow_agent.workflow import compile_workflow
+
+    services, engine = stream_runtime
+    source = copy.deepcopy(workflow().source)
+    extensions = source["document"]["metadata"]["owa"]["nativeExtensions"]
+    if kind == "missing_base":
+        extensions.clear()
+    extensions.append({"name": "langgraph.streams.subgraphs", "version": "1.0.0"})
+    if kind == "loop":
+        source["do"] = [{"outer": {
+            "for": {"each": "item", "in": [1, 2]},
+            "do": [{"child": {"set": {"value": 1}}}],
+        }}]
+    elif kind == "fork":
+        source["do"] = [{"parallel": {"fork": {"branches": [
+            {"left": {"set": {"value": 1}}}, {"right": {"set": {"value": 2}}}
+        ]}}}]
+    with pytest.raises(UnsupportedWorkflowFeature):
+        await engine.compile(compile_workflow(source))
+    assert services.model.calls == []
 
 
 @pytest.mark.asyncio
@@ -1236,6 +1377,45 @@ async def test_actual_process_exit_loses_observation_replay_but_not_native_resum
             assert [item["data"] for item in custom_events] == [
                 {"name": "after", "data": {"done": True}}
             ]
+    assert services.model.calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stream_runtime", [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
+    indirect=True,
+)
+async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_path):
+    services, engine = stream_runtime
+    config_path = tmp_path / "worker-config.json"
+    result_path = tmp_path / "worker-result.json"
+    config_path.write_text(json.dumps({
+        "config": services.config.model_dump(mode="json", exclude={"sandbox"}),
+        "root": str(services.database_root) if services.database_root is not None else None,
+        "subgraph_stream": True,
+    }), encoding="utf-8")
+    completed = await asyncio.to_thread(
+        subprocess.run,
+        [sys.executable, str(Path(__file__).with_name("native_stream_restart_worker.py")),
+         str(config_path), str(result_path)],
+        capture_output=True, text=True, timeout=60, cwd=Path(__file__).resolve().parents[2],
+    )
+    assert completed.returncode == 0, completed.stderr[-4000:]
+    previous = json.loads(result_path.read_text(encoding="utf-8"))
+    owner = services.invocations.get(previous["invocation_id"])
+    assert owner.status == "waiting"
+    path = f"/v1/invocations/{owner.invocation_id}/stream"
+    async with client_for(stream_runtime) as client:
+        absent = await client.get(path, headers={"Last-Event-ID": previous["cursor"]})
+        assert absent.status_code == 409
+        with authority_scope(authority(services, "alice")):
+            result = await engine.resume(owner, {}, subgraph_waiting_workflow())
+        assert result.status == "completed", result.error
+        observed = await client.get(path, params={"mode": "subgraphs"})
+        assert observed.status_code == 200, observed.text
+        assert [item["task_reference"] for item in frames(observed)] == [
+            "/do/0/outer/do/1/pause", "/do/0/outer/do/2/childlast"
+        ]
     assert services.model.calls == []
 
 

@@ -24,6 +24,7 @@ from open_workflow_agent.native_extensions import (
     LANGGRAPH_STREAM_CHECKPOINTS,
     LANGGRAPH_STREAM_CUSTOM,
     LANGGRAPH_STREAM_DEBUG,
+    LANGGRAPH_STREAM_SUBGRAPHS,
     LANGGRAPH_STREAM_TASKS,
     LANGGRAPH_STREAMS,
     MAX_NATIVE_SEND_BRANCHES,
@@ -308,6 +309,22 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             raise UnsupportedWorkflowFeature(
                 "native debug observations require the base native stream profile"
             )
+        if LANGGRAPH_STREAM_SUBGRAPHS in required:
+            if LANGGRAPH_STREAMS not in required:
+                raise UnsupportedWorkflowFeature(
+                    "native subgraph observations require the base native stream profile"
+                )
+            allowed = {
+                task.reference + "/do"
+                for scope in plan.scopes for task in scope.tasks
+                if "do" in task.definition and "for" not in task.definition
+            }
+            if any(
+                scope.reference != "/do" and scope.reference not in allowed for scope in plan.scopes
+            ):
+                raise UnsupportedWorkflowFeature(
+                    "native subgraph observations require direct nested do scopes"
+                )
         if (
             LANGGRAPH_STREAM_CHECKPOINTS in required
             and not {LANGGRAPH_STREAMS, STATE_READ_CAPABILITY} <= required
@@ -390,6 +407,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                     LANGGRAPH_STREAM_TASKS,
                     LANGGRAPH_STREAM_DEBUG,
                     LANGGRAPH_STREAM_CUSTOM,
+                    LANGGRAPH_STREAM_SUBGRAPHS,
                 )
                 if STATE_READ_CAPABILITY in extensions:
                     extensions += (LANGGRAPH_STREAM_CHECKPOINTS,)

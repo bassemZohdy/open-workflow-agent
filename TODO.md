@@ -238,10 +238,11 @@ treated as a deferred task or as additional feature completion.
   publication to the Open Workflow business event bus. Observation failures
   do not change workflow execution. Its frozen hosted native-stream job passed
   189 cases with zero skips; the overall workflow and full T50 remain open.
-  Native subgraph namespace streaming remains unimplemented: the SDK's
-  inherited namespace changes the child's physical checkpoint lookup. A
-  cross-store feasibility test and the remaining recovery, identity and public
-  projection gates are recorded in [stream acceptance](docs/s4-02-native-streams-acceptance.md).
+  A separate direct-nested-do subgraph-stream source profile projects public
+  child updates while retaining physical child checkpoint identity. Local
+  SQLite/PostgreSQL, process-exit, replay/branch and admission checks pass;
+  hosted qualification, broader child scope shapes and full T50 remain open.
+  See [stream acceptance](docs/s4-02-native-streams-acceptance.md).
   PR #93 (`b363f10`) adds immutable replay/branch policies, explicit effect
   acknowledgement and selected-checkpoint preflight with historical root/scope
   closure and original/current authority. The private SDK writer now commits

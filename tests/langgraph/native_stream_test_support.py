@@ -133,3 +133,21 @@ def workflow(
         {"last": {"set": {"done": True}}},
     ]
     return compile_workflow(definition)
+
+
+def subgraph_waiting_workflow():
+    import copy
+
+    source = copy.deepcopy(workflow().source)
+    source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
+    )
+    source["do"] = [
+        {"outer": {"do": [
+            {"call": {"call": "llm:1.0.0@default"}},
+            {"pause": {"wait": {"seconds": 300}}},
+            {"childlast": {"set": {"child": True}}},
+        ]}},
+        {"last": {"set": {"done": True}}},
+    ]
+    return compile_workflow(source)

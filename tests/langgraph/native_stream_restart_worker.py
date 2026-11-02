@@ -13,7 +13,7 @@ sys.path[:0] = [str(ROOT / "core/src"), str(ROOT / "engines/langgraph/src")]
 
 
 async def run() -> None:
-    from native_stream_test_support import authority, workflow
+    from native_stream_test_support import authority, subgraph_waiting_workflow, workflow
     from open_workflow_agent.catalog import FakeModel
     from open_workflow_agent.config import RuntimeConfig
     from open_workflow_agent.execution_authority import authority_scope
@@ -40,7 +40,7 @@ async def run() -> None:
     engine = LangGraphWorkflowEngine()
     await engine.initialize(services)
     await engine._timer_dispatcher.stop()
-    plan = workflow(
+    plan = subgraph_waiting_workflow() if request.get("subgraph_stream") else workflow(
         waiting=True,
         task_stream=True if request.get("task_stream") else None,
         checkpoint_stream=True if request.get("checkpoint_stream") else None,

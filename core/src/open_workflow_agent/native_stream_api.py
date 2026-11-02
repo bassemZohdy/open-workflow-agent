@@ -19,6 +19,7 @@ from .native_extensions import (
     LANGGRAPH_STREAM_CHECKPOINTS,
     LANGGRAPH_STREAM_CUSTOM,
     LANGGRAPH_STREAM_DEBUG,
+    LANGGRAPH_STREAM_SUBGRAPHS,
     LANGGRAPH_STREAM_TASKS,
     LANGGRAPH_STREAMS,
 )
@@ -34,10 +35,11 @@ def native_stream_capabilities(*, checkpoints: bool = False) -> dict[str, Any]:
         "profile": LANGGRAPH_STREAMS,
         "endpoint": "/v1/invocations/{invocation_id}/stream",
         "transport": "sse",
-        "modes": ["values", "updates", "tasks", "debug", "custom"],
+        "modes": ["values", "updates", "tasks", "debug", "custom", "subgraphs"],
         "taskModeProfile": LANGGRAPH_STREAM_TASKS,
         "debugModeProfile": LANGGRAPH_STREAM_DEBUG,
         "customModeProfile": LANGGRAPH_STREAM_CUSTOM,
+        "subgraphModeProfile": LANGGRAPH_STREAM_SUBGRAPHS,
         "data": "task_data_and_public_ows_references",
         "ordering": "native_sdk_emission_order",
         "durability": "process_local_observation_only",
@@ -152,7 +154,7 @@ def mount_native_streams(
         invocation_id: str,
         http_request: Request,
         mode: Literal[
-            "all", "values", "updates", "tasks", "checkpoints", "debug", "custom"
+            "all", "values", "updates", "tasks", "checkpoints", "debug", "custom", "subgraphs"
         ] = "all",
         max_events: int = Query(default=100, ge=1, le=1000),
         max_bytes: int = Query(default=1_048_576, ge=256, le=16_777_216),

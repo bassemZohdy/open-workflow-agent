@@ -11,9 +11,11 @@ from importlib import import_module
 from typing import Annotated, Any, TypedDict, cast
 from uuid import UUID
 
-from langgraph.config import get_stream_writer
+from langgraph._internal._constants import CONFIG_KEY_CHECKPOINTER
+from langgraph.config import get_config, get_stream_writer
+from langgraph.errors import GraphInterrupt
 from langgraph.graph import END, START, StateGraph
-from langgraph.types import Command, interrupt
+from langgraph.types import Command, Interrupt, interrupt
 from open_workflow_agent.child_rescan import child_rescan_wake, verify_child_rescan_wake
 from open_workflow_agent.child_suspension import ChildSuspension
 from open_workflow_agent.effects import (
@@ -34,6 +36,7 @@ from open_workflow_agent.native_extensions import (
     LANGGRAPH_SEND,
     LANGGRAPH_STREAM_CHECKPOINTS,
     LANGGRAPH_STREAM_DEBUG,
+    LANGGRAPH_STREAM_SUBGRAPHS,
     LANGGRAPH_STREAM_TASKS,
     MAX_CHANNEL_VALUE_BYTES,
     MAX_CHANNEL_VALUE_TOTAL_BYTES,
@@ -347,6 +350,20 @@ class LangGraphScopeExecutor:
             item.required and item.capability_id == LANGGRAPH_STREAM_DEBUG
             for item in plan.native_extensions
         )
+        self.native_stream_subgraphs = any(
+            item.required and item.capability_id == LANGGRAPH_STREAM_SUBGRAPHS
+            for item in plan.native_extensions
+        )
+        self._subgraph_tasks = {
+            _node_name(task): (scope, task)
+            for scope in plan.scopes if scope.reference != "/do"
+            for task in scope.tasks
+        } if self.native_stream_subgraphs else {}
+        self._subgraph_parents = {
+            task.reference + "/do": (scope, task)
+            for scope in plan.scopes for task in scope.tasks
+            if "do" in task.definition
+        } if self.native_stream_subgraphs else {}
         self.native_custom_events = (
             plan.native_custom_stream.events if plan.native_custom_stream is not None else ()
         )
@@ -1277,7 +1294,8 @@ class LangGraphScopeExecutor:
         self.completed_scopes[key] = digest
 
     def compile_scope(
-        self, scope: ScopePlan, executor: WorkflowExecutor, prototype: ExecutionState
+        self, scope: ScopePlan, executor: WorkflowExecutor, prototype: ExecutionState,
+        *, checkpointer: Any = None,
     ) -> Any:
         state_schema = (
             _GraphStateWithNativeChannels if self.native_channels is not None else _GraphState
@@ -1476,7 +1494,7 @@ class LangGraphScopeExecutor:
                 graph.add_conditional_edges(
                     name, lambda state: state["next_node"], [*names.values(), END]
                 )
-        return graph.compile(checkpointer=self.saver)
+        return graph.compile(checkpointer=checkpointer if checkpointer is not None else self.saver)
 
     async def run_scope(
         self,
@@ -1506,8 +1524,31 @@ class LangGraphScopeExecutor:
             )
         occurrence = self.counters.get(prefix, 0) + 1
         self.counters[prefix] = occurrence
-        config = self.checkpoint_config(prefix, occurrence)
-        graph = self.compile_scope(scope, executor, state)
+        physical_config = self.checkpoint_config(prefix, occurrence)
+        config = physical_config
+        checkpointer = None
+        if self.native_stream_subgraphs and self.stream_observer is not None and prefix != "/do":
+            try:
+                from .native_subgraph_saver import ScopedSubgraphSaver
+
+                parent = get_config()
+                inherited = dict(parent["configurable"])
+                thread_id = physical_config["configurable"]["thread_id"]
+                namespace = inherited["checkpoint_ns"]
+                if self.saver is None or not isinstance(namespace, str) or not namespace:
+                    raise ValueError("native subgraph context is unavailable")
+                checkpointer = ScopedSubgraphSaver(self.saver, thread_id, namespace)
+                inherited["thread_id"] = thread_id
+                inherited[CONFIG_KEY_CHECKPOINTER] = checkpointer
+                inherited.pop("checkpoint_id", None)
+                config = {
+                    **parent, "configurable": inherited, "recursion_limit": NATIVE_SCOPE_STEP_LIMIT
+                }
+            except Exception:
+                self.stream_observer.fail("projection_failure")
+                config = physical_config
+                checkpointer = None
+        graph = self.compile_scope(scope, executor, state, checkpointer=checkpointer)
         native_input: _GraphState | None = self._write(
             state,
             reference=prefix,
@@ -1546,7 +1587,7 @@ class LangGraphScopeExecutor:
                             or pending_plan.reference,
                         )
                     )
-                    checkpoint = await self.saver.aget_tuple(config)
+                    checkpoint = await self.saver.aget_tuple(physical_config)
                     if checkpoint is None:
                         raise InvocationStateError("native pending timer checkpoint is absent")
                     previous_resumes: list[Any] = []
@@ -1561,6 +1602,13 @@ class LangGraphScopeExecutor:
                     )
         try:
             result = await self._invoke_scope_graph(graph, native_input, config, scope)
+        except GraphInterrupt as exc:
+            if checkpointer is None or len(exc.args) != 1 or not isinstance(exc.args[0], tuple):
+                raise WorkflowExecutionError("native subgraph interruption is invalid") from None
+            interruptions = exc.args[0]
+            if len(interruptions) != 1 or not isinstance(interruptions[0], Interrupt):
+                raise WorkflowExecutionError("native subgraph interruption is ambiguous") from None
+            raise self._native_interrupt(interruptions[0].value) from None
         except Exception as exc:
             # A catch receives the last successful child task output, as it does
             # in the common interpreter. Failed-node partial mutations are local.
@@ -1601,17 +1649,70 @@ class LangGraphScopeExecutor:
             modes.append("debug")
         if self.native_custom_events and scope.reference == "/do":
             modes.append("custom")
-        async for mode, payload in graph.astream(
+        root_subgraphs = self.native_stream_subgraphs and scope.reference == "/do"
+        async for event in graph.astream(
             native_input,
             config=config,
             durability="sync",
             stream_mode=modes,
+            subgraphs=root_subgraphs,
             version="v1",
         ):
+            if root_subgraphs:
+                namespace, mode, payload = event
+                if namespace:
+                    if mode == "updates":
+                        self._observe_subgraph_update(namespace, payload)
+                    continue
+            else:
+                mode, payload = event
             if mode == "values":
                 result = payload
             self._observe_scope_event(mode, payload, scope)
         return result
+
+    def _observe_subgraph_update(self, namespace: Any, payload: Any) -> None:
+        observer = self.stream_observer
+        if observer is None:
+            return
+        try:
+            if not isinstance(namespace, tuple) or not 1 <= len(namespace) <= 32:
+                raise ValueError("native subgraph namespace is invalid")
+            if isinstance(payload, dict) and set(payload) == {"__interrupt__"}:
+                return
+            if not isinstance(payload, dict) or len(payload) != 1:
+                raise ValueError("native subgraph update is invalid")
+            node, native = next(iter(payload.items()))
+            scope, task = self._subgraph_tasks[node]
+            ancestors: list[TaskPlan] = []
+            current = scope.reference
+            while current != "/do":
+                if len(ancestors) >= 32:
+                    raise ValueError("native subgraph scope ancestry is invalid")
+                parent_scope, parent_task = self._subgraph_parents[current]
+                ancestors.append(parent_task)
+                current = parent_scope.reference
+            ancestors.reverse()
+            if len(namespace) != len(ancestors):
+                raise ValueError("native subgraph namespace depth is inconsistent")
+            for segment, parent_task in zip(namespace, ancestors, strict=True):
+                if not isinstance(segment, str) or len(segment) != 106:
+                    raise ValueError("native subgraph namespace segment is invalid")
+                name, separator, identifier = segment.rpartition(":")
+                if (
+                    separator != ":" or name != _node_name(parent_task)
+                    or len(identifier) != 36 or str(UUID(identifier)) != identifier
+                ):
+                    raise ValueError("native subgraph namespace identity is inconsistent")
+            data = _decode_snapshot(native["snapshot"])["data"]
+            observer.append(
+                "subgraphs", {"mode": "updates", "data": data},
+                scope=scope.reference, task_reference=task.reference,
+            )
+        except (KeyError, TypeError, ValueError, OwaError):
+            observer.fail("projection_failure")
+        except RuntimeError:
+            pass
 
     def _observe_scope_event(self, mode: NativeStreamMode, payload: Any, scope: ScopePlan) -> None:
         observer = self.stream_observer

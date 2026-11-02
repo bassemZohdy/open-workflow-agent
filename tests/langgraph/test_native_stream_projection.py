@@ -19,6 +19,36 @@ from open_workflow_agent_langgraph import LangGraphWorkflowEngine  # noqa: E402
 pytestmark = pytest.mark.asyncio
 
 
+@pytest.mark.parametrize("damage", ["segment", "identity", "depth", "payload"])
+async def test_subgraph_projection_fails_closed_on_invalid_sdk_namespace(damage):
+    from native_stream_test_support import workflow
+    from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor, _node_name
+
+    source = workflow(nested=True).source
+    source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
+    )
+    plan = compile_workflow(source)
+    log = NativeStreamLog("invocation-a")
+    executor = LangGraphScopeExecutor(plan, None, "invocation-a", stream_observer=log)
+    parent = plan.scopes[0].tasks[0]
+    child = next(scope for scope in plan.scopes if scope.reference != "/do").tasks[0]
+    segment = _node_name(parent) + ":" + str(uuid4())
+    namespace = (segment,)
+    payload = {_node_name(child): {}}
+    if damage == "segment":
+        namespace = ("private-invalid-namespace",)
+    elif damage == "identity":
+        namespace = ("task_" + "f" * 64 + ":" + str(uuid4()),)
+    elif damage == "depth":
+        namespace = (segment, segment)
+    else:
+        payload = {"unknown-private-node": {}}
+    executor._observe_subgraph_update(namespace, payload)
+    with pytest.raises(BufferError):
+        log.subscribe()
+
+
 async def test_task_projection_drops_sdk_data_and_fails_closed_on_unknown_shapes():
     from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor, _node_name
 

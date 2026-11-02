@@ -27,6 +27,12 @@ custom writer for workflow-declared diagnostic events. It requires the base
 stream profile. These observations are separate from Open Workflow business
 event delivery and do not publish to the event bus.
 
+The separate `langgraph.streams.subgraphs@1.0.0` profile projects native
+updates from directly nested `do` scopes. It requires the base stream profile.
+The workflow must use only direct nested `do` scopes for its child scopes;
+loop and fork child scopes are rejected at admission. Each event identifies the
+public child scope and task, without exposing SDK checkpoint identifiers.
+
 Mount [the configuration](../examples/native-stream.yaml) and [workflow](../examples/native-stream-workflow.yaml)
 at the configured paths, provide `OWA_NATIVE_STREAM_TOKEN` through deployment
 secrets, and retain the normal SQLite `/data` volume. PostgreSQL is optional.
@@ -92,6 +98,12 @@ To include debug observations, require `langgraph.streams.debug@1.0.0` in
 addition to the base stream declaration. The debug profile does not require
 state-read access and does not emit checkpoint references.
 
+To include direct child updates, require `langgraph.streams.subgraphs@1.0.0`
+alongside the base stream declaration. Child updates carry workflow data and use
+the same original-owner authorization and bounded retention as other data
+observations. Namespace projection accepts up to 32 nested scopes; an invalid
+or deeper SDK event ends observation while workflow execution continues.
+
 To include custom observations, require `langgraph.streams.custom@1.0.0` and
 declare one to 64 root task bindings in `nativeExtensionData`:
 
@@ -137,7 +149,8 @@ Responses keep their slot until closed, including after their log is evicted.
 
 ## Stream and replay behavior
 
-`mode` selects `values`, `updates`, `tasks`, `checkpoints`, `debug`, `custom` or `all` (default).
+`mode` selects `values`, `updates`, `tasks`, `checkpoints`, `debug`, `custom`,
+`subgraphs` or `all` (default).
 Other modes are rejected.
 Each `native.observation` SSE event contains an immutable JSON envelope with
 schema `owa/native-observation/v1`, event ID, invocation ID, mode, public OWS
@@ -156,7 +169,9 @@ An emitted reference is an observation, not proof of a committed or retained
 checkpoint; the read may be unavailable. A debug event carries a timestamp and
 either a public task reference with lifecycle status or an opaque root
 checkpoint occurrence without a checkpoint reference. A custom event carries
-its declared name and selected data with the public task reference. Messages and JavaScript
+its declared name and selected data with the public task reference. A subgraph
+event carries `data: {"mode": "updates", "data": ...}` for a child task.
+Messages and JavaScript
 tool stream modes remain unsupported.
 
 Events follow native emission order and are observations, not proof that a
