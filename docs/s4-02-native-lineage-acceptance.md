@@ -634,3 +634,8 @@ is removed. The SQLite and PostgreSQL branch cases also pass a fresh-engine read
 and an injected post-fork interruption with idempotent recovery. The initial loop replay returned
 409 under the previous single-visit restriction; it is retained as the expected
 pre-change failure. This expanded profile has not been hosted-qualified.
+The hosted PostgreSQL workflow is queued against frozen source
+`1eca9a547aeed386fcb864ff1ce60249736a98f8` on
+`codex/s4-02-repeated-qualification-1eca9a5`:
+[workflow run 41380271623](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41380271623).
+No result is claimed for that run yet.
