@@ -225,6 +225,31 @@ def test_forward_route_through_completed_fanout(damage):
             root_lineage_position(plan, native)
 
 
+@pytest.mark.parametrize("damage", ["none", "early_end", "skip_next"])
+def test_completed_nested_prefix_requires_its_declared_successor(damage):
+    source = generate_default_workflow()
+    source["do"] = [
+        {"nested": {"do": [{"value": {"set": {"value": 1}}}]}},
+        {"next": {"set": {"value": 2}}},
+        {"later": {"set": {"value": 3}}},
+    ]
+    plan = compile_workflow(source)
+    destination = {
+        "none": _node_name(plan.scopes[0].tasks[1]),
+        "early_end": "__end__",
+        "skip_next": _node_name(plan.scopes[0].tasks[2]),
+    }[damage]
+    native = {
+        "snapshot": json.dumps({"task_visits": {"/do/0/nested": 1}}),
+        "next_node": destination,
+    }
+    if damage == "none":
+        assert root_lineage_position(plan, native) == 1
+    else:
+        with pytest.raises(OwaError):
+            root_lineage_position(plan, native)
+
+
 @pytest.mark.parametrize("damage", ["none", "impossible_visit", "wrong_next", "backward"])
 def test_completed_child_scope_requires_a_verified_forward_path(damage):
     source = generate_default_workflow()

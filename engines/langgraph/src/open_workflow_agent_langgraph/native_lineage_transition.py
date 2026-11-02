@@ -14,7 +14,7 @@ from open_workflow_agent.native_lineage_policy import LineageKind
 from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.state_lineage import lineage_error
-from open_workflow_agent.workflow import ScopePlan, WorkflowPlan
+from open_workflow_agent.workflow import ScopePlan, TaskPlan, WorkflowPlan
 
 from .graph import LangGraphScopeExecutor, _json_identity, _node_name
 from .native_lineage_fork import NativeForkPacket, NativeForkProposal
@@ -89,6 +89,14 @@ def _forward_fanout(definition: dict[str, Any]) -> bool:
         if not isinstance(branch, dict) or branch.get("then") is not None or "switch" in branch:
             return False
     return _forward_nested_scope({"do": branches})
+
+
+def _forward_task_supported(task: TaskPlan) -> bool:
+    return (
+        task.kind in {"set", "call", "switch"}
+        or (task.kind in {"do", "for"} and _forward_nested_scope(task.definition))
+        or (task.kind == "fork" and _forward_fanout(task.definition))
+    )
 
 
 def _verify_child_route(
@@ -168,7 +176,7 @@ def _scope_lineage_position(
         allow_complex_prefix
         and 0 < completed <= len(tasks)
         and root_visits == {ref: 1 for ref in references[:completed]}
-        and any(task.kind not in {"set", "call", "switch"} for task in tasks[:completed])
+        and any(not _forward_task_supported(task) for task in tasks[:completed])
     ):
         for index, task in enumerate(tasks[:completed]):
             definition = task.definition
@@ -201,15 +209,7 @@ def _scope_lineage_position(
     while cursor < len(tasks):
         task = tasks[cursor]
         ref = references[cursor]
-        if (
-            ref not in root_visits
-            or ref in reached
-            or (
-                task.kind not in {"set", "call", "switch"}
-                and not (task.kind in {"do", "for"} and _forward_nested_scope(task.definition))
-                and not (task.kind == "fork" and _forward_fanout(task.definition))
-            )
-        ):
+        if ref not in root_visits or ref in reached or not _forward_task_supported(task):
             raise lineage_error("replay_profile_unsupported")
         reached.add(ref)
         transitions = [task.definition.get("then")]

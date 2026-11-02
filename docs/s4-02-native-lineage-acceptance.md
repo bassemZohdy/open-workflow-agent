@@ -1150,3 +1150,19 @@ rejected the valid scope exit. Hosted evidence is tracked separately.
 Hosted qualification of frozen source `67e5f9f` is running on
 `codex/s4-02-child-exit-67e5f9f`:
 [workflow run 41410674591](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41410674591).
+
+## Completed nested-prefix successor validation — 2026-11-02
+
+For root prefixes made from the supported forward-route task types, a completed
+nested task's retained successor must now be one of its declared successors.
+Previously the complex-prefix shortcut accepted any later node or termination;
+focused tests showed it accepted an early end and an undeclared skip. Both now
+fail closed. Profiles containing task types outside the supported forward-route
+set retain their separate existing validation and qualification boundaries.
+
+Thirty route/counter checks passed, including the two formerly accepted invalid
+successors. Valid one- and two-occurrence nested replay and branch cases passed
+on SQLite and PostgreSQL; six SQLite Send regressions passed with two intentional
+skips. The common admission/receipt selection passed 27 with 19 other-backend
+skips. The focused pre-fix run failed two assertions because invalid successors
+were accepted. Hosted qualification remains separate.

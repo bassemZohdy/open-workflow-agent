@@ -271,6 +271,8 @@ treated as a deferred task or as additional feature completion.
   nested `do`/`for` tasks with forward child routes and non-competing fan-outs may skip tasks before a
   selected checkpoint; ambiguous backward attribution fails before reservation.
   A completed child may exit its own scope without ending the parent workflow.
+  Supported forward-route prefixes validate the declared successor after a
+  completed nested task instead of accepting an arbitrary later node.
   The root lineage source profile also permits bounded, non-competing native
   Send fan-outs, preserving earlier branch effects and applying the target's
   effect policy to later ones.
