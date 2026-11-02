@@ -1,5 +1,15 @@
 # S4-02 selected-checkpoint lineage preparation
 
+## Type-check regression — 2026-11-02
+
+Three pre-existing strict typing errors in native state and lineage were
+corrected without changing the verified lineage rules. The repository-wide
+strict type check passes across all four runtime packages (194 source files).
+The local SQLite/PostgreSQL lineage-command, preflight, initializer-admission
+and initializer-descendant regression selection completed with 112 passed and
+22 skipped. This is targeted regression evidence, not hosted qualification or
+completion of S4-02/T49.
+
 ## Retained initializer replay — 2026-11-02
 
 The opt-in root replay profile can select a retained, proof-verified SDK initializer
