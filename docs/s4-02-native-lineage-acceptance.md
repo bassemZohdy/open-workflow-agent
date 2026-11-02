@@ -994,7 +994,7 @@ The hosted result is tracked separately as it finishes.
 Hosted qualification of frozen source `1b3228f` is running on
 `codex/s4-02-forward-loops-1b3228f`:
 [workflow run 41402314105](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41402314105).
-The native state-branch job passed; the full workflow is still running.
+The complete workflow passed, including its native state-branch job.
 
 ## Forward routes through completed Send fan-outs — 2026-11-02
 
@@ -1076,3 +1076,13 @@ skips. Hosted qualification is separate.
 Hosted qualification of frozen source `7e6e016` is running on
 `codex/s4-02-combined-routes-7e6e016`:
 [workflow run 41407027218](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41407027218).
+
+## Routed child scopes inside a forward Send fan-out — 2026-11-02
+
+The root-and-child forward-route profile was exercised with a completed native
+Send fan-out whose nested branches each skip a child task before a model call.
+All four replay/branch and effect-policy cases passed on each of SQLite and
+PostgreSQL. Re-executing cases also remove a retained branch receipt and confirm
+that inspection and a new fork fail closed without allocating another target.
+The tests are included in the existing bounded Send-lineage PostgreSQL job;
+this is combination evidence, not full S4-02 qualification.

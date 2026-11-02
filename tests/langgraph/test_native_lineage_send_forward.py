@@ -27,9 +27,12 @@ from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 @pytest.mark.parametrize("kind", ["replay", "branch"])
 @pytest.mark.parametrize("policy", ["read_only", "reexecute"])
 @pytest.mark.parametrize("nested_branches", [False, True])
+@pytest.mark.parametrize("routed_child", [False, True])
 async def test_forward_send_lineage_preserves_branch_effects(
-    tmp_path, monkeypatch, backend, kind, policy, nested_branches
+    tmp_path, monkeypatch, backend, kind, policy, nested_branches, routed_child
 ):
+    if routed_child and not nested_branches:
+        pytest.skip("child routing requires nested fan-out branches")
     for actor in ("alice", "bob"):
         monkeypatch.setenv("OWA_NATIVE_STREAM_TEST_" + actor.upper(), "replay-state-" + actor)
     config = configuration(timeout_seconds=30)
@@ -73,6 +76,14 @@ async def test_forward_send_lineage_preserves_branch_effects(
             {"left": {"do": [{"effect": {"call": "agent:1.0.0@default"}}]}},
             {"right": {"do": [{"effect": {"call": "agent:1.0.0@default"}}]}},
         ]
+    if routed_child:
+        for branch in source["do"][2]["fan"]["fork"]["branches"]:
+            definition = next(iter(branch.values()))
+            definition["do"] = [
+                {"start": {"set": {"value": 0}, "then": "effect"}},
+                {"never": {"set": {"value": -1}}},
+                *definition["do"],
+            ]
     extensions = [
         {"name": "langgraph.state.read", "version": "1.0.0"},
         {"name": "langgraph.state." + kind, "version": "1.0.0"},
