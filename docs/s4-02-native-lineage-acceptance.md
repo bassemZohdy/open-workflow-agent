@@ -1048,3 +1048,6 @@ including explicit inspection of both retained visit counters. All four SQLite
 replay/branch and effect-policy cases passed for both the same-route and varying-route
 fixtures on SQLite and PostgreSQL. The shared admission and receipt selection
 passed 27 cases with 19 other-backend skips. Hosted qualification is separate.
+Hosted qualification of frozen source `2cd6328` is running on
+`codex/s4-02-child-repeated-2cd6328`:
+[workflow run 41406017189](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41406017189).
