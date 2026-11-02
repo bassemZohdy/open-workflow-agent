@@ -215,6 +215,7 @@ on:
       - "tests/langgraph/test_native_lineage_command.py"
       - "tests/langgraph/test_native_lineage_switch.py"
       - "tests/langgraph/test_native_lineage_send.py"
+      - "tests/langgraph/test_native_lineage_send_forward.py"
       - "tests/langgraph/test_native_lineage_state_updates.py"
       - "tests/langgraph/test_native_lineage_generations.py"
       - "tests/langgraph/native_lineage_generation_worker.py"
@@ -619,7 +620,8 @@ jobs:
           timeout --signal=TERM --kill-after=30s 30m \
             uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres --extra sqlite \
             --with pytest --with pytest-asyncio --with httpx pytest \
-            ../../tests/langgraph/test_native_lineage_send.py -vv --durations=20
+            ../../tests/langgraph/test_native_lineage_send.py \
+            ../../tests/langgraph/test_native_lineage_send_forward.py -vv --durations=20
 
   postgres-native-lineage-controls:
     if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'

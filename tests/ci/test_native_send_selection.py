@@ -47,8 +47,13 @@ def test_send_lineage_has_a_bounded_cross_backend_postgres_job():
     assert "OWA_TEST_POSTGRES_URL" in step["env"]
     assert "timeout --signal=TERM --kill-after=30s 30m" in step["run"]
     assert "../../tests/langgraph/test_native_lineage_send.py" in step["run"]
+    assert "../../tests/langgraph/test_native_lineage_send_forward.py" in step["run"]
     assert "--extra postgres" in step["run"] and "--extra sqlite" in step["run"]
     assert "tests/langgraph/test_native_lineage_send.py" in workflow["on"]["pull_request"]["paths"]
+    assert (
+        "tests/langgraph/test_native_lineage_send_forward.py"
+        in workflow["on"]["pull_request"]["paths"]
+    )
 
 
 def test_lineage_state_controls_have_a_separate_cross_backend_job():

@@ -40,9 +40,25 @@ def _forward_nested_scope(definition: dict[str, Any]) -> bool:
         if "do" in child:
             if not _forward_nested_scope(child):
                 return False
+        elif "fork" in child:
+            if not _forward_fanout(child):
+                return False
         elif not any(operation in child for operation in ("set", "call")):
             return False
     return True
+
+
+def _forward_fanout(definition: dict[str, Any]) -> bool:
+    """Only completed non-competing fan-outs with non-routing branches are safe."""
+    fork = definition.get("fork")
+    if not isinstance(fork, dict) or fork.get("compete", False):
+        return False
+    branches = fork.get("branches")
+    return (
+        isinstance(branches, list)
+        and 1 <= len(branches) <= 64
+        and _forward_nested_scope({"do": branches})
+    )
 
 
 def root_lineage_position(plan: WorkflowPlan, native: dict[str, Any]) -> int:
@@ -96,6 +112,7 @@ def root_lineage_position(plan: WorkflowPlan, native: dict[str, Any]) -> int:
             or (
                 task.kind not in {"set", "call", "switch"}
                 and not (task.kind in {"do", "for"} and _forward_nested_scope(task.definition))
+                and not (task.kind == "fork" and _forward_fanout(task.definition))
             )
         ):
             raise lineage_error("replay_profile_unsupported")

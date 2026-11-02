@@ -945,6 +945,7 @@ tests the intended attribution boundary. Hosted qualification is separate.
 Hosted qualification of frozen source `cfeb0b9` is running on
 `codex/s4-02-forward-switch-cfeb0b9`:
 [workflow run 41400460408](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41400460408).
+The PostgreSQL native state-branch job passed; the full workflow remains running.
 
 ## Forward routes through completed nested scopes — 2026-11-02
 
@@ -981,3 +982,20 @@ The hosted result is tracked separately as it finishes.
 Hosted qualification of frozen source `1b3228f` is running on
 `codex/s4-02-forward-loops-1b3228f`:
 [workflow run 41402314105](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41402314105).
+
+## Forward routes through completed Send fan-outs — 2026-11-02
+
+Forward root routes can retain a completed non-competing native Send fan-out
+whose branches contain non-routing `set`, `call`, nested `do` or `for` tasks.
+The retained route, child-scope closure, receipts and effect policy still verify;
+competing fan-outs and branch transitions fail closed. This is a bounded profile,
+not support for arbitrary routing or full S4-02 time travel.
+
+On each of SQLite and PostgreSQL, four direct-branch cases and four nested-branch
+cases passed across replay, branch and both effect policies. The re-execution
+cases also remove a retained fan-out receipt and confirm that inspection and a
+new fork fail without creating a target. Twenty route-validation cases passed,
+including competing and branch-transition rejection. The initial forward fan-out
+case returned the unsupported-profile error before this implementation; the
+existing shared admission and receipt suite passed 27 cases with 19 other-backend
+skips. Hosted qualification is separate.
