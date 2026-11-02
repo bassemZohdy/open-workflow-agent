@@ -13,7 +13,8 @@ class ScopedSubgraphSaver(BaseCheckpointSaver[Any]):  # type: ignore[misc]
     """Keep child storage identity stable while the SDK carries a logical namespace."""
 
     def __init__(
-        self, inner: Any, thread_id: str, logical_namespace: str, *, allow_occurrence: bool = False
+        self, inner: Any, thread_id: str, logical_namespace: str, *, allow_occurrence: bool = False,
+        max_occurrence: int = 31,
     ) -> None:
         super().__init__(serde=inner.serde)
         if (
@@ -21,6 +22,7 @@ class ScopedSubgraphSaver(BaseCheckpointSaver[Any]):  # type: ignore[misc]
             or not isinstance(logical_namespace, str) or not logical_namespace
             or len(logical_namespace.encode("utf-8")) > 4096
             or type(allow_occurrence) is not bool
+            or type(max_occurrence) is not int or not 1 <= max_occurrence <= 31
             or (allow_occurrence and len(logical_namespace.encode("utf-8")) > 4093)
         ):
             raise InvocationStateError("native subgraph checkpoint binding is invalid")
@@ -28,6 +30,7 @@ class ScopedSubgraphSaver(BaseCheckpointSaver[Any]):  # type: ignore[misc]
         self._thread_id = thread_id
         self._logical_namespace = logical_namespace
         self._allow_occurrence = allow_occurrence
+        self._max_occurrence = max_occurrence
 
     def _namespace(self, config: Any) -> str:
         if not isinstance(config, dict) or not isinstance(config.get("configurable"), dict):
@@ -46,7 +49,7 @@ class ScopedSubgraphSaver(BaseCheckpointSaver[Any]):  # type: ignore[misc]
                     raise InvocationStateError(
                         "native subgraph checkpoint identity is inconsistent"
                     )
-                if 1 <= int(suffix) <= 31:
+                if 1 <= int(suffix) <= self._max_occurrence:
                     return namespace
         raise InvocationStateError("native subgraph checkpoint identity is inconsistent")
 

@@ -77,6 +77,29 @@ async def test_loop_subgraph_projection_rejects_invalid_occurrence_namespace(suf
         log.subscribe()
 
 
+@pytest.mark.parametrize(("scope_suffix", "suffix"), [("try", "1"), ("catch/do", "2")])
+async def test_try_subgraph_projection_rejects_wrong_occurrence(scope_suffix, suffix):
+    from native_stream_test_support import try_subgraph_waiting_workflow
+    from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor, _node_name
+
+    plan = try_subgraph_waiting_workflow(fault=True)
+    log = NativeStreamLog("invocation-a")
+    executor = LangGraphScopeExecutor(plan, None, "invocation-a", stream_observer=log)
+    parent = plan.scopes[0].tasks[0]
+    scope = next(item for item in plan.scopes if item.reference.endswith("/" + scope_suffix))
+    namespace = (_node_name(parent) + ":" + str(uuid4()), suffix)
+    snapshot = {
+        "data": {"value": 1}, "outputs": {}, "variables": {}, "context": {}, "jump_to": None,
+        "stop": False, "scope_exit": False, "transition_selected": False, "ended": False,
+        "end_output": None, "end_context": None, "task_visits": {}, "execution_path": [],
+    }
+    executor._observe_subgraph_update(
+        namespace, {_node_name(scope.tasks[0]): {"snapshot": json.dumps(snapshot)}}
+    )
+    with pytest.raises(BufferError):
+        log.subscribe()
+
+
 async def test_task_projection_drops_sdk_data_and_fails_closed_on_unknown_shapes():
     from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor, _node_name
 

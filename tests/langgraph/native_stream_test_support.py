@@ -218,3 +218,23 @@ def three_nested_loop_subgraph_waiting_workflow():
     inner = source["do"][0]["outer"]["do"][0]["inner"]
     inner["do"] = [{"deep": {"for": {"each": "c", "in": [0]}, "do": inner["do"]}}]
     return compile_workflow(source)
+
+
+def try_subgraph_waiting_workflow(*, fault=False):
+    import copy
+
+    source = copy.deepcopy(workflow().source)
+    source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
+    )
+    action = {"raise": {"error": {
+        "type": "urn:test:controlled", "status": 503, "title": "Controlled", "detail": "failure",
+    }}} if fault else {"set": {"attempt": True}}
+    source["do"] = [{"protect": {
+        "try": [{"first": {"call": "llm:1.0.0@default"}},
+                {"pause": {"wait": {"seconds": 300}}}, {"action": action}],
+        "catch": {"do": [{"recover": {"call": "llm:1.0.0@default"}},
+                         {"catchpause": {"wait": {"seconds": 300}}},
+                         {"after": {"set": {"recovered": True}}}]},
+    }}, {"done": {"set": {"done": True}}}]
+    return compile_workflow(source)

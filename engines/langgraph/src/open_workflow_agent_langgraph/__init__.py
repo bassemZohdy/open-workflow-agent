@@ -331,6 +331,19 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             }
             loop_scopes = set(loop_counts)
             allowed |= loop_scopes
+            protected_scopes: set[str] = set()
+            for scope in plan.scopes:
+                for task in scope.tasks:
+                    catch = task.definition.get("catch")
+                    if (
+                        "try" in task.definition
+                        and isinstance(catch, dict)
+                        and "retry" not in catch
+                    ):
+                        protected_scopes.add(task.reference + "/try")
+                        if isinstance(catch.get("do"), list):
+                            protected_scopes.add(task.reference + "/catch/do")
+            allowed |= protected_scopes
             if any(
                 scope.reference != "/do" and scope.reference not in allowed for scope in plan.scopes
             ):
@@ -339,6 +352,14 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 )
             children: dict[str, list[str]] = {}
             for scope in plan.scopes:
+                if any(
+                    ancestor in protected_scopes
+                    for ancestor in ancestor_references(scope.reference)
+                ):
+                    raise UnsupportedWorkflowFeature(
+                        "native subgraph observations do not support child scopes "
+                        "inside try or catch"
+                    )
                 parents = [
                     ancestor for ancestor in ancestor_references(scope.reference)
                     if ancestor in loop_scopes
@@ -374,6 +395,16 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             ):
                 raise UnsupportedWorkflowFeature(
                     "native subgraph loop observations require set, call or wait tasks"
+                )
+            if any(
+                not any(
+                    operation in task.definition for operation in ("set", "call", "wait", "raise")
+                )
+                for scope in plan.scopes if scope.reference in protected_scopes
+                for task in scope.tasks
+            ):
+                raise UnsupportedWorkflowFeature(
+                    "native subgraph try observations require set, call, wait or raise tasks"
                 )
         if (
             LANGGRAPH_STREAM_CHECKPOINTS in required

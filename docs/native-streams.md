@@ -34,7 +34,8 @@ at most 32 items and no `while` condition. For nested loops, a conservative
 recursive bound on descendant occurrences must not exceed 64 for any loop.
 Loop bodies may contain `set`, `call`, `wait`, and permitted inner `for` tasks;
 other child scopes inside loops are rejected.
-`try`/`catch` scopes, including their retry behavior, are not admitted.
+Direct `try` and `catch` bodies outside loops may contain `set`, `call`, `wait`
+and `raise` tasks; their retry behavior and nested child scopes are not admitted.
 Dynamic or larger loops, deeper child scopes inside a loop and fork child scopes
 are rejected at admission. Each event identifies the public child scope and task,
 without exposing SDK checkpoint identifiers.

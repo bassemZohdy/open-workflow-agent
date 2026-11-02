@@ -30,6 +30,16 @@ async def test_direct_scope_rejects_a_loop_occurrence_namespace():
         await saver.aget_tuple(config)
 
 
+@pytest.mark.parametrize("suffix", ["2", "31"])
+def test_catch_checkpoint_binding_rejects_other_occurrences(suffix):
+    saver = ScopedSubgraphSaver(
+        BaseCheckpointSaver(), "child-thread", "node:123", allow_occurrence=True, max_occurrence=1
+    )
+    config = {"configurable": {"thread_id": "child-thread", "checkpoint_ns": "node:123|" + suffix}}
+    with pytest.raises(InvocationStateError):
+        saver._config(config, physical=True)
+
+
 @pytest.mark.parametrize("thread,namespace", [("", "node"), ("thread", ""), ("thread", "x" * 4097)])
 def test_subgraph_saver_rejects_invalid_binding(thread, namespace):
     with pytest.raises(InvocationStateError):

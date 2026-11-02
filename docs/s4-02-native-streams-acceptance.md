@@ -1,5 +1,29 @@
 # S4-02 native stream observations
 
+## Try/catch subgraph observation candidate — 2026-11-02
+
+An admission-bypass probe mapped direct `try` and `catch/do` scopes to existing
+private checkpoint identities. A successful `try` passed, but a caught failure
+initially faulted because the SDK assigned its catch a second logical namespace
+occurrence. A test-only saver that accepted that occurrence restored execution,
+and a test-only projection made both success and catch observable on both
+stores. A further probe passed four SQLite/PostgreSQL wait-and-resume cases
+without repeating model effects. None of these probes changed admission.
+
+The candidate admits only direct `try`/`catch` bodies containing `set`, `call`,
+`wait` or `raise`, with no retries or nested child scopes. The catch checkpoint
+binding and public projection restrict any numeric occurrence suffix to `1`,
+preserving separate physical checkpoint identities and omitting SDK identifiers. Focused
+source tests passed 42 cases with zero skips across both stores, including
+admission rejection, waits, effect counts and actual process exits. Four
+additional SQLite/PostgreSQL cases passed completed-try and caught-error replay
+without repeating the retained model effect; four passed repeated scope
+occurrences. The complete stream, projection, saver, lineage and core-transport
+selection passed 351 cases with zero skips and included all 56 hosted-job
+witnesses. The shared checkpoint, fencing, native-state and retry/error-context
+selection passed 161 LangGraph cases with zero skips on both stores. Hosted
+qualification remains pending.
+
 ## Native message-stream investigation — 2026-11-02
 
 A local pinned-SDK probe using a deterministic LangChain chat model confirmed
@@ -30,8 +54,8 @@ hosted-job witnesses. The first shared recovery attempt stopped after 21 passes
 when a PostgreSQL resume exceeded its existing ten-second test bound; the exact
 case passed on a fresh database. A complete fresh recovery rerun then passed
 144 LangGraph cases with zero skips across both stores. The
-[hosted native-stream job at `4205f55`](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41486574902)
-passed 325 cases with zero skips; the wider workflow is still running.
+[hosted PostgreSQL workflow at `4205f55`](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41486574902)
+passed; its native-stream job passed 325 cases with zero skips.
 
 ## Two-level literal nested-loop candidate — 2026-11-02
 

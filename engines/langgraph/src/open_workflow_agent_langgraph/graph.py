@@ -365,6 +365,14 @@ class LangGraphScopeExecutor:
             for scope in plan.scopes for task in scope.tasks
             if "do" in task.definition
         } if self.native_stream_subgraphs else {}
+        if self.native_stream_subgraphs:
+            for scope in plan.scopes:
+                for task in scope.tasks:
+                    if "try" in task.definition:
+                        self._subgraph_parents[task.reference + "/try"] = (scope, task)
+                        catch = task.definition.get("catch")
+                        if isinstance(catch, dict) and isinstance(catch.get("do"), list):
+                            self._subgraph_parents[task.reference + "/catch/do"] = (scope, task)
         loop_scopes = {
             reference for reference, (_, task) in self._subgraph_parents.items()
             if "for" in task.definition
@@ -1547,9 +1555,11 @@ class LangGraphScopeExecutor:
                 if self.saver is None or not isinstance(namespace, str) or not namespace:
                     raise ValueError("native subgraph context is unavailable")
                 _, parent_task = self._subgraph_parents[prefix]
+                is_catch = prefix == parent_task.reference + "/catch/do"
                 checkpointer = ScopedSubgraphSaver(
                     self.saver, thread_id, namespace,
-                    allow_occurrence="for" in parent_task.definition,
+                    allow_occurrence="for" in parent_task.definition or is_catch,
+                    max_occurrence=1 if is_catch else 31,
                 )
                 inherited["thread_id"] = thread_id
                 inherited[CONFIG_KEY_CHECKPOINTER] = checkpointer
@@ -1708,17 +1718,17 @@ class LangGraphScopeExecutor:
                 raise ValueError("native subgraph update is invalid")
             node, native = next(iter(payload.items()))
             scope, task = self._subgraph_tasks[node]
-            ancestors: list[TaskPlan] = []
+            ancestors: list[tuple[TaskPlan, str]] = []
             current = scope.reference
             while current != "/do":
                 if len(ancestors) >= 32:
                     raise ValueError("native subgraph scope ancestry is invalid")
                 parent_scope, parent_task = self._subgraph_parents[current]
-                ancestors.append(parent_task)
+                ancestors.append((parent_task, current))
                 current = parent_scope.reference
             ancestors.reverse()
             position = 0
-            for parent_task in ancestors:
+            for parent_task, child_scope in ancestors:
                 if position >= len(namespace):
                     raise ValueError("native subgraph namespace depth is inconsistent")
                 segment = namespace[position]
@@ -1734,9 +1744,11 @@ class LangGraphScopeExecutor:
                 if position < len(namespace):
                     suffix = namespace[position]
                     if isinstance(suffix, str) and suffix.isascii() and suffix.isdigit():
+                        is_catch = child_scope == parent_task.reference + "/catch/do"
                         if (
-                            "for" not in parent_task.definition or len(suffix) > 2
-                            or str(int(suffix)) != suffix or not 1 <= int(suffix) <= 31
+                            ("for" not in parent_task.definition and not is_catch)
+                            or len(suffix) > 2 or str(int(suffix)) != suffix
+                            or not 1 <= int(suffix) <= (1 if is_catch else 31)
                         ):
                             raise ValueError("native subgraph occurrence namespace is invalid")
                         position += 1
