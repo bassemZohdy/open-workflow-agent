@@ -385,6 +385,10 @@ class LangGraphScopeExecutor:
             for reference, (_, parent_task) in self._subgraph_parents.items()
             if "try" in parent_task.definition
             for ancestor in ancestor_references(reference)
+        ) or any(
+            ancestor in self._subgraph_parents
+            and "try" in self._subgraph_parents[ancestor][1].definition
+            for reference in loop_scopes for ancestor in ancestor_references(reference)
         )
         self.native_custom_events = (
             plan.native_custom_stream.events if plan.native_custom_stream is not None else ()

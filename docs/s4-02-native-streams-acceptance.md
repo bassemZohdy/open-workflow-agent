@@ -1,5 +1,34 @@
 # S4-02 native stream observations
 
+## Bounded loops inside try/catch candidate — 2026-11-03
+
+An admission-bypass probe with targeted interruption resume passed four
+SQLite/PostgreSQL cases for a loop in `try`, including a later caught error;
+two further probe cases passed for a loop in `catch`. The candidate permits a
+single direct literal loop within a protected body and retains the existing
+loop and operation bounds. Nested loops inside that body, alternating
+loop/protected nesting and retries remain rejected. An initial focused source
+selection passed 22 cases with zero skips on both stores, and six replay cases
+passed. The gate was then narrowed to reject multiple sibling loops in a
+protected body. The revised source passed 32 focused cases with zero skips on
+both stores, including unsupported admission, unrelated waits, interruption
+identity corruption, replay and actual process exit. The complete revised
+stream selection then passed 407 cases with zero skips on SQLite and
+PostgreSQL, including all 61 required CI witnesses. Shared recovery and
+hosted qualification remain pending.
+
+The first full selection stopped after 230 passes when the existing
+PostgreSQL repeated-scope restart worker exceeded its 60-second test bound.
+The exact case passed on a fresh database in 52.47 seconds of test execution.
+Multi-wait restart shapes now use the existing 180-second nested-worker bound;
+the original 60-second bound remains for single-wait direct and try shapes.
+The full selection passed with this corrected harness as recorded above.
+
+The first shared recovery selection stopped after 23 passes when a PostgreSQL
+checkpoint-recovery case exceeded its existing 10-second wait bound. The exact
+case passed on a fresh database (12.38 seconds total test run); the complete
+shared selection is being rerun on another fresh database.
+
 ## Try/catch inside bounded loops candidate — 2026-11-02
 
 A test-only admission bypass and targeted interruption resume exercised a
@@ -22,7 +51,9 @@ after seven passes when a PostgreSQL resume exceeded its existing ten-second
 test bound; the exact
 case passed on a fresh database. A complete fresh checkpoint, fencing,
 native-state and retry/error-context rerun then passed 161 LangGraph cases with
-zero skips on both stores. Hosted qualification remains pending.
+zero skips on both stores. The
+[hosted PostgreSQL workflow at `366928b`](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41519854401)
+passed; its native-stream job passed 375 cases with zero skips in 540.35 seconds.
 
 The prior 351-case hosted stream job took 748.9 seconds within a 15-minute
 step limit. Because the added cross-store nested-wait and restart matrix is

@@ -344,6 +344,18 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                         if isinstance(catch.get("do"), list):
                             protected_scopes.add(task.reference + "/catch/do")
             allowed |= protected_scopes
+            protected_loops = {
+                task.reference + "/do"
+                for scope in plan.scopes if scope.reference in protected_scopes
+                for task in scope.tasks if task.reference + "/do" in loop_scopes
+            }
+            if any(
+                sum(task.reference + "/do" in protected_loops for task in scope.tasks) > 1
+                for scope in plan.scopes if scope.reference in protected_scopes
+            ):
+                raise UnsupportedWorkflowFeature(
+                    "native subgraph observations allow one direct loop per protected body"
+                )
             if any(
                 scope.reference != "/do" and scope.reference not in allowed for scope in plan.scopes
             ):
@@ -352,7 +364,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 )
             children: dict[str, list[str]] = {}
             for scope in plan.scopes:
-                if any(
+                if scope.reference not in protected_loops and any(
                     ancestor in protected_scopes
                     for ancestor in ancestor_references(scope.reference)
                 ):
@@ -364,6 +376,10 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                     ancestor for ancestor in ancestor_references(scope.reference)
                     if ancestor in loop_scopes
                 ]
+                if parents and scope.reference in protected_loops:
+                    raise UnsupportedWorkflowFeature(
+                        "native subgraph observations do not support alternating protected loops"
+                    )
                 if (
                     parents
                     and scope.reference not in loop_scopes
@@ -405,6 +421,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 not any(
                     operation in task.definition for operation in ("set", "call", "wait", "raise")
                 )
+                and task.reference + "/do" not in protected_loops
                 for scope in plan.scopes if scope.reference in protected_scopes
                 for task in scope.tasks
             ):

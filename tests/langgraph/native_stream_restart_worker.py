@@ -15,6 +15,7 @@ sys.path[:0] = [str(ROOT / "core/src"), str(ROOT / "engines/langgraph/src")]
 async def run() -> None:
     from native_stream_test_support import (
         authority,
+        loop_in_protected_waiting_workflow,
         loop_subgraph_waiting_workflow,
         nested_loop_subgraph_waiting_workflow,
         repeated_subgraph_waiting_workflow,
@@ -65,6 +66,8 @@ async def run() -> None:
         plan = nested_loop_subgraph_waiting_workflow()
     elif request.get("three_nested_loop_subgraph_stream"):
         plan = three_nested_loop_subgraph_waiting_workflow()
+    elif request.get("loop_in_protected_stream"):
+        plan = loop_in_protected_waiting_workflow(shape=request["loop_in_protected_stream"])
     elif request.get("try_loop_subgraph_stream"):
         plan = try_loop_subgraph_waiting_workflow(
             fault=request.get("catch_loop_subgraph_stream", False)
@@ -86,8 +89,10 @@ async def run() -> None:
     resumes = 3 if (request.get("nested_loop_subgraph_stream") or
                     request.get("three_nested_loop_subgraph_stream") or
                     request.get("catch_loop_subgraph_stream")) else (
+        2 if request.get("loop_in_protected_stream") == "try_caught" else
         1 if request.get("repeated_subgraph_stream") or request.get("loop_subgraph_stream")
-        or request.get("catch_subgraph_stream") or request.get("try_loop_subgraph_stream") else 0
+        or request.get("catch_subgraph_stream") or request.get("try_loop_subgraph_stream")
+        or request.get("loop_in_protected_stream") else 0
     )
     for _ in range(resumes):
         with authority_scope(authority(services, "alice")):

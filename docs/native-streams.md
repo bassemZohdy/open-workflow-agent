@@ -32,13 +32,14 @@ updates from directly nested `do` scopes. It requires the base stream profile.
 It also admits up to three nested `for` tasks, each with a literal `in` array of
 at most 32 items and no `while` condition. For nested loops, a conservative
 recursive bound on descendant occurrences must not exceed 64 for any loop.
-Loop bodies may contain `set`, `call`, `wait`, and permitted inner `for` tasks;
-other child scopes inside loops are rejected.
+Loop bodies may contain `set`, `call`, `wait`, permitted inner `for` tasks and
+the protected tasks described below; other child scopes inside loops are rejected.
 Direct `try` and `catch` bodies, including inside the supported loops, may
-contain `set`, `call`, `wait` and `raise` tasks; retry behavior and nested
-child scopes inside those bodies are not admitted.
-Dynamic or larger loops, deeper child scopes inside a loop and fork child scopes
-are rejected at admission. Each event identifies the public child scope and task,
+contain `set`, `call`, `wait` and `raise` tasks. A body outside loops may also
+contain one direct supported literal loop. Retries, deeper child scopes and
+alternating loop/protected nesting are not admitted.
+Dynamic or larger loops, unsupported child scopes and fork child scopes are
+rejected at admission. Each event identifies the public child scope and task,
 without exposing SDK checkpoint identifiers.
 
 Mount [the configuration](../examples/native-stream.yaml) and [workflow](../examples/native-stream-workflow.yaml)

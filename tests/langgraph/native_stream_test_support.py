@@ -250,3 +250,33 @@ def try_loop_subgraph_waiting_workflow(*, fault=False, levels=1):
         body = [{f"loop{depth}": {"for": {"each": f"item{depth}", "in": values}, "do": body}}]
     source["do"] = [*body, {"done": {"set": {"done": True}}}]
     return compile_workflow(source)
+
+
+def loop_in_protected_waiting_workflow(*, shape="try"):
+    import copy
+
+    source = copy.deepcopy(workflow().source)
+    source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
+    )
+    loop = {"loop": {"for": {"each": "item", "in": [0, 1]}, "do": [
+        {"call": {"call": "llm:1.0.0@default"}},
+        {"pause": {"wait": {"seconds": 300}}},
+        {"last": {"set": {"last": True}}},
+    ]}}
+    error = {"raise": {"error": {
+        "type": "urn:test:controlled", "status": 503, "title": "Controlled", "detail": "failure",
+    }}}
+    if shape == "catch":
+        protected = {"try": [{"action": error}], "catch": {"do": [
+            loop, {"after": {"set": {"recovered": True}}},
+        ]}}
+    else:
+        action = error if shape == "try_caught" else {"set": {"ok": True}}
+        protected = {"try": [loop, {"action": action}], "catch": {"do": [
+            {"recover": {"call": "llm:1.0.0@default"}},
+            {"catchpause": {"wait": {"seconds": 300}}},
+            {"after": {"set": {"recovered": True}}},
+        ]}}
+    source["do"] = [{"protect": protected}, {"done": {"set": {"done": True}}}]
+    return compile_workflow(source)

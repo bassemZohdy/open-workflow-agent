@@ -21,6 +21,7 @@ from native_stream_test_support import (
     authority,
     configuration,
     enable_lineage,
+    loop_in_protected_waiting_workflow,
     loop_subgraph_waiting_workflow,
     nested_loop_subgraph_waiting_workflow,
     repeated_subgraph_waiting_workflow,
@@ -230,6 +231,8 @@ async def test_subgraph_stream_resume_preserves_child_checkpoint_and_effect(stre
         "missing_base", "dynamic_loop", "large_loop", "deep_loop", "large_nested",
         "wide_nested", "large_three_level", "empty_deep_overflow", "nested_scope",
         "while_loop", "retry_scope", "try_loop_retry", "try_nested_scope", "catch_nested_scope",
+        "protected_loop_nested", "alternating_protected_loops", "protected_loop_siblings_try",
+        "protected_loop_siblings_catch",
         "try_run_body", "run_body", "fork",
     ]
 )
@@ -288,6 +291,24 @@ async def test_subgraph_stream_rejects_unsupported_scope_before_execution(stream
             source["do"] = [{"protect": {
                 "try": source["do"], "catch": {"retry": {"limit": {"attempt": {"count": 1}}}},
             }}]
+    elif kind in {"protected_loop_nested", "alternating_protected_loops",
+                  "protected_loop_siblings_try", "protected_loop_siblings_catch"}:
+        source = copy.deepcopy(loop_in_protected_waiting_workflow(
+            shape="catch" if kind == "protected_loop_siblings_catch" else "try"
+        ).source)
+        if kind == "protected_loop_nested":
+            loop = source["do"][0]["protect"]["try"][0]["loop"]
+            loop["do"] = [{"inner": {"for": {"each": "other", "in": [0]}, "do": [
+                {"item": {"set": {"value": 1}}},
+            ]}}]
+        elif kind == "alternating_protected_loops":
+            source["do"] = [{"outer": {"for": {"each": "outer_item", "in": [0]},
+                                        "do": [source["do"][0]]}}, source["do"][1]]
+        else:
+            protect = source["do"][0]["protect"]
+            body = protect["catch"]["do"] if kind.endswith("catch") else protect["try"]
+            second = copy.deepcopy(body[0]["loop"])
+            body.insert(1, {"second": second})
     elif kind == "try_loop_retry":
         source["do"] = [{"outer": {"for": {"each": "item", "in": [0, 1]}, "do": [
             {"protect": {"try": [{"ok": {"set": {"value": 1}}}], "catch": {
@@ -312,6 +333,121 @@ async def test_subgraph_stream_rejects_unsupported_scope_before_execution(stream
     with pytest.raises(UnsupportedWorkflowFeature):
         await engine.compile(compile_workflow(source))
     assert services.model.calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("shape", ["try", "try_caught", "catch"])
+@pytest.mark.parametrize(
+    "stream_runtime", [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
+    indirect=True,
+)
+async def test_protected_loop_stream_preserves_waits_and_effects(stream_runtime, shape):
+    services, engine = stream_runtime
+    plan = loop_in_protected_waiting_workflow(shape=shape)
+    owner, _ = await invoke(stream_runtime, plan=plan)
+    total = 3 if shape == "try_caught" else 2
+    assert services.invocations.get(owner.invocation_id).status == "waiting"
+    for count in range(1, total + 1):
+        with authority_scope(authority(services, "alice")):
+            result = await engine.resume(owner, {}, plan)
+        assert result.status == ("completed" if count == total else "waiting"), result.error
+        assert len(services.model.calls) == min(count + 1, total)
+    scope = "/do/0/protect/catch/do" if shape == "catch" else "/do/0/protect/try"
+    async with client_for(stream_runtime) as client:
+        response = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "subgraphs"}
+        )
+        assert response.status_code == 200, response.text
+        refs = [item["task_reference"] for item in frames(response)]
+        assert refs.count(scope + "/0/loop/do/2/last") == 2
+        assert ("/do/0/protect/catch/do/0/recover" in refs) == (shape == "try_caught")
+        assert re.search(r"task_[0-9a-f]{64}", response.text) is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("skip_protected", [False, True])
+@pytest.mark.parametrize(
+    "stream_runtime", [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
+    indirect=True,
+)
+async def test_protected_loop_profile_resumes_unrelated_wait(stream_runtime, skip_protected):
+    from open_workflow_agent.workflow import compile_workflow
+
+    services, engine = stream_runtime
+    source = copy.deepcopy(loop_in_protected_waiting_workflow().source)
+    if skip_protected:
+        source["do"][0]["protect"]["if"] = "${ false }"
+    source["do"].insert(0, {"before": {"wait": {"seconds": 300}}})
+    plan = compile_workflow(source)
+    owner, _ = await invoke(stream_runtime, plan=plan)
+    with authority_scope(authority(services, "alice")):
+        result = await engine.resume(owner, {}, plan)
+    assert result.status == ("completed" if skip_protected else "waiting"), result.error
+    assert len(services.model.calls) == (0 if skip_protected else 1)
+    if not skip_protected:
+        for count in (1, 2):
+            with authority_scope(authority(services, "alice")):
+                result = await engine.resume(owner, {}, plan)
+            assert result.status == ("completed" if count == 2 else "waiting"), result.error
+        assert len(services.model.calls) == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("shape", ["try", "try_caught", "catch"])
+@pytest.mark.parametrize(
+    "stream_runtime",
+    [("sqlite", {"max_events": 128, "lineage": True, "lineage_timeout": 30}),
+     ("postgresql", {"max_events": 128, "lineage": True, "lineage_timeout": 30})],
+    indirect=True,
+)
+async def test_protected_loop_stream_preserves_replay_evidence(stream_runtime, shape):
+    from open_workflow_agent.workflow import compile_workflow
+
+    services, _ = stream_runtime
+    source = copy.deepcopy(loop_in_protected_waiting_workflow(shape=shape).source)
+    metadata = source["document"]["metadata"]["owa"]
+    metadata["nativeExtensions"].extend([
+        {"name": "langgraph.state.read", "version": "1.0.0"},
+        {"name": "langgraph.state.replay", "version": "1.0.0"},
+    ])
+    metadata["nativeExtensionData"] = {
+        "langgraph.state.replay@1.0.0": {
+            "authorizationPolicyRef": services.config.execution_authorization.id,
+            "replayEffectPolicy": "reexecute",
+        }
+    }
+    protect = source["do"][0]["protect"]
+    body = protect["catch"]["do"] if shape == "catch" else protect["try"]
+    body[0]["loop"]["do"] = [task for task in body[0]["loop"]["do"] if "pause" not in task]
+    if shape == "try_caught":
+        protect["catch"]["do"] = [task for task in protect["catch"]["do"]
+                                   if "catchpause" not in task]
+    owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
+    calls = 3 if shape == "try_caught" else 2
+    assert len(services.model.calls) == calls
+    async with client_for(stream_runtime) as client:
+        history = await client.get(f"/v1/invocations/{owner.invocation_id}/states")
+        assert history.status_code == 200, history.text
+        reference = next(
+            item["reference"] for item in history.json()["items"]
+            if item["root_task_visits"] == {"/do/0/protect": 1}
+        )
+        replay = await client.post(
+            f"/v1/invocations/{owner.invocation_id}/state-replays",
+            headers={"Idempotency-Key": "protected-loop-stream-replay"},
+            json={"reference": reference, "acknowledge_reexecution": True},
+        )
+        assert replay.status_code == 202, replay.text
+        target = replay.json()["invocation_id"]
+        async with asyncio.timeout(180):
+            while services.invocations.get(target).status not in {
+                "completed", "faulted", "cancelled"
+            }:
+                await asyncio.sleep(0.1)
+        assert services.invocations.get(target).status == "completed"
+        assert len(services.model.calls) == calls
+        target_state = await client.get(f"/v1/invocations/{target}/states")
+        assert target_state.status_code == 200, target_state.text
 
 
 @pytest.mark.asyncio
@@ -832,7 +968,7 @@ async def test_subgraph_stream_resumes_sibling_nested_loops(stream_runtime):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("shape", ["nested_loop", "try_loop"])
+@pytest.mark.parametrize("shape", ["nested_loop", "try_loop", "protected_loop"])
 @pytest.mark.parametrize(
     "stream_runtime", [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
     indirect=True,
@@ -845,8 +981,11 @@ async def test_nested_loop_resume_rejects_mismatched_interrupt_identity(
     from open_workflow_agent.errors import InvocationStateError
 
     services, engine = stream_runtime
-    plan = (nested_loop_subgraph_waiting_workflow() if shape == "nested_loop"
-            else try_loop_subgraph_waiting_workflow())
+    plan = {
+        "nested_loop": nested_loop_subgraph_waiting_workflow,
+        "try_loop": try_loop_subgraph_waiting_workflow,
+        "protected_loop": loop_in_protected_waiting_workflow,
+    }[shape]()
     owner, plan = await invoke(stream_runtime, plan=plan)
     assert services.invocations.get(owner.invocation_id).status == "waiting"
     original = CompiledStateGraph.aget_state
@@ -2329,7 +2468,8 @@ async def test_actual_process_exit_loses_observation_replay_but_not_native_resum
 )
 @pytest.mark.parametrize(
     "shape", ["direct", "repeated", "loop", "nested_loop", "three_nested_loop", "try", "catch",
-              "try_loop", "catch_loop"]
+              "try_loop", "catch_loop", "protected_loop_try", "protected_loop_try_caught",
+              "protected_loop_catch"]
 )
 async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_path, shape):
     services, engine = stream_runtime
@@ -2347,13 +2487,16 @@ async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_
         "catch_subgraph_stream": shape == "catch",
         "try_loop_subgraph_stream": shape in {"try_loop", "catch_loop"},
         "catch_loop_subgraph_stream": shape == "catch_loop",
+        "loop_in_protected_stream": {
+            "protected_loop_try": "try", "protected_loop_try_caught": "try_caught",
+            "protected_loop_catch": "catch",
+        }.get(shape),
     }), encoding="utf-8")
     completed = await asyncio.to_thread(
         subprocess.run,
         [sys.executable, str(Path(__file__).with_name("native_stream_restart_worker.py")),
          str(config_path), str(result_path)],
-        capture_output=True, text=True, timeout=180 if "nested_loop" in shape or "catch" in shape
-        else 60,
+        capture_output=True, text=True, timeout=60 if shape in {"direct", "try"} else 180,
         cwd=Path(__file__).resolve().parents[2],
     )
     assert completed.returncode == 0, completed.stderr[-4000:]
@@ -2375,6 +2518,11 @@ async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_
                 "catch": lambda: try_subgraph_waiting_workflow(fault=True),
                 "try_loop": try_loop_subgraph_waiting_workflow,
                 "catch_loop": lambda: try_loop_subgraph_waiting_workflow(fault=True),
+                "protected_loop_try": loop_in_protected_waiting_workflow,
+                "protected_loop_try_caught": lambda: loop_in_protected_waiting_workflow(
+                    shape="try_caught"
+                ),
+                "protected_loop_catch": lambda: loop_in_protected_waiting_workflow(shape="catch"),
             }[shape]()
             result = await engine.resume(owner, {}, plan)
         assert result.status == "completed", result.error
@@ -2398,6 +2546,15 @@ async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_
             "catch_loop": ["/do/0/loop0/do/0/protect/catch/do/1/catchpause",
                            "/do/0/loop0/do/0/protect/catch/do/2/after",
                            "/do/0/loop0/do/0/protect"],
+            "protected_loop_try": ["/do/0/protect/try/0/loop/do/1/pause",
+                                   "/do/0/protect/try/0/loop/do/2/last",
+                                   "/do/0/protect/try/0/loop", "/do/0/protect/try/1/action"],
+            "protected_loop_try_caught": ["/do/0/protect/catch/do/1/catchpause",
+                                          "/do/0/protect/catch/do/2/after"],
+            "protected_loop_catch": ["/do/0/protect/catch/do/0/loop/do/1/pause",
+                                     "/do/0/protect/catch/do/0/loop/do/2/last",
+                                     "/do/0/protect/catch/do/0/loop",
+                                     "/do/0/protect/catch/do/1/after"],
         }[shape]
         assert [item["task_reference"] for item in frames(observed)] == expected
     assert services.model.calls == []
