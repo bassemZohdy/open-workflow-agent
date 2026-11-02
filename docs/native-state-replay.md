@@ -91,7 +91,8 @@ Completed nested scope occurrences can accompany a root checkpoint when every
 task has been visited once per occurrence, up to 64 retained scope snapshots.
 Declared native channel values are retained at the selected checkpoint, and later
 channel writes continue from those values. Native Command routing is retained for
-the supported contiguous root-task prefix. Partially completed nested scopes, timing,
+contiguous root-task prefixes and verifiable forward routes through `set` and `call`
+tasks; routes that may go backward are rejected. Partially completed nested scopes, timing,
 Send workflows, replay from non-root checkpoints, time travel and
 JavaScript parity are not implemented in this replay profile.
 Attributed root branching has a separate [opt-in source profile](native-state-branch.md).

@@ -30,6 +30,7 @@ from .native_lineage_inspection import inspect_native_lineage
 from .native_lineage_preflight import prepare_native_lineage
 from .native_lineage_reservation import NativeBranchReservations, NativeReplayReservations
 from .native_lineage_transition import (
+    root_lineage_position,
     stage_root_branch,
     stage_root_replay,
     validate_root_branch_basis,
@@ -209,20 +210,10 @@ class NativeReplayCoordinator:
                 if registry is None:
                     stage = stage_root_replay if kind == "replay" else stage_root_branch
                     proposal, dependencies = stage(self.services, plan, prepared, target)
-                    snapshot = json.loads(json.loads(proposal.packets[0].native_json)["snapshot"])
                     tasks = plan.scopes[0].tasks
-                    root_refs = {item.execution_reference or item.reference for item in tasks}
-                    visits = {
-                        key: value
-                        for key, value in snapshot["task_visits"].items()
-                        if key in root_refs
-                    }
-                    completed = len(visits)
-                    if not 0 < completed <= len(tasks) or visits != {
-                        (item.execution_reference or item.reference): 1
-                        for item in tasks[:completed]
-                    }:
-                        raise lineage_error("replay_profile_unsupported")
+                    completed = root_lineage_position(
+                        plan, json.loads(proposal.packets[0].native_json)
+                    )
                     last = tasks[completed - 1]
 
                     async def write(saver: Any, configs: Any) -> tuple[Any, ...]:

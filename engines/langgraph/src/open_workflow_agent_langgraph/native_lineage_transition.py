@@ -21,6 +21,76 @@ from .native_lineage_inspection import selected_business_receipts
 from .native_lineage_preflight import NativeLineagePreflight
 
 
+def root_lineage_position(plan: WorkflowPlan, native: dict[str, Any]) -> int:
+    """Identify the last root task in a prefix or a verifiable forward route."""
+    tasks = plan.scopes[0].tasks
+    visits = json.loads(native["snapshot"])["task_visits"]
+    references = [task.execution_reference or task.reference for task in tasks]
+    root_references = set(references)
+    root_visits = {key: value for key, value in visits.items() if key in root_references}
+    completed = len(root_visits)
+    names = {task.name: index for index, task in enumerate(tasks)}
+    if (
+        0 < completed <= len(tasks)
+        and root_visits == {ref: 1 for ref in references[:completed]}
+        and any(task.kind not in {"set", "call"} for task in tasks[:completed])
+    ):
+        for index, task in enumerate(tasks[:completed]):
+            definition = task.definition
+            transitions = [definition.get("then")]
+            if task.kind == "switch":
+                for case in definition["switch"]:
+                    if not isinstance(case, dict) or len(case) != 1:
+                        raise lineage_error("replay_profile_unsupported")
+                    branch = next(iter(case.values()))
+                    if not isinstance(branch, dict):
+                        raise lineage_error("replay_profile_unsupported")
+                    transitions.append(branch.get("then"))
+            for transition in transitions:
+                if transition in (None, "continue", "end", "exit"):
+                    continue
+                if (
+                    not isinstance(transition, str)
+                    or transition not in names
+                    or names[transition] <= index
+                ):
+                    raise lineage_error("replay_profile_unsupported")
+        next_node = native["next_node"]
+        allowed = {"__end__", *(_node_name(task) for task in tasks[completed:])}
+        if next_node not in allowed:
+            raise lineage_error("replay_profile_unsupported")
+        return completed
+    if not root_visits or any(value != 1 for value in root_visits.values()):
+        raise lineage_error("replay_profile_unsupported")
+    cursor, reached = 0, set()
+    while cursor < len(tasks):
+        task = tasks[cursor]
+        ref = references[cursor]
+        if ref not in root_visits or ref in reached or task.kind not in {"set", "call"}:
+            raise lineage_error("replay_profile_unsupported")
+        reached.add(ref)
+        transition = task.definition.get("then")
+        if transition is None or transition == "continue":
+            following = cursor + 1 if cursor + 1 < len(tasks) else None
+        elif transition in {"end", "exit"}:
+            following = None
+        elif isinstance(transition, str) and transition in names:
+            following = names[transition]
+            if following <= cursor:
+                raise lineage_error("replay_profile_unsupported")
+        else:
+            raise lineage_error("replay_profile_unsupported")
+        if reached == set(root_visits):
+            expected = "__end__" if following is None else _node_name(tasks[following])
+            if native["next_node"] != expected:
+                raise lineage_error("replay_profile_unsupported")
+            return cursor + 1
+        if following is None:
+            raise lineage_error("replay_profile_unsupported")
+        cursor = following
+    raise lineage_error("replay_profile_unsupported")
+
+
 def _validate_root_basis(
     services: RuntimeServices,
     plan: WorkflowPlan,
@@ -77,16 +147,8 @@ def _validate_root_basis(
                     )
                 ):
                     raise lineage_error("replay_dependency_unsupported")
-        snapshot = json.loads(native["snapshot"])
-        visits = snapshot["task_visits"]
         tasks = plan.scopes[0].tasks
-        root_refs = {item.execution_reference or item.reference for item in tasks}
-        root_visits = {key: value for key, value in visits.items() if key in root_refs}
-        completed = len(root_visits)
-        if not 0 < completed <= len(tasks) or root_visits != {
-            (item.execution_reference or item.reference): 1 for item in tasks[:completed]
-        }:
-            raise lineage_error("replay_profile_unsupported")
+        completed = root_lineage_position(plan, native)
         coordinates = {(item.reference, item.occurrence) for item in preflight.snapshots}
         for item in preflight.snapshots[1:]:
             scope = next(scope for scope in plan.scopes if scope.reference == item.reference)

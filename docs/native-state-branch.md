@@ -63,12 +63,13 @@ An effect whose outcome is uncertain fails closed rather than being repeated.
 
 ## Current boundaries
 
-The supported source is a root checkpoint with a contiguous completed-task
-prefix and up to 64 retained scope snapshots. Completed nested scope occurrences
+The supported source is a root checkpoint with a contiguous completed-task prefix
+or a verifiable forward route through `set` and `call` tasks, and up to 64 retained
+scope snapshots. Routes that may go backward are rejected. Completed nested scope occurrences
 are included when every task has been visited once per occurrence. Declared native
 channel values are retained at the selected checkpoint; replacing task data does
-not rewrite those channel values. Native Command routing is retained for the
-supported contiguous root-task prefix. Timing, Send routing and prior
+not rewrite those channel values. Native Command routing is retained for these
+supported checkpoints. Timing, Send routing and prior
 state-control bindings remain excluded. The branch changes only root task data.
 Arbitrary attribution, partially completed
 nested scopes, branch-of-branch, time travel, independent

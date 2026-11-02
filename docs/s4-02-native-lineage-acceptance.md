@@ -635,7 +635,7 @@ operations and effect policies, including failure when an occurrence's checkpoin
 is removed. The SQLite and PostgreSQL branch cases also pass a fresh-engine read
 and an injected post-fork interruption with idempotent recovery. The initial loop replay returned
 409 under the previous single-visit restriction; it is retained as the expected
-pre-change failure. This expanded profile has not been hosted-qualified.
+pre-change failure. Hosted evidence for the frozen source follows.
 The hosted PostgreSQL workflow was dispatched against frozen source
 `1eca9a547aeed386fcb864ff1ce60249736a98f8` on
 `codex/s4-02-repeated-qualification-1eca9a5`:
@@ -662,19 +662,20 @@ tests and twelve lineage-admission/checkpoint contracts passed; twelve unrelated
 engine/backend contract cases were skipped. The initial channel replay returned
 409 under the old admission restriction. A branch test initially used an array
 for `values` and returned 422; the test was corrected to the existing object
-contract. These development failures are not counted as green runs. The new
-tests are configured in hosted CI, but this source has not been hosted-qualified.
-The hosted PostgreSQL workflow is queued against frozen source
+contract. These development failures are not counted as green runs. Hosted
+evidence for the frozen source follows.
+The hosted PostgreSQL workflow was dispatched against frozen source
 `d5d0dd9017a6483549f9bee4f7509823fb0418bc` on
 `codex/s4-02-channel-qualification-d5d0dd9`:
 [workflow run 41381235523](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41381235523).
-No result is claimed for that run yet.
+The dedicated PostgreSQL branch job passed; the overall workflow was still
+running when checked, so no full-workflow result is claimed yet.
 
 ## Native Command routing in root lineage — 2026-11-02
 
 Root lineage now preserves a declared native Command destination by staging the
-retained projection and destination together through the native SDK. The existing
-contiguous root-prefix and completed-child scope boundaries still apply. The fork
+retained projection and destination together through the native SDK. At this stage,
+the contiguous root-prefix and completed-child scope boundaries still applied. The fork
 proof checks that the SDK's retained scheduled destination and its version match
 the attested next node; missing, redirected, consumed, zero-version and unexpected
 task scheduling evidence fails closed. Native Send and timing remain excluded.
@@ -692,8 +693,40 @@ admission restriction; removing that restriction alone produced an incorrectly
 completed target, and an initial schedule check missed a zero-version corruption.
 Those failed attempts are retained as non-green development evidence. These are
 local source checks, not real process-kill or hosted qualification.
-Hosted PostgreSQL qualification is queued for frozen source
+Hosted PostgreSQL qualification was dispatched for frozen source
 `396f6440b644530f048e035d873a0835e1f63f2f` on
 `codex/s4-02-command-qualification-396f644`:
 [workflow run 41382784138](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41382784138).
-No result is claimed for that run yet.
+The dedicated PostgreSQL branch job passed; the overall workflow was still
+running when checked, so no full-workflow result is claimed yet.
+
+## Verified forward root routes — 2026-11-02
+
+Root replay and branch can also select a checkpoint after a forward-only route
+through `set` and `call` tasks that skips other root tasks. The derived route
+must visit each retained root task once and agree with the checkpoint's next
+node. Attribution uses the last task on that route. For contiguous prefixes
+containing other task kinds, declared transitions and switch choices must not
+permit backward routing, and the retained next node must be later or terminal.
+Ambiguous backward routes fail before target reservation; this tightens the old
+task-count shortcut, which could mistake a reordered contiguous set of visits
+for the execution order. Timing, native Send and other documented boundaries
+remain unchanged.
+
+The local Windows SQLite selection passed 20 cases with seven intentional skips,
+covering forward routing, incorrect next-node evidence, backward/repeated paths,
+wrong attribution, and nested/channel regressions. The PostgreSQL selection passed
+seven cases with two intentional skips, including both lineage operations, both
+effect policies, Command and ordinary conditional routing, and a real reordered
+source whose rejected requests created no target. A separate SQLite branch/Command
+regression passed three cases with two other-backend skips. The applicable lineage,
+checkpoint and action-authorization contracts passed 16 cases with 16 skips.
+An additional existing replay/branch API regression passed five cases with five
+other-backend skips.
+Separate SQLite and PostgreSQL branch tests also passed an injected interruption
+after the forward-route fork, followed by recovery in a fresh engine with one
+downstream effect. This is not a process-kill qualification.
+The initial forward replay returned 409 under the former contiguous-only rule;
+a synthetic reordered-contiguous case exposed the old attribution shortcut before
+the guard was tightened. Those expected development failures are not green runs.
+This expanded source profile has not been hosted-qualified.

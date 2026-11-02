@@ -261,6 +261,8 @@ treated as a deferred task or as additional feature completion.
   including a completed nested scope, with local reducer/restart evidence.
   Native Command destinations now survive the fork, with retained SDK scheduling
   checked against the attested next node and local jump/tampering evidence.
+  Verified forward routes through root `set`/`call` tasks may skip tasks before a
+  selected checkpoint; ambiguous backward attribution fails before reservation.
   Broader nested scope and real process-stop qualification remain open.
   The frozen public branch PostgreSQL job passed;
   broader profiles and full hosted qualification remain open; see the
