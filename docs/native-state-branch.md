@@ -71,8 +71,10 @@ channel values are retained at the selected checkpoint; replacing task data does
 not rewrite those channel values. Native Command routing is retained for these
 supported checkpoints. Bounded, non-competing native Send fan-outs can occur
 before or after the selected root checkpoint; retained prior effects are not
-repeated, and later effects follow the declared policy. Timing and prior
-state-control bindings remain excluded. The branch changes only root task data.
+repeated, and later effects follow the declared policy. Attested prior root
+state updates can be selected; their source proofs remain dependencies of the
+target. Later source updates do not change the selected data, and pending writes
+are never inherited. Timing policies remain excluded. The branch changes only root task data.
 Arbitrary attribution, partially completed
 nested scopes, branch-of-branch, time travel, independent
 JavaScript parity and hosted/release qualification remain open. Local validation

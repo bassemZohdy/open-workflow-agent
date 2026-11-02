@@ -761,7 +761,7 @@ Hosted SQLite/PostgreSQL qualification ran for frozen source
 `0f11940714d4918932b942c3111bb28d9eace188` on
 `codex/s4-02-send-qualification-0f11940`:
 [workflow run 41386329048](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41386329048).
-The dedicated Send-lineage job passed; the overall workflow remains in progress.
+The full workflow passed, including the dedicated Send-lineage job.
 
 Subsequent local process-stop tests passed on Windows with both SQLite and
 PostgreSQL for a reexecuting branch after a completed direct Send fan-out.
@@ -774,3 +774,32 @@ qualify process stops for other Send positions or nested fan-outs.
 Hosted qualification of this subsequent source is running for frozen commit
 `59e0c98` on `codex/s4-02-send-crash-qualification-59e0c98`:
 [workflow run 41387276357](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41387276357).
+
+## Updated root checkpoints — 2026-11-02
+
+Root replay and branch can select an attested root checkpoint containing state
+updates. The target's immutable lineage record retains the ordered source
+control receipts, whose common authorization and native control proofs are
+rechecked when lineage is read. A subsequent source update does not change the
+selected values. An exact retry permits later pending writes to appear on the
+selected updated checkpoint only when the original pinned basis otherwise
+matches; those writes are never inherited by the target. Existing timing-policy,
+scope and admission restrictions still apply.
+
+The local Windows SQLite and PostgreSQL HTTP tests cover replay and branch under
+both effect policies, two ordered controls, a later source update, exact retries,
+fresh-engine inspection, damaged proof rejection before reservation and for an
+existing target, and continuation from an ordinary wait. The reexecution cases
+also check that a waiting target cannot resume after its source proof is damaged,
+and recover an injected interruption after reservation followed by a source update.
+The old behavior returned HTTP 409 for an updated checkpoint; an intermediate
+attempt also exposed a retry conflict after later pending writes appeared.
+The focused lineage and state-update regression selection passed 10 cases with
+two other-backend skips; fork, receipt and admission contracts passed 38 cases
+with 30 other-backend skips. Another selection passed 25 cases with 17 skips and two
+deselections. The PostgreSQL workflow-selection checks passed 60 cases.
+One excluded test, which expects a private coordinator to reject a
+manually admitted unsupported nested workflow before reservation, also fails on
+unchanged `4ac1e21`; its capability-gate question remains open in `TODO.md`.
+These results do not qualify process stops or full S4-02 acceptance for this
+profile.

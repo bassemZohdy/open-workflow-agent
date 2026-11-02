@@ -216,6 +216,22 @@ async def _source_basis(
         elif expected.phase != "checkpoint":
             raise lineage_error("fork_source_changed")
         parent = bounded.parents[config["configurable"]["thread_id"]]
+        metadata = {
+            "created_at": item.checkpoint["ts"],
+            "step": item.metadata["step"],
+            "source": item.metadata["source"],
+            "has_pending_writes": bool(item.pending_writes),
+        }
+        expected_metadata = json.loads(expected.metadata_json)
+        if (
+            (expected.reference, expected.occurrence) == ("/do", 1)
+            and json.loads(raw["receipt_bindings"]).get("version") == 3
+            and metadata["has_pending_writes"] is True
+            and expected_metadata.get("has_pending_writes") is False
+        ):
+            # Pending writes are excluded from forks; a later state update may
+            # append them after this immutable root checkpoint was selected.
+            metadata["has_pending_writes"] = False
         if (
             _json_identity(projection(raw)) != expected.native_json
             or state_reference(
@@ -228,15 +244,7 @@ async def _source_basis(
                 else None
             )
             != expected.parent_reference
-            or _json_identity(
-                {
-                    "created_at": item.checkpoint["ts"],
-                    "step": item.metadata["step"],
-                    "source": item.metadata["source"],
-                    "has_pending_writes": bool(item.pending_writes),
-                }
-            )
-            != expected.metadata_json
+            or _json_identity(metadata) != expected.metadata_json
         ):
             raise lineage_error("fork_source_changed")
 

@@ -281,6 +281,28 @@ async def prepare_native_lineage(
                     raise lineage_error("attribution_unvisited")
                 node = _node_name(task)
             ordered = tuple(sorted(snapshots, key=lambda item: (item.reference, item.occurrence)))
+            if _reserved_request is not None and basis_digest(input_json, ordered) != (
+                _reserved_request.source_basis_digest
+            ):
+                # A subsequent source update can append pending writes to the
+                # previously selected updated checkpoint. The fork deliberately
+                # excludes pending writes; allow only their appearance on that
+                # root, and only when every other pinned byte still matches.
+                root = ordered[0]
+                metadata = json.loads(root.metadata_json)
+                bindings = json.loads(json.loads(root.native_json)["receipt_bindings"])
+                if (
+                    (root.reference, root.occurrence) == ("/do", 1)
+                    and bindings.get("version") == 3
+                    and metadata.get("has_pending_writes") is True
+                ):
+                    metadata["has_pending_writes"] = False
+                    candidate = (
+                        replace(root, metadata_json=_json_identity(metadata)),
+                        *ordered[1:],
+                    )
+                    if basis_digest(input_json, candidate) == _reserved_request.source_basis_digest:
+                        ordered = candidate
             if (
                 len(input_json.encode())
                 + sum(

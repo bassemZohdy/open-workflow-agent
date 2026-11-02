@@ -12,10 +12,11 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 from open_workflow_agent.config import NativeStateConfig
-from open_workflow_agent.effects import EffectJournal, ReceiptDependency
+from open_workflow_agent.effects import EffectIdentity, EffectJournal, ReceiptDependency
 from open_workflow_agent.lineage_registry import LineageRegistry, lineage_identity
 from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.state_lineage import StateLineageRequest, lineage_error
+from open_workflow_agent.state_updates import PREFIX as STATE_UPDATE_PREFIX
 
 from .graph import LangGraphScopeExecutor, _json_identity
 from .native_lineage_fork import TABLE, verify_fork_schedule
@@ -102,6 +103,46 @@ def selected_business_receipts(
         return tuple(selected[key] for key in sorted(selected))
     except Exception:
         raise lineage_error("source_receipts_unavailable") from None
+
+
+def selected_control_receipts(
+    preflight: NativeLineagePreflight, journal: EffectJournal
+) -> tuple[ReceiptDependency, ...]:
+    """Retain attested source controls as dependencies, without copying them to the target."""
+    try:
+        preflight.verify_basis(preflight.input_json, preflight.snapshots)
+        root = next(
+            item for item in preflight.snapshots if (item.reference, item.occurrence) == ("/do", 1)
+        )
+        bindings = json.loads(json.loads(root.native_json)["receipt_bindings"])
+        if bindings.get("version") != 3:
+            return ()
+        controls = bindings["controls"]
+        if (
+            journal._state_updates is None
+            or not isinstance(controls, list)
+            or not 1 <= len(controls) <= 64
+        ):
+            raise lineage_error("source_control_unavailable")
+        dependencies = []
+        for index, control in enumerate(controls):
+            identity = EffectIdentity(
+                preflight.request.source_invocation_id,
+                preflight.request.workflow_fingerprint,
+                "/do",
+                (("/do", 1),),
+                STATE_UPDATE_PREFIX + control,
+            )
+            request = journal._state_updates.completed_request(identity)
+            if request.previous_controls != tuple(controls[:index]):
+                raise lineage_error("source_control_changed")
+            receipt = journal.get(identity)
+            if receipt is None:
+                raise lineage_error("source_control_unavailable")
+            dependencies.append(ReceiptDependency.capture(identity, receipt))
+        return tuple(dependencies)
+    except Exception:
+        raise lineage_error("source_control_unavailable") from None
 
 
 def inspect_native_lineage(

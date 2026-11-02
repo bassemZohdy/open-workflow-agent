@@ -602,7 +602,7 @@ jobs:
           enable-cache: true
       - name: Install Python
         run: uv python install "$PYTHON_VERSION"
-      - name: Verify Send lineage on SQLite and PostgreSQL
+      - name: Verify Send and updated-checkpoint lineage on SQLite and PostgreSQL
         env:
           OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
           PYTHONUNBUFFERED: "1"
@@ -612,7 +612,8 @@ jobs:
           timeout --signal=TERM --kill-after=30s 30m \
             uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres --extra sqlite \
             --with pytest --with pytest-asyncio --with httpx pytest \
-            ../../tests/langgraph/test_native_lineage_send.py -vv --durations=20
+            ../../tests/langgraph/test_native_lineage_send.py \
+            ../../tests/langgraph/test_native_lineage_state_updates.py -vv --durations=20
 
   postgres-adk:
     if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'

@@ -27,6 +27,7 @@ from .execution_authorization import ExecutionAuthorizationStore, decision_ident
 from .ownership import execution_write_guard
 from .persistence import ExecutionHandle, InvocationStore, _verify_identity
 from .state_lineage import StateLineageRequest, _json, lineage_error
+from .state_updates import PREFIX as STATE_UPDATE_PREFIX
 
 PROFILE = "owa/lineage-binding/v1"
 OPERATION = "policy:lineage-binding:v1"
@@ -75,6 +76,11 @@ class RemappedReceipt:
             or not (
                 identity.operation.startswith(("call:", "run:"))
                 or identity.operation in {"emit", "listen"}
+                or (
+                    identity.task_reference == "/do"
+                    and identity.occurrence == (("/do", 1),)
+                    and identity.operation.startswith(STATE_UPDATE_PREFIX)
+                )
             )
         ):
             raise lineage_error("receipt_origin_invalid")
@@ -84,6 +90,10 @@ class RemappedReceipt:
         if self != self.capture(request, self.source):
             raise lineage_error("receipt_mapping_changed")
         self.source.verify(journal)
+        if self.source.identity.operation.startswith(STATE_UPDATE_PREFIX):
+            if journal._state_updates is None:
+                raise lineage_error("source_control_unavailable")
+            journal._state_updates.completed_request(self.source.identity)
 
     @property
     def value(self) -> dict[str, Any]:

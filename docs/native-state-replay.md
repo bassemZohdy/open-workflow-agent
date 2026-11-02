@@ -24,7 +24,8 @@ refuse its first effect instead. The policy must permit `catalog.call` and
 
 Both `native_state: {}` and `native_state_replay: {}` are explicit opt-ins, and authenticated
 API ingress with original execution authorization is required, exactly as for native state
-views. Replay does not require `native_state_updates`. The block bounds native work
+views. Replay from a checkpoint containing state updates additionally requires
+the state-update backend to verify those retained controls. The block bounds native work
 (`bounds`), the number of concurrently admitting replays (`max_active_replays`, default 2)
 and the number of replays of one source invocation (`max_replays_per_source`, default 8). Default installations and ADK reject workflows that require replay.
 
@@ -93,7 +94,10 @@ Declared native channel values are retained at the selected checkpoint, and late
 channel writes continue from those values. Native Command routing is retained for
 contiguous root-task prefixes and verifiable forward routes through `set` and `call`
 tasks; routes that may go backward are rejected. Bounded, non-competing native Send
-fan-outs may occur before or after the selected root checkpoint. Partially completed
+fan-outs may occur before or after the selected root checkpoint. An attested root
+state update may also be retained: its source control proofs remain dependencies
+of the target, and later source updates do not change the selected data. Pending
+writes are never inherited. Partially completed
 nested scopes, timing, replay from non-root checkpoints, time travel and
 JavaScript parity are not implemented in this replay profile.
 Attributed root branching has a separate [opt-in source profile](native-state-branch.md).

@@ -17,7 +17,7 @@ from open_workflow_agent.workflow import WorkflowPlan
 
 from .graph import LangGraphScopeExecutor, _json_identity, _node_name
 from .native_lineage_fork import NativeForkPacket, NativeForkProposal
-from .native_lineage_inspection import selected_business_receipts
+from .native_lineage_inspection import selected_business_receipts, selected_control_receipts
 from .native_lineage_preflight import NativeLineagePreflight
 
 
@@ -99,7 +99,7 @@ def _validate_root_basis(
 ) -> tuple[dict[str, Any], tuple[ReceiptDependency, ...], int]:
     """Check the supported source profile without creating a target invocation.
 
-    Timing and state controls remain excluded.
+    Timing policies remain excluded.
     """
     try:
         request = preflight.request
@@ -123,9 +123,13 @@ def _validate_root_basis(
             raise lineage_error("replay_profile_unsupported")
         native = json.loads(preflight.snapshots[0].native_json)
         bindings = json.loads(native["receipt_bindings"])
-        if bindings.get("version") != 2:
+        if bindings.get("version") not in {2, 3}:
             raise lineage_error("replay_profile_unsupported")
-        dependencies = selected_business_receipts(preflight, services.effect_journal)
+        dependencies = selected_business_receipts(
+            preflight, services.effect_journal
+        ) + selected_control_receipts(preflight, services.effect_journal)
+        if len(dependencies) > 64:
+            raise lineage_error("replay_dependency_unsupported")
         business = {item.identity.key for item in dependencies}
         for source in preflight.snapshots:
             source_bindings = json.loads(json.loads(source.native_json)["receipt_bindings"])
