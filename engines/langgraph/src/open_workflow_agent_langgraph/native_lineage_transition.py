@@ -92,7 +92,12 @@ def _forward_fanout(definition: dict[str, Any]) -> bool:
 
 
 def _verify_child_route(
-    scope: ScopePlan, packet: dict[str, Any], previous: dict[str, Any] | None, occurrence: int
+    scope: ScopePlan,
+    packet: dict[str, Any],
+    previous: dict[str, Any] | None,
+    occurrence: int,
+    *,
+    allow_complex_prefix: bool = False,
 ) -> None:
     """Verify one completed occurrence from cumulative retained visit counters."""
     if occurrence < 1 or (occurrence > 1 and previous is None):
@@ -115,17 +120,17 @@ def _verify_child_route(
             visits[reference] = 1
     derived = dict(packet)
     derived["snapshot"] = json.dumps({"task_visits": visits})
-    _scope_lineage_position(scope, derived, allow_complex_prefix=False)
+    _scope_lineage_position(scope, derived, allow_complex_prefix=allow_complex_prefix)
 
 
 def _validate_completed_child_visits(
     scope: ScopePlan, packet: dict[str, Any], previous: dict[str, Any] | None, occurrence: int
 ) -> None:
-    """Keep the all-tasks shortcut only when every preceding count agrees."""
+    """Verify the route even when cumulative totals include every task."""
     visits = json.loads(packet["snapshot"])["task_visits"]
     previous_visits = json.loads(previous["snapshot"])["task_visits"] if previous else {}
     references = [task.execution_reference or task.reference for task in scope.tasks]
-    if (
+    complete = (
         occurrence >= 1
         and references
         and all(type(visits.get(ref)) is int and visits[ref] == occurrence for ref in references)
@@ -139,9 +144,8 @@ def _validate_completed_child_visits(
                 )
             )
         )
-    ):
-        return
-    _verify_child_route(scope, packet, previous, occurrence)
+    )
+    _verify_child_route(scope, packet, previous, occurrence, allow_complex_prefix=complete)
 
 
 def root_lineage_position(plan: WorkflowPlan, native: dict[str, Any]) -> int:

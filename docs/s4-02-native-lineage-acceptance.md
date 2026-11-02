@@ -1108,3 +1108,22 @@ validator was implemented. Hosted qualification remains separate.
 Hosted qualification of frozen source `8f93f2b` is running on
 `codex/s4-02-child-integrity-8f93f2b`:
 [workflow run 41408807023](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41408807023).
+
+## Completed child route order — 2026-11-02
+
+A completed child scope can visit every task once while taking a backward jump
+and executing the tasks in a different order. An end-to-end SQLite replay of
+such a workflow was previously accepted despite the documented forward-only
+lineage profile. Completed child occurrences now undergo route validation even
+when their cumulative counts look complete; backward and inconsistent routes
+fail before target reservation.
+
+The reproduced reordered-child workflow and the repeated-count catch-up case
+both return 409 for replay and branch on SQLite and PostgreSQL, with no target
+created. Thirteen focused counter and route checks and the shared admission and
+receipt selection passed; the latter had 19 other-backend skips. Valid completed
+scope compatibility and hosted qualification are recorded separately.
+Valid one- and two-occurrence nested replay/branch regressions passed on SQLite
+and PostgreSQL, as did the two-occurrence combined root/child forward-route
+regressions on both stores. These tests cover re-execution and retained proof
+damage; broader profile and hosted qualification remain separate.

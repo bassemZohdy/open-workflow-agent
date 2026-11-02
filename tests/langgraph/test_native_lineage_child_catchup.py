@@ -24,8 +24,9 @@ from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 @pytest.mark.asyncio
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 @pytest.mark.parametrize("kind", ["replay", "branch"])
+@pytest.mark.parametrize("scenario", ["catchup", "reordered"])
 async def test_repeated_child_cannot_catch_up_after_a_skipped_occurrence(
-    tmp_path, monkeypatch, backend, kind
+    tmp_path, monkeypatch, backend, kind, scenario
 ):
     for actor in ("alice", "bob"):
         monkeypatch.setenv("OWA_NATIVE_STREAM_TEST_" + actor.upper(), "replay-state-" + actor)
@@ -72,6 +73,14 @@ async def test_repeated_child_cannot_catch_up_after_a_skipped_occurrence(
         {"change": {"set": {"value": 1}}},
         {"after": {"call": "agent:1.0.0@default"}},
     ]
+    if scenario == "reordered":
+        source["do"][0]["nested"] = {
+            "do": [
+                {"first": {"set": {"value": 1}, "then": "finish"}},
+                {"middle": {"set": {"value": 2}, "then": "exit"}},
+                {"finish": {"call": "agent:1.0.0@default", "then": "middle"}},
+            ]
+        }
     extensions = [
         {"name": "langgraph.state.read", "version": "1.0.0"},
         {"name": "langgraph.state." + kind, "version": "1.0.0"},
@@ -112,7 +121,8 @@ async def test_repeated_child_cannot_catch_up_after_a_skipped_occurrence(
         with authority_scope(authority(services, "alice")):
             result = await engine.invoke(plan, handle, {})
         assert result.status == "completed", result.error
-        assert len(services.model.calls) == 3
+        expected_calls = 3 if scenario == "catchup" else 2
+        assert len(services.model.calls) == expected_calls
         async with client_for((services, engine)) as client:
             history = await client.get(f"/v1/invocations/{handle.invocation_id}/states")
             assert history.status_code == 200, history.text
@@ -145,10 +155,14 @@ async def test_repeated_child_cannot_catch_up_after_a_skipped_occurrence(
                 for item in evidence.snapshots
                 if item.reference == "/do/0/nested/do"
             }
-            for task in ("repeat", "again"):
-                reference = f"/do/0/nested/do/{1 if task == 'repeat' else 2}/{task}"
-                assert visits[1].get(reference, 0) == 0
-                assert visits[2].get(reference, 0) == 2
+            if scenario == "catchup":
+                for task in ("repeat", "again"):
+                    reference = f"/do/0/nested/do/{1 if task == 'repeat' else 2}/{task}"
+                    assert visits[1].get(reference, 0) == 0
+                    assert visits[2].get(reference, 0) == 2
+            else:
+                for index, task in enumerate(("first", "middle", "finish")):
+                    assert visits[1].get(f"/do/0/nested/do/{index}/{task}") == 1
             route = "state-replays" if kind == "replay" else "state-branches"
             before = services.invocations.connection.execute(
                 "SELECT COUNT(*) FROM invocations"
@@ -165,7 +179,7 @@ async def test_repeated_child_cannot_catch_up_after_a_skipped_occurrence(
                 ).fetchone()[0]
                 == before
             )
-            assert len(services.model.calls) == 3
+            assert len(services.model.calls) == expected_calls
     finally:
         await engine.shutdown()
         services.close()

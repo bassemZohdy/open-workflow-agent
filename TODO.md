@@ -261,6 +261,8 @@ treated as a deferred task or as additional feature completion.
   child tasks, with consecutive checkpoints proving each occurrence's visits.
   Complete-looking cumulative counts are checked against predecessor checkpoints
   so repeated visits cannot be hidden by an earlier skipped occurrence.
+  Completed child scopes also verify route order when every task was visited,
+  rejecting backward paths before allocating a lineage target.
   Declared append and last-value channel snapshots also survive root lineage,
   including a completed nested scope, with local reducer/restart evidence.
   Native Command destinations now survive the fork, with retained SDK scheduling
