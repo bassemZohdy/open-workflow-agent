@@ -37,7 +37,7 @@ def _forward_nested_scope(definition: dict[str, Any]) -> bool:
         child = next(iter(entry.values()))
         if not isinstance(child, dict) or child.get("then") is not None:
             return False
-        if "do" in child and "for" not in child:
+        if "do" in child:
             if not _forward_nested_scope(child):
                 return False
         elif not any(operation in child for operation in ("set", "call")):
@@ -95,7 +95,7 @@ def root_lineage_position(plan: WorkflowPlan, native: dict[str, Any]) -> int:
             or ref in reached
             or (
                 task.kind not in {"set", "call", "switch"}
-                and not (task.kind == "do" and _forward_nested_scope(task.definition))
+                and not (task.kind in {"do", "for"} and _forward_nested_scope(task.definition))
             )
         ):
             raise lineage_error("replay_profile_unsupported")

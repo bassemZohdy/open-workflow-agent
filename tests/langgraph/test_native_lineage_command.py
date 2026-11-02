@@ -127,7 +127,9 @@ def test_forward_switch_route_requires_possible_visits(damage):
             root_lineage_position(plan, native)
 
 
-@pytest.mark.parametrize("damage", ["none", "nested_transition", "wrong_next", "backward"])
+@pytest.mark.parametrize(
+    "damage", ["none", "loop", "loop_transition", "nested_transition", "wrong_next", "backward"]
+)
 def test_forward_route_through_completed_nested_scope(damage):
     nested = {"do": [{"effect": {"call": "agent:1.0.0@default"}}]}
     source = generate_default_workflow()
@@ -138,7 +140,9 @@ def test_forward_route_through_completed_nested_scope(damage):
         {"finish": {"set": {"value": 3}}},
         {"after": {"set": {"value": 4}}},
     ]
-    if damage == "nested_transition":
+    if damage in {"loop", "loop_transition"}:
+        nested["for"] = {"each": "turn", "in": [0, 1]}
+    if damage in {"nested_transition", "loop_transition"}:
         nested["do"][0]["effect"]["then"] = "end"
     if damage == "backward":
         nested["then"] = "first"
@@ -149,7 +153,7 @@ def test_forward_route_through_completed_nested_scope(damage):
         ),
         "next_node": _node_name(plan.scopes[0].tasks[0 if damage == "wrong_next" else 4]),
     }
-    if damage == "none":
+    if damage in {"none", "loop"}:
         assert root_lineage_position(plan, native) == 4
     else:
         with pytest.raises(OwaError):

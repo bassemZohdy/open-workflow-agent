@@ -964,3 +964,17 @@ profile error before the route extension; hosted qualification is separate.
 Hosted qualification of frozen source `2474614` is running on
 `codex/s4-02-forward-nested-2474614`:
 [workflow run 41401271697](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41401271697).
+
+## Forward routes through completed loops — 2026-11-02
+
+The forward-route profile also accepts a completed `for` scope with a bounded,
+non-routing body. Every retained iteration still passes the existing scope
+closure and effect-receipt checks. This does not admit child transitions,
+partially completed loops or arbitrary time travel.
+
+All four SQLite and PostgreSQL replay/branch and effect-policy cases passed with
+two loop iterations, including recovery after an injected fork interruption and rejection
+after deleting the second iteration's child checkpoint. Sixteen route-validation
+cases passed, including rejection of a transition inside a loop. Before this
+change, the selected forward-loop replay returned the unsupported-profile 409.
+The hosted result is tracked separately as it finishes.

@@ -101,7 +101,7 @@ task has been visited once per occurrence, up to 64 retained scope snapshots.
 Declared native channel values are retained at the selected checkpoint, and later
 channel writes continue from those values. Native Command routing is retained for
 contiguous root-task prefixes and verifiable forward routes through `set`, `call`,
-`switch` and completed non-routing nested `do` tasks
+`switch` and completed non-routing nested `do` or `for` tasks
 tasks; routes that may go backward are rejected. Bounded, non-competing native Send
 fan-outs may occur before or after the selected root checkpoint. An attested root
 state update may also be retained: its source control proofs remain dependencies

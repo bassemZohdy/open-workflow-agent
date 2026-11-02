@@ -69,7 +69,7 @@ An effect whose outcome is uncertain fails closed rather than being repeated.
 
 The supported source is a root checkpoint with a contiguous completed-task prefix
 or a verifiable forward route through `set`, `call`, `switch` and completed
-non-routing nested `do` tasks, and up to 64 retained
+non-routing nested `do` or `for` tasks, and up to 64 retained
 scope snapshots. Routes that may go backward are rejected. Completed nested scope occurrences
 are included when every task has been visited once per occurrence. Declared native
 channel values are retained at the selected checkpoint; replacing task data does

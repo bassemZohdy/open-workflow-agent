@@ -31,8 +31,6 @@ from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
 async def test_root_lineage_after_completed_nested_scope_preserves_effects(
     tmp_path, monkeypatch, policy, kind, backend, iterations, forward_route
 ):
-    if forward_route and iterations != 1:
-        pytest.skip("forward-route nested-loop attribution is not yet supported")
     for actor in ("alice", "bob"):
         monkeypatch.setenv("OWA_NATIVE_STREAM_TEST_" + actor.upper(), "replay-state-" + actor)
     config = configuration(timeout_seconds=30)
@@ -212,7 +210,7 @@ async def test_root_lineage_after_completed_nested_scope_preserves_effects(
                     if scope.reference.endswith("/inner/do")
                 )
                 thread = LangGraphScopeExecutor.scope_thread_id(
-                    target.invocation_id, plan.fingerprint, child, 1
+                    target.invocation_id, plan.fingerprint, child, iterations
                 )
                 connection = open_storage(
                     services.engine_database_path("langgraph", create_namespace=False),
