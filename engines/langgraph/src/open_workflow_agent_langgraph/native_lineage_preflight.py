@@ -117,13 +117,17 @@ async def prepare_native_lineage(
             raise lineage_error("kind_invalid")
         _owner(services, source, authority, kind)
         if _reserved_request is not None:
-            from .native_lineage_reservation import NativeReplayReservations
+            from .native_lineage_reservation import (
+                NativeBranchReservations,
+                NativeReplayReservations,
+            )
 
             if authority is None:
                 raise lineage_error("original_owner_required")
-            recovered, target = NativeReplayReservations(services).recover(
-                source, authority, request_id
+            reservation_type = (
+                NativeReplayReservations if kind == "replay" else NativeBranchReservations
             )
+            recovered, target = reservation_type(services).recover(source, authority, request_id)
             if recovered != _reserved_request or target.invocation_id != target_invocation_id:
                 raise lineage_error("reservation_request_invalid")
         if (
@@ -296,7 +300,7 @@ async def prepare_native_lineage(
                 raise lineage_error("new_business_identity_required")
             completed = replace(request, source_basis_digest=basis_digest(input_json, ordered))
             if _reserved_request is not None:
-                recovered, target = NativeReplayReservations(services).recover(
+                recovered, target = reservation_type(services).recover(
                     source, authority, request_id
                 )
                 if recovered != completed or target.invocation_id != target_invocation_id:

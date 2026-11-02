@@ -110,6 +110,15 @@ def validate_root_replay_basis(
     return _validate_root_basis(services, plan, preflight, "replay")
 
 
+def validate_root_branch_basis(
+    services: RuntimeServices,
+    plan: WorkflowPlan,
+    preflight: NativeLineagePreflight,
+) -> tuple[dict[str, Any], tuple[ReceiptDependency, ...], int]:
+    """Validate the supported attributed source before reserving a branch."""
+    return _validate_root_basis(services, plan, preflight, "branch")
+
+
 def _stage_root_lineage(
     services: RuntimeServices,
     plan: WorkflowPlan,

@@ -203,6 +203,7 @@ on:
       - "tests/langgraph/native_replay_crash_worker.py"
       - "tests/langgraph/test_native_replay_later_checkpoint.py"
       - "tests/langgraph/test_native_lineage_branch_projection.py"
+      - "tests/langgraph/native_branch_reservation_worker.py"
       - "tests/core/test_state_replay_config.py"
       - "core/src/open_workflow_agent/replay_control_api.py"
       - "core/src/open_workflow_agent/native_replay.py"

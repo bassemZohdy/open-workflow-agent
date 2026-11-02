@@ -1,8 +1,12 @@
 """Private root branch projection with a real native fork and continuation."""
 
+import asyncio
 import json
 import os
+import subprocess
+import sys
 from dataclasses import replace
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -24,6 +28,10 @@ from open_workflow_agent_langgraph.native_lineage_fork import (
 )
 from open_workflow_agent_langgraph.native_lineage_inspection import inspect_native_lineage
 from open_workflow_agent_langgraph.native_lineage_preflight import prepare_native_lineage
+from open_workflow_agent_langgraph.native_lineage_reservation import (
+    NativeBranchReservations,
+    NativeReplayReservations,
+)
 from open_workflow_agent_langgraph.native_lineage_transition import stage_root_branch
 from open_workflow_agent_langgraph.native_state import state_reference
 
@@ -33,11 +41,11 @@ from open_workflow_agent_langgraph.native_state import state_reference
 @pytest.mark.parametrize("policy", ["read_only", "reexecute"])
 @pytest.mark.parametrize("downstream_effect", [False, True])
 async def test_private_branch_replaces_data_at_last_completed_task_and_preserves_source(
-    tmp_path, backend, policy, downstream_effect
+    tmp_path, monkeypatch, backend, policy, downstream_effect
 ):
     config = configuration()
     config.observability.native_streams = None
-    config.execution_authorization.policy.rules[0].actions.append("state.branch")
+    config.execution_authorization.policy.rules[0].actions.extend(["state.branch", "state.replay"])
     if backend == "postgresql":
         datasource = os.getenv("OWA_TEST_POSTGRES_URL")
         if not datasource:
@@ -65,6 +73,7 @@ async def test_private_branch_replaces_data_at_last_completed_task_and_preserves
             "nativeExtensions": [
                 {"name": "langgraph.state.update", "version": "1.0.0"},
                 {"name": "langgraph.state.branch", "version": "1.0.0"},
+                {"name": "langgraph.state.replay", "version": "1.0.0"},
             ],
             "nativeExtensionData": {
                 "langgraph.state.update@1.0.0": {
@@ -80,6 +89,10 @@ async def test_private_branch_replaces_data_at_last_completed_task_and_preserves
                 "langgraph.state.branch@1.0.0": {
                     "authorizationPolicyRef": config.execution_authorization.id,
                     "branchEffectPolicy": policy,
+                },
+                "langgraph.state.replay@1.0.0": {
+                    "authorizationPolicyRef": config.execution_authorization.id,
+                    "replayEffectPolicy": policy,
                 },
             },
         }
@@ -149,19 +162,128 @@ async def test_private_branch_replaces_data_at_last_completed_task_and_preserves
             values={"value": 7},
         )
         prepared = await prepare_native_lineage(services, parent, actor, **options)
-        target = services.invocations.create_in_transaction(
-            services.invocations.connection,
-            engine="langgraph",
-            session_id=None,
-            user_id=None,
-            owner_principal="alice",
-            workflow_name=plan.name,
-            workflow_version=plan.version,
-            workflow_fingerprint=plan.fingerprint,
-            input_data={},
-            reserved_invocation_id=target_id,
+        store = NativeBranchReservations(services)
+        insert = services.invocations.create_in_transaction
+
+        def interrupted(*args, **kwargs):
+            insert(*args, **kwargs)
+            raise RuntimeError("simulated interruption")
+
+        with monkeypatch.context() as patch:
+            patch.setattr(services.invocations, "create_in_transaction", interrupted)
+            with pytest.raises(RuntimeError, match="simulated interruption"):
+                store.reserve(parent, actor, plan, prepared)
+        assert services.invocations.get(target_id) is None
+        assert store._row(prepared.request.identity.key) is None
+        if not downstream_effect and policy == "read_only":
+            environment = os.environ.copy()
+            if backend == "sqlite":
+                environment.pop("OWA_TEST_POSTGRES_URL", None)
+            process = subprocess.Popen(
+                [
+                    sys.executable,
+                    str(Path(__file__).with_name("native_branch_reservation_worker.py")),
+                    str(tmp_path),
+                    parent.invocation_id,
+                    target_id,
+                    options["request_id"],
+                    reference,
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                env=environment,
+            )
+            output = []
+            try:
+
+                async def read_marker():
+                    while True:
+                        line = await asyncio.to_thread(process.stdout.readline)
+                        if not line:
+                            raise AssertionError(
+                                "worker exited before reservation: " + "".join(output)
+                            )
+                        output.append(line)
+                        if line.startswith("BRANCH_RESERVED "):
+                            return line.strip()
+
+                assert (
+                    await asyncio.wait_for(read_marker(), timeout=120)
+                    == "BRANCH_RESERVED " + target_id
+                )
+                process.kill()
+                await asyncio.to_thread(process.wait, timeout=10)
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                    await asyncio.to_thread(process.wait, timeout=10)
+                process.stdout.close()
+            _, target = store.recover(parent, actor, prepared.request.request_id)
+        else:
+            target = store.reserve(parent, actor, plan, prepared)
+        assert store.reserve(parent, actor, plan, prepared).invocation_id == target_id
+        retained, recovered = store.recover(parent, actor, prepared.request.request_id)
+        assert retained == prepared.request and recovered.invocation_id == target_id
+        assert (
+            await prepare_native_lineage(
+                services, parent, actor, **options, _reserved_request=retained
+            )
+            == prepared
         )
-        services.invocations.connection.commit()
+        reopened = RuntimeServices(
+            config, model=FakeModel(), database_root=None if backend == "postgresql" else tmp_path
+        )
+        restarted = LangGraphWorkflowEngine()
+        try:
+            await restarted.initialize(reopened)
+            await restarted._timer_dispatcher.stop()
+            reopened_actor = authority(reopened, "alice")
+            reopened_parent = reopened.invocations.get(parent.invocation_id)
+            reopened_request, reopened_target = NativeBranchReservations(reopened).recover(
+                reopened_parent, reopened_actor, prepared.request.request_id
+            )
+            assert reopened_target.invocation_id == target_id
+            assert reopened_request == prepared.request
+            assert (
+                await prepare_native_lineage(
+                    reopened,
+                    reopened_parent,
+                    reopened_actor,
+                    **options,
+                    _reserved_request=reopened_request,
+                )
+                == prepared
+            )
+        finally:
+            await restarted.shutdown()
+            reopened.close()
+        changed = replace(prepared, request=replace(prepared.request, values_json='{"value":8}'))
+        with pytest.raises(OwaError):
+            store.reserve(parent, actor, plan, changed)
+        with pytest.raises(OwaError):
+            NativeReplayReservations(services).recover(parent, actor, prepared.request.request_id)
+        if not downstream_effect and policy == "read_only":
+            replay_store = NativeReplayReservations(services)
+            replay_options = {
+                "kind": "replay",
+                "target_invocation_id": str(uuid4()),
+                "request_id": prepared.request.request_id,
+                "source_reference": reference,
+            }
+            collision = await prepare_native_lineage(services, parent, actor, **replay_options)
+            with pytest.raises(OwaError):
+                replay_store.reserve(parent, actor, plan, collision)
+            assert services.invocations.get(replay_options["target_invocation_id"]) is None
+            replay_options["request_id"] = uuid4().hex * 2
+            independent = await prepare_native_lineage(services, parent, actor, **replay_options)
+            replay_store.reserve(parent, actor, plan, independent, max_per_source=1)
+            assert store._source_count(store.connection, parent.invocation_id) == 1
+            assert replay_store._source_count(store.connection, parent.invocation_id) == 1
+            assert (
+                store.reserve(parent, actor, plan, prepared, max_per_source=1).invocation_id
+                == target_id
+            )
         target._execution_lease = services.execution_ownership.acquire(target, seconds=300)
         services.execution_authorizations.reserve_invocation(target, actor, input_data={})
         with authority_scope(actor):
@@ -179,6 +301,8 @@ async def test_private_branch_replaces_data_at_last_completed_task_and_preserves
         earlier = replace(earlier, request=replace(earlier.request, target_invocation_id=target_id))
         with pytest.raises(OwaError):
             stage_root_branch(services, plan, earlier, target)
+        with pytest.raises(OwaError):
+            store.reserve(parent, actor, plan, earlier)
         with pytest.raises(OwaError):
             stage_root_branch(services, plan, replace(prepared, task_node="wrong"), target)
         other_policy = "reexecute" if policy == "read_only" else "read_only"

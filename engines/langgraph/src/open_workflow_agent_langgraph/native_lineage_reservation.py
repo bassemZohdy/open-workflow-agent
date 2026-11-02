@@ -1,4 +1,4 @@
-"""Atomic, private common-storage reservation for a native replay target.
+"""Atomic, private common-storage reservation for a native lineage target.
 
 Reservation does not admit, fork, or dispatch a workflow. The caller must use
 an authorized native preflight and reconcile all later phases under ownership.
@@ -16,6 +16,7 @@ from typing import Any
 from open_workflow_agent.effects import EffectIdentity
 from open_workflow_agent.errors import InvocationStateError
 from open_workflow_agent.execution_authority import ExecutionAuthority
+from open_workflow_agent.native_lineage_policy import LineageKind
 from open_workflow_agent.native_state import NativeStateCapacity
 from open_workflow_agent.persistence import ExecutionHandle, _public_fields, _verify_identity
 from open_workflow_agent.services import RuntimeServices
@@ -42,6 +43,8 @@ def _identity(handle: ExecutionHandle) -> dict[str, Any]:
 
 class NativeReplayReservations:
     """Store the request and its new common target in one transaction."""
+
+    kind: LineageKind = "replay"
 
     def __init__(self, services: RuntimeServices) -> None:
         self.services = services
@@ -102,19 +105,25 @@ class NativeReplayReservations:
         A repeat of an existing reservation is never a new admission and is never limited.
         """
         request = preflight.request
-        _owner(self.services, source, authority, "replay")
+        _owner(self.services, source, authority, self.kind)
         preflight.verify_basis(preflight.input_json, preflight.snapshots)
+        policy = plan.native_state_replay if self.kind == "replay" else plan.native_state_branch
         if (
-            request.kind != "replay"
+            request.kind != self.kind
             or request.source_invocation_id != source.invocation_id
             or request.workflow_fingerprint != source.workflow_fingerprint
             or request.workflow_fingerprint != plan.fingerprint
-            or plan.native_state_replay is None
-            or plan.native_state_replay.digest != request.policy_digest
+            or policy is None
+            or policy.digest != request.policy_digest
+            or policy.effect_policy != request.effect_policy
             or _json(json.loads(preflight.input_json))
             != _json(self.services.invocations.read_input(source))
         ):
             raise lineage_error("reservation_request_invalid")
+        if self.kind == "branch":
+            from .native_lineage_transition import validate_root_branch_basis
+
+            validate_root_branch_basis(self.services, plan, preflight)
         with self._transaction() as connection:
             row = self._row(request.identity.key)
             if row is not None:
@@ -199,19 +208,20 @@ class NativeReplayReservations:
             is not None
         )
 
-    @staticmethod
-    def _source_count(connection: StorageConnection, source_id: str) -> int:
-        """Exact count of replay reservations whose source is the given invocation."""
+    def _source_count(self, connection: StorageConnection, source_id: str) -> int:
+        """Count reservations of this kind whose source is the given invocation."""
         rows = connection.execute(
             f"SELECT payload FROM {_TABLE} WHERE payload LIKE ?",
             ('%"source_invocation_id":' + json.dumps(source_id) + "%",),
         ).fetchall()
         total = 0
         for (payload,) in rows:
+            if type(payload) is not str or len(payload.encode()) > 131_072:
+                continue
+            request = json.loads(payload).get("request", {})
             if (
-                type(payload) is str
-                and len(payload.encode()) <= 131_072
-                and json.loads(payload).get("request", {}).get("source_invocation_id") == source_id
+                request.get("source_invocation_id") == source_id
+                and request.get("kind") == self.kind
             ):
                 total += 1
         return total
@@ -220,7 +230,7 @@ class NativeReplayReservations:
         self, source: ExecutionHandle, authority: ExecutionAuthority, request_id: str
     ) -> tuple[StateLineageRequest, ExecutionHandle]:
         """Read an existing reservation without retaining private SDK coordinates."""
-        _owner(self.services, source, authority, "replay")
+        _owner(self.services, source, authority, self.kind)
         if type(request_id) is not str or not re.fullmatch(r"[a-f0-9]{64}", request_id):
             raise lineage_error("reservation_request_invalid")
         identity = EffectIdentity(
@@ -235,7 +245,7 @@ class NativeReplayReservations:
             if row is None or type(row[1]) is not str or len(row[1].encode()) > 131_072:
                 raise ValueError("reservation unavailable")
             request = StateLineageRequest.from_descriptor(json.loads(row[1])["request"])
-            if request.identity != identity or request.kind != "replay":
+            if request.identity != identity or request.kind != self.kind:
                 raise ValueError("reservation identity changed")
             return request, self._recover(row, request)
         except Exception:
@@ -279,3 +289,9 @@ class NativeReplayReservations:
             return target
         except Exception:
             raise lineage_error("reservation_unavailable") from None
+
+
+class NativeBranchReservations(NativeReplayReservations):
+    """Private branch reservations share identity conflicts with replay reservations."""
+
+    kind: LineageKind = "branch"

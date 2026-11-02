@@ -454,6 +454,28 @@ tasks and retains a separate prior model call.
 Tracking and PostgreSQL CI-selection checks pass 65 cases; the added branch
 test is selected by the existing hosted PostgreSQL replay job.
 
-Branch reservation, lifecycle admission, crash/restart reconciliation, broader
-attribution and scopes, public authorization and hosted qualification remain
-open. These local component checks do not complete S4-02 or T49.
+At this projection stage, branch reservation and lifecycle admission had not
+been implemented. Broader attribution and scopes, public authorization and
+hosted qualification remain open. These local component checks do not complete
+S4-02 or T49.
+
+## Private branch reservation — 2026-11-02
+
+The common reservation transaction now accepts an explicitly authorized private
+branch after validating the selected root profile and declared branch/update
+policies. Its shared identity boundary rejects reuse across replay and branch;
+per-source counts remain separate by kind. The original input, immutable request,
+target identity and digest commit atomically. Identical retries and a fresh service
+can recover and re-inspect the original request; changed values, altered attribution,
+wrong kind and interrupted creation fail without adopting a different target.
+The existing replay depth check conservatively treats any lineage target as a
+replay target; this does not enable branch replay or a public branch endpoint.
+
+On Windows, a fresh SQLite/PostgreSQL 16 selection passes 20 cases, including
+actual process termination after branch reservation on both stores, fresh-service
+request reconstruction, native fork/continuation, replay reservation regression,
+and per-source limits. A separate authorization and checkpoint contract selection
+passes eight applicable cases with 16 other-engine/backend skips. The process-stop
+witness covers the reservation boundary only, not interruption during fork,
+binding or continuation. Public branch admission, a branch coordinator, broader
+attribution/scopes, hosted qualification and full S4-02/T49 remain open.
