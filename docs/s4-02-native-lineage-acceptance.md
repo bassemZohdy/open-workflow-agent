@@ -953,6 +953,9 @@ was reported. The bounded LangGraph operation deadline is now 30 minutes within
 a 35-minute job, matching the existing ADK budget; its selected tests and image
 dependency gates are unchanged. A replacement hosted run is required to qualify
 this correction.
+Frozen source `07d2472` is running on
+`codex/postgres-operation-timeout-07d2472`:
+[workflow run 41403797373](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41403797373).
 
 ## Forward routes through completed nested scopes — 2026-11-02
 
