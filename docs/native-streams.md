@@ -11,6 +11,11 @@ lifecycle observations. It requires the base stream profile above and the same
 installation, ownership and authorization controls. Without its required
 declaration, task events are not collected.
 
+The separate `langgraph.streams.checkpoints@1.0.0` profile observes root
+checkpoint references. It requires the base stream profile, the
+`langgraph.state.read@1.0.0` profile, and the configured native state reader.
+It does not expose native IDs, checkpoint contents or nested-scope checkpoints.
+
 Mount [the configuration](../examples/native-stream.yaml) and [workflow](../examples/native-stream-workflow.yaml)
 at the configured paths, provide `OWA_NATIVE_STREAM_TOKEN` through deployment
 secrets, and retain the normal SQLite `/data` volume. PostgreSQL is optional.
@@ -64,6 +69,14 @@ invocation admission; adding deployment settings does not reinterpret existing
 workflow definitions. Only the enabled native installation advertises the
 capability and `features.nativeStreaming` contract.
 
+To include checkpoint observations, explicitly install `native_state: {}` and
+add these required declarations alongside the base stream declaration:
+
+```yaml
+        - {name: langgraph.state.read, version: '1.0.0', required: true}
+        - {name: langgraph.streams.checkpoints, version: '1.0.0', required: true}
+```
+
 | Deployment setting | Default | Bound |
 | --- | --- | --- |
 | `max_logs` | 16 | 1–128 retained invocation logs |
@@ -83,7 +96,8 @@ Responses keep their slot until closed, including after their log is evicted.
 
 ## Stream and replay behavior
 
-`mode` selects `values`, `updates`, `tasks` or `all` (default). Other modes are rejected.
+`mode` selects `values`, `updates`, `tasks`, `checkpoints` or `all` (default).
+Other modes are rejected.
 Each `native.observation` SSE event contains an immutable JSON envelope with
 schema `owa/native-observation/v1`, event ID, invocation ID, mode, public OWS
 scope/task reference and task `data`. The adapter excludes its native snapshot,
@@ -94,7 +108,11 @@ only its public scope and task reference and `data: {"status": ...}`. Status is
 `started`, `completed`, `faulted` or `interrupted`; SDK task identifiers, input,
 output, exceptions, triggers and interrupt payloads are not exposed. These are
 observations, not a durable execution journal, and retries or resumed tasks can
-produce additional events. Messages, debug, checkpoint, custom and JavaScript
+produce additional events. A checkpoint event contains only an opaque root
+`reference` and no task reference. It can be supplied to the state-read endpoint,
+which independently verifies owner, authorization and retained native evidence.
+An emitted reference is an observation, not proof of a committed or retained
+checkpoint; the read may be unavailable. Messages, debug, custom and JavaScript
 tool stream modes remain unsupported.
 
 Events follow native emission order and are observations, not proof that a

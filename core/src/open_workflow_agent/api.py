@@ -460,9 +460,12 @@ def create_app(
     async def capabilities() -> dict[str, Any]:
         value = runtime_engine.capabilities().as_dict()
         if runtime_services.native_streams is not None and value["features"]["streaming"]:
+            from .native_extensions import LANGGRAPH_STREAM_CHECKPOINTS
             from .native_stream_api import native_stream_capabilities
 
-            value["features"]["nativeStreaming"] = native_stream_capabilities()
+            value["features"]["nativeStreaming"] = native_stream_capabilities(
+                checkpoints=LANGGRAPH_STREAM_CHECKPOINTS in value["nativeExtensions"]
+            )
         if runtime_services.native_state_reader is not None:
             from .native_state import CAPABILITY as STATE_READ_CAPABILITY
             from .native_state_api import native_state_capabilities

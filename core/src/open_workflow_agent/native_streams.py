@@ -15,7 +15,7 @@ from uuid import uuid4
 
 from .expressions import validate_expression_data
 
-NativeStreamMode = Literal["values", "updates", "tasks"]
+NativeStreamMode = Literal["values", "updates", "tasks", "checkpoints"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,7 +140,7 @@ class NativeStreamLog:
     ) -> NativeStreamFrame:
         if self._closed or self._finished_reason is not None:
             raise RuntimeError("native observation log is closed")
-        if not isinstance(mode, str) or mode not in {"values", "updates", "tasks"}:
+        if not isinstance(mode, str) or mode not in {"values", "updates", "tasks", "checkpoints"}:
             raise ValueError("native observation mode is unsupported")
         for reference in (scope, task_reference):
             if reference is not None and (
@@ -158,6 +158,16 @@ class NativeStreamLog:
             or data["status"] not in {"started", "completed", "faulted", "interrupted"}
         ):
             raise ValueError("native task observation must contain only a supported status")
+        if mode == "checkpoints" and (
+            scope != "/do"
+            or task_reference is not None
+            or not isinstance(data, dict)
+            or set(data) != {"reference"}
+            or not isinstance(data["reference"], str)
+            or len(data["reference"]) != 64
+            or any(char not in "0123456789abcdef" for char in data["reference"])
+        ):
+            raise ValueError("native checkpoint observation must contain an opaque root reference")
         validate_expression_data(data)
         sequence = self._sequence + 1
         event_id = f"{self._epoch}:{sequence}"

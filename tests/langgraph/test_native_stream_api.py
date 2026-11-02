@@ -27,12 +27,20 @@ async def stream_runtime(request, tmp_path, monkeypatch):
     backend, options = request.param if isinstance(request.param, tuple) else (request.param, {})
     options = dict(options)
     lineage = options.pop("lineage", False)
+    state = options.pop("state", False)
+    state_denied = options.pop("state_denied", False)
     config = configuration(**{"max_events": 4, **options})
     if lineage:
         enable_lineage(config)
         config.execution_authorization.policy.rules[0].actions.extend(
             ["state.inspect", "state.replay"]
         )
+    elif state or state_denied:
+        from open_workflow_agent.config import NativeStateConfig
+
+        config.native_state = NativeStateConfig(max_native_bytes=4_194_304, timeout_seconds=30)
+        if not state_denied:
+            config.execution_authorization.policy.rules[0].actions.append("state.inspect")
     root = tmp_path
     if backend == "postgresql":
         datasource = os.getenv("OWA_TEST_POSTGRES_URL")
@@ -86,6 +94,141 @@ def frames(response):
         for line in response.text.splitlines()
         if line.startswith("data: ") and '"schema"' in line
     ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stream_runtime",
+    [
+        ("sqlite", {"max_events": 64, "state": True}),
+        ("postgresql", {"max_events": 64, "state": True}),
+    ],
+    indirect=True,
+)
+@pytest.mark.parametrize("required", [True, False])
+async def test_checkpoint_stream_references_root_history_only_with_opt_in(stream_runtime, required):
+    from open_workflow_agent.workflow import compile_workflow
+
+    services, _ = stream_runtime
+    source = copy.deepcopy(workflow(nested=True).source)
+    declarations = source["document"]["metadata"]["owa"]["nativeExtensions"]
+    declarations.extend(
+        [
+            {"name": "langgraph.state.read", "version": "1.0.0"},
+            {"name": "langgraph.streams.checkpoints", "version": "1.0.0", "required": required},
+        ]
+    )
+    owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
+    async with client_for(stream_runtime) as client:
+        caps = (await client.get("/v1/capabilities")).json()
+        assert "langgraph.streams.checkpoints@1.0.0" in caps["nativeExtensions"]
+        assert (
+            caps["features"]["nativeStreaming"]["checkpointModeProfile"]
+            == "langgraph.streams.checkpoints@1.0.0"
+        )
+        response = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "checkpoints"}
+        )
+        assert response.status_code == 200, response.text
+        events = frames(response)
+        if required:
+            assert events and all(
+                item["scope"] == "/do" and item["task_reference"] is None for item in events
+            )
+            assert all(set(item["data"]) == {"reference"} for item in events)
+            history = await client.get(f"/v1/invocations/{owner.invocation_id}/states")
+            assert history.status_code == 200, history.text
+            references = {item["reference"] for item in history.json()["items"]}
+            assert {item["data"]["reference"] for item in events} <= references
+            selected = await client.get(
+                f"/v1/invocations/{owner.invocation_id}/state",
+                params={"reference": events[-1]["data"]["reference"]},
+            )
+            assert selected.status_code == 200, selected.text
+            assert selected.json()["items"][0]["reference"] == events[-1]["data"]["reference"]
+            assert len(services.model.calls) == 1
+            async with client_for(stream_runtime, "bob") as other:
+                denied = await other.get(
+                    f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "checkpoints"}
+                )
+                assert denied.status_code == 404
+        else:
+            assert events == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("stream_runtime", "missing"),
+    [
+        ((backend, {"state": True}), missing)
+        for backend in ("sqlite", "postgresql")
+        for missing in ("base", "read")
+    ]
+    + [((backend, {}), "installation") for backend in ("sqlite", "postgresql")],
+    indirect=["stream_runtime"],
+)
+async def test_checkpoint_stream_fails_admission_when_dependencies_are_missing(
+    stream_runtime, missing
+):
+    from open_workflow_agent.errors import UnsupportedWorkflowFeature
+    from open_workflow_agent.workflow import compile_workflow
+
+    services, engine = stream_runtime
+    if missing == "installation":
+        assert "langgraph.streams.checkpoints@1.0.0" not in engine.capabilities().native_extensions
+    source = copy.deepcopy(workflow(required=missing != "base").source)
+    declarations = source["document"]["metadata"]["owa"]["nativeExtensions"]
+    declarations.extend(
+        [
+            {"name": "langgraph.state.read", "version": "1.0.0", "required": missing != "read"},
+            {"name": "langgraph.streams.checkpoints", "version": "1.0.0"},
+        ]
+    )
+    plan = compile_workflow(source)
+    before = services.invocations.connection.execute("SELECT COUNT(*) FROM invocations").fetchone()[
+        0
+    ]
+    with pytest.raises(UnsupportedWorkflowFeature):
+        await engine.compile(plan)
+    app = create_app(config=services.config, services=services, engine=engine)
+    app.state.plan = plan
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        headers={"Authorization": "Bearer controlled-stream-alice"},
+    ) as client:
+        if missing == "installation":
+            caps = (await client.get("/v1/capabilities")).json()
+            assert "checkpoints" not in caps["features"]["nativeStreaming"]["modes"]
+        response = await client.post("/v1/invoke", json={"input": {"value": "alice"}})
+        assert response.status_code == UnsupportedWorkflowFeature.status_code, response.text
+    assert (
+        services.invocations.connection.execute("SELECT COUNT(*) FROM invocations").fetchone()[0]
+        == before
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stream_runtime",
+    [
+        ("sqlite", {"state_denied": True, "max_events": 32}),
+        ("postgresql", {"state_denied": True, "max_events": 32}),
+    ],
+    indirect=True,
+)
+async def test_checkpoint_reference_does_not_grant_state_inspection(stream_runtime):
+    owner, _ = await invoke(stream_runtime, plan=workflow(checkpoint_stream=True))
+    async with client_for(stream_runtime) as client:
+        observed = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "checkpoints"}
+        )
+        assert observed.status_code == 200, observed.text
+        reference = frames(observed)[-1]["data"]["reference"]
+        denied = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/state", params={"reference": reference}
+        )
+        assert denied.status_code == 403, denied.text
 
 
 @pytest.mark.asyncio
@@ -291,11 +434,10 @@ async def test_task_stream_observes_replay_target_without_repeating_retained_eff
     from open_workflow_agent.workflow import compile_workflow
 
     services, _ = stream_runtime
-    source = copy.deepcopy(workflow(task_stream=True).source)
+    source = copy.deepcopy(workflow(task_stream=True, checkpoint_stream=True).source)
     metadata = source["document"]["metadata"]["owa"]
     metadata["nativeExtensions"].extend(
         [
-            {"name": "langgraph.state.read", "version": "1.0.0"},
             {"name": "langgraph.state.replay", "version": "1.0.0"},
         ]
     )
@@ -336,6 +478,17 @@ async def test_task_stream_observes_replay_target_without_repeating_retained_eff
             ("/do/2/last", "started"),
             ("/do/2/last", "completed"),
         ]
+        checkpoint_response = await client.get(
+            f"/v1/invocations/{target}/stream", params={"mode": "checkpoints"}
+        )
+        assert checkpoint_response.status_code == 200, checkpoint_response.text
+        checkpoint_events = frames(checkpoint_response)
+        assert checkpoint_events
+        target_state = await client.get(
+            f"/v1/invocations/{target}/state",
+            params={"reference": checkpoint_events[-1]["data"]["reference"]},
+        )
+        assert target_state.status_code == 200, target_state.text
         assert len(services.model.calls) == 1
 
 
@@ -573,13 +726,20 @@ async def test_cancelled_http_observer_releases_capacity_without_cancelling_exec
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "stream_runtime",
-    [("sqlite", {"max_events": 32}), ("postgresql", {"max_events": 32})],
-    indirect=True,
+    ("stream_runtime", "task_stream", "checkpoint_stream"),
+    [
+        ((backend, {"max_events": 32}), tasks, False)
+        for backend in ("sqlite", "postgresql")
+        for tasks in (False, True)
+    ]
+    + [
+        ((backend, {"max_events": 32, "state": True}), False, True)
+        for backend in ("sqlite", "postgresql")
+    ],
+    indirect=["stream_runtime"],
 )
-@pytest.mark.parametrize("task_stream", [False, True])
 async def test_actual_process_exit_loses_observation_replay_but_not_native_resume(
-    stream_runtime, tmp_path, task_stream
+    stream_runtime, tmp_path, task_stream, checkpoint_stream
 ):
     services, engine = stream_runtime
     config_path = tmp_path / "worker-config.json"
@@ -590,6 +750,7 @@ async def test_actual_process_exit_loses_observation_replay_but_not_native_resum
                 "config": services.config.model_dump(mode="json", exclude={"sandbox"}),
                 "root": str(services.database_root) if services.database_root is not None else None,
                 "task_stream": task_stream,
+                "checkpoint_stream": checkpoint_stream,
             }
         ),
         encoding="utf-8",
@@ -619,7 +780,13 @@ async def test_actual_process_exit_loses_observation_replay_but_not_native_resum
         assert services.invocations.get(owner.invocation_id).status == "waiting"
         with authority_scope(authority(services, "alice")):
             result = await engine.resume(
-                owner, {}, workflow(waiting=True, task_stream=True if task_stream else None)
+                owner,
+                {},
+                workflow(
+                    waiting=True,
+                    task_stream=True if task_stream else None,
+                    checkpoint_stream=True if checkpoint_stream else None,
+                ),
             )
         assert result.status == "completed", result.error
         assert (
@@ -627,11 +794,21 @@ async def test_actual_process_exit_loses_observation_replay_but_not_native_resum
         ).status_code == 409
         current = await client.get(path)
         assert current.status_code == 200, current.text
-        assert frames(current)[-1]["data"] == {"done": True}
+        assert [item for item in frames(current) if item["mode"] == "values"][-1]["data"] == {
+            "done": True
+        }
         assert frames(current)[0]["id"].partition(":")[0] != previous["cursor"].partition(":")[0]
         if task_stream:
             task_events = frames(await client.get(path, params={"mode": "tasks"}))
             assert task_events[-1]["data"] == {"status": "completed"}
+        if checkpoint_stream:
+            checkpoint_events = frames(await client.get(path, params={"mode": "checkpoints"}))
+            assert checkpoint_events
+            selected = await client.get(
+                f"/v1/invocations/{owner.invocation_id}/state",
+                params={"reference": checkpoint_events[-1]["data"]["reference"]},
+            )
+            assert selected.status_code == 200, selected.text
     assert services.model.calls == []
 
 

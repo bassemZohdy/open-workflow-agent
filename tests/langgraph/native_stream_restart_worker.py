@@ -40,7 +40,11 @@ async def run() -> None:
     engine = LangGraphWorkflowEngine()
     await engine.initialize(services)
     await engine._timer_dispatcher.stop()
-    plan = workflow(waiting=True, task_stream=True if request.get("task_stream") else None)
+    plan = workflow(
+        waiting=True,
+        task_stream=True if request.get("task_stream") else None,
+        checkpoint_stream=True if request.get("checkpoint_stream") else None,
+    )
     handle = services.invocations.create(
         engine="langgraph",
         session_id="same",

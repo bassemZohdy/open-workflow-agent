@@ -27,6 +27,9 @@ def test_postgres_job_runs_stream_profiles_on_both_stores_without_skips():
     assert "--junitxml=" in command and 'get("skipped", "0")' in command
     assert "test_task_stream_observes_replay_target_without_repeating_retained_effects" in command
     assert "test_task_stream_remains_available_during_native_send_fanout" in command
+    assert "test_checkpoint_stream_references_root_history_only_with_opt_in" in command
+    assert "test_checkpoint_stream_fails_admission_when_dependencies_are_missing" in command
+    assert "test_checkpoint_reference_does_not_grant_state_inspection" in command
     assert "test_actual_process_exit_loses_observation_replay_but_not_native_resume" in command
     for path in (
         "tests/langgraph/test_native_stream_api.py",

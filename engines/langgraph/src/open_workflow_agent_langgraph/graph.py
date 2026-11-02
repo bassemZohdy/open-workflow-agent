@@ -9,6 +9,7 @@ import re
 from dataclasses import asdict, replace
 from importlib import import_module
 from typing import Annotated, Any, TypedDict, cast
+from uuid import UUID
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
@@ -30,6 +31,7 @@ from open_workflow_agent.expressions import (
 from open_workflow_agent.native_extensions import (
     LANGGRAPH_COMMAND,
     LANGGRAPH_SEND,
+    LANGGRAPH_STREAM_CHECKPOINTS,
     LANGGRAPH_STREAM_TASKS,
     MAX_CHANNEL_VALUE_BYTES,
     MAX_CHANNEL_VALUE_TOTAL_BYTES,
@@ -333,6 +335,10 @@ class LangGraphScopeExecutor:
         )
         self.native_stream_tasks = any(
             item.required and item.capability_id == LANGGRAPH_STREAM_TASKS
+            for item in plan.native_extensions
+        )
+        self.native_stream_checkpoints = any(
+            item.required and item.capability_id == LANGGRAPH_STREAM_CHECKPOINTS
             for item in plan.native_extensions
         )
         self._channels_by_id = (
@@ -1544,13 +1550,16 @@ class LangGraphScopeExecutor:
         # SDK streaming remains the executing driver; no second invocation or
         # competing reader may dispatch nodes to manufacture observations.
         result: Any = None
+        modes = ["values", "updates"]
+        if self.native_stream_tasks:
+            modes.append("tasks")
+        if self.native_stream_checkpoints and scope.reference == "/do":
+            modes.append("checkpoints")
         async for mode, payload in graph.astream(
             native_input,
             config=config,
             durability="sync",
-            stream_mode=["values", "updates", "tasks"]
-            if self.native_stream_tasks
-            else ["values", "updates"],
+            stream_mode=modes,
             version="v1",
         ):
             if mode == "values":
@@ -1602,6 +1611,29 @@ class LangGraphScopeExecutor:
                 else:
                     raise ValueError("ambiguous native task event")
                 data = {"status": status}
+            elif mode == "checkpoints":
+                from .native_state import state_reference
+
+                if scope.reference != "/do" or not isinstance(payload, dict):
+                    raise ValueError("unsupported native checkpoint projection")
+                config = payload["config"]["configurable"]
+                expected = self.checkpoint_config("/do", 1)["configurable"]
+                checkpoint_id = config["checkpoint_id"]
+                if (
+                    not isinstance(config, dict)
+                    or config.get("thread_id") != expected["thread_id"]
+                    or config.get("checkpoint_ns") != ""
+                    or not isinstance(checkpoint_id, str)
+                    or len(checkpoint_id) != 36
+                    or str(UUID(checkpoint_id)) != checkpoint_id
+                ):
+                    raise ValueError("unsupported native checkpoint identity")
+                data = {
+                    "reference": state_reference(
+                        self.invocation_id, self.plan.fingerprint, checkpoint_id
+                    )
+                }
+                reference = None
             else:
                 raise ValueError("unsupported native stream mode")
         except (KeyError, TypeError, ValueError, OwaError):

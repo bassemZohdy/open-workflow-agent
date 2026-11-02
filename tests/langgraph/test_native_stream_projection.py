@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from uuid import uuid4
 
 import pytest
 from open_workflow_agent.catalog import FakeModel
@@ -50,6 +51,46 @@ async def test_task_projection_drops_sdk_data_and_fails_closed_on_unknown_shapes
     executor._observe_scope_event("tasks", {"name": name, "input": {}, "result": {}}, scope)
     with pytest.raises(BufferError):
         log.subscribe()
+
+
+@pytest.mark.parametrize("damage", [None, "thread", "namespace", "checkpoint"])
+async def test_checkpoint_projection_never_exposes_native_identity_or_data(damage):
+    from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
+    from open_workflow_agent_langgraph.native_state import state_reference
+
+    plan = compile_workflow(generate_default_workflow())
+    log = NativeStreamLog("invocation-a")
+    executor = LangGraphScopeExecutor(plan, None, "invocation-a", stream_observer=log)
+    config = executor.checkpoint_config("/do", 1)["configurable"]
+    checkpoint_id = str(uuid4())
+    config["checkpoint_id"] = checkpoint_id
+    if damage == "thread":
+        config["thread_id"] = "other-private-thread"
+    elif damage == "namespace":
+        config["checkpoint_ns"] = "other-private-namespace"
+    elif damage == "checkpoint":
+        config["checkpoint_id"] = "not-a-checkpoint-id"
+    executor._observe_scope_event(
+        "checkpoints",
+        {"config": {"configurable": config}, "values": {"secret": "value"}, "tasks": ["private"]},
+        plan.scopes[0],
+    )
+    if damage is not None:
+        with pytest.raises(BufferError):
+            log.subscribe()
+    else:
+        frames, subscriber = log.subscribe()
+        assert len(frames) == 1
+        event = json.loads(frames[0].payload)
+        assert event["data"] == {
+            "reference": state_reference("invocation-a", plan.fingerprint, checkpoint_id)
+        }
+        assert (
+            checkpoint_id not in str(event)
+            and "secret" not in str(event)
+            and "private" not in str(event)
+        )
+        subscriber.close()
 
 
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])

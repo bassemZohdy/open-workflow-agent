@@ -21,6 +21,7 @@ from open_workflow_agent.native_extensions import (
     LANGGRAPH_CHANNELS,
     LANGGRAPH_COMMAND,
     LANGGRAPH_SEND,
+    LANGGRAPH_STREAM_CHECKPOINTS,
     LANGGRAPH_STREAM_TASKS,
     LANGGRAPH_STREAMS,
     MAX_NATIVE_SEND_BRANCHES,
@@ -301,6 +302,13 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             raise UnsupportedWorkflowFeature(
                 "native task observations require the base native stream profile"
             )
+        if (
+            LANGGRAPH_STREAM_CHECKPOINTS in required
+            and not {LANGGRAPH_STREAMS, STATE_READ_CAPABILITY} <= required
+        ):
+            raise UnsupportedWorkflowFeature(
+                "native checkpoint observations require base stream and state read profiles"
+            )
         if plan.native_state_updates is not None and self.state_controller is not None:
             self.state_controller.bind(plan)
         if not any(
@@ -372,6 +380,8 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             streams = self.native.task_nodes_available
             if streams:
                 extensions += (LANGGRAPH_STREAMS, LANGGRAPH_STREAM_TASKS)
+                if STATE_READ_CAPABILITY in extensions:
+                    extensions += (LANGGRAPH_STREAM_CHECKPOINTS,)
         functions = SUPPORTED_FUNCTION_CALLS + (
             tuple(sorted(memory_references(self.native_memory.bindings)))
             if self.native_memory is not None

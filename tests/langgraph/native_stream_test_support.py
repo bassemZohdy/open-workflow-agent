@@ -70,7 +70,15 @@ def enable_lineage(config, *, branch=False):
         config.native_state_branch = NativeStateBranchConfig(bounds=bounds)
 
 
-def workflow(*, required=True, declared=True, waiting=False, task_stream=None, nested=False):
+def workflow(
+    *,
+    required=True,
+    declared=True,
+    waiting=False,
+    task_stream=None,
+    nested=False,
+    checkpoint_stream=None,
+):
     definition = generate_default_workflow()
     definition["document"]["name"] = "native-stream-test"
     if declared:
@@ -88,6 +96,17 @@ def workflow(*, required=True, declared=True, waiting=False, task_stream=None, n
         if task_stream is not None:
             definition["document"]["metadata"]["owa"]["nativeExtensions"].append(
                 {"name": "langgraph.streams.tasks", "version": "1.0.0", "required": task_stream}
+            )
+        if checkpoint_stream is not None:
+            definition["document"]["metadata"]["owa"]["nativeExtensions"].extend(
+                [
+                    {"name": "langgraph.state.read", "version": "1.0.0"},
+                    {
+                        "name": "langgraph.streams.checkpoints",
+                        "version": "1.0.0",
+                        "required": checkpoint_stream,
+                    },
+                ]
             )
     definition["do"] = [
         *([{"outer": {"do": [{"child": {"set": {"value": "${ .value }"}}}]}}] if nested else []),

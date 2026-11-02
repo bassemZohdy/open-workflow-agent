@@ -1,5 +1,31 @@
 # S4-02 native stream observations
 
+## Root checkpoint source profile — 2026-11-02
+
+The separately required `langgraph.streams.checkpoints@1.0.0` profile adds
+opaque root-checkpoint references to the native stream. It is advertised only
+when both the native stream and native state reader are installed, and it
+requires both corresponding workflow declarations. SDK checkpoint IDs,
+threads, nested scopes and native state are not projected. Observations are
+not proof of a committed or retained checkpoint; state reads independently
+enforce their existing ownership, authorization and evidence checks.
+
+Local SQLite/PostgreSQL checks cover optional versus required declarations,
+missing dependencies, reference matching against root history, nested-scope
+filtering, original-owner isolation, malformed native identity, restart and
+replay targets. A separate permission test confirms that a stream reference
+does not grant `state.inspect`. Six process-exit cases cover the base, task and
+checkpoint profiles across both stores, and the actual ADK adapter rejects the
+required capability. The strict repository type check passes. This source
+profile has not been hosted-qualified or published; other stream modes, T50 and
+full S4-02 remain open.
+
+The combined stream, projection, buffer, registry and transport selection
+passed locally with **124 cases and zero skips** on SQLite and PostgreSQL; the
+separately added no-`state.inspect` permission check passed on both stores.
+Existing owner/state inspection regressions passed six cases. These runs do
+not qualify a hosted image or the broader T50 criteria.
+
 ## Task lifecycle source profile — 2026-11-02
 
 The separate required `langgraph.streams.tasks@1.0.0` declaration extends the

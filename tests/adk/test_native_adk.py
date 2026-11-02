@@ -82,7 +82,13 @@ async def test_native_adk_dynamic_plan_invocation(tmp_path):
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "extension",
-    ["langgraph.channels", "langgraph.command", "langgraph.send", "langgraph.streams.tasks"],
+    [
+        "langgraph.channels",
+        "langgraph.command",
+        "langgraph.send",
+        "langgraph.streams.tasks",
+        "langgraph.streams.checkpoints",
+    ],
 )
 async def test_adk_rejects_required_langgraph_channel_extension_before_native_mutation(
     tmp_path, extension

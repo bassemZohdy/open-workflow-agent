@@ -192,3 +192,21 @@ def test_task_stream_rejects_non_status_payloads(data):
         NativeStreamLog("invocation-a").append(
             "tasks", data, scope="/do", task_reference="/do/0/task"
         )
+
+
+@pytest.mark.parametrize(
+    "data,scope,reference",
+    [
+        ({}, "/do", None),
+        ({"reference": "a" * 64, "input": "secret"}, "/do", None),
+        ({"reference": "not-opaque"}, "/do", None),
+        ({"reference": "A" * 64}, "/do", None),
+        ({"reference": "a" * 64}, "/do/0/nested", None),
+        ({"reference": "a" * 64}, "/do", "/do/0/task"),
+    ],
+)
+def test_checkpoint_stream_accepts_only_opaque_root_references(data, scope, reference):
+    with pytest.raises(ValueError):
+        NativeStreamLog("invocation-a").append(
+            "checkpoints", data, scope=scope, task_reference=reference
+        )

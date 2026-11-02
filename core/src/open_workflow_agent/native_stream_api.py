@@ -15,7 +15,11 @@ from starlette.types import Receive, Scope, Send
 from .engine import WorkflowEngine
 from .errors import InvocationNotFound, UnsupportedWorkflowFeature
 from .execution_authority import current_authority
-from .native_extensions import LANGGRAPH_STREAM_TASKS, LANGGRAPH_STREAMS
+from .native_extensions import (
+    LANGGRAPH_STREAM_CHECKPOINTS,
+    LANGGRAPH_STREAM_TASKS,
+    LANGGRAPH_STREAMS,
+)
 from .native_stream_registry import NativeStreamRegistry
 from .native_streams import NativeStreamFrame, NativeStreamSubscription
 from .persistence import ExecutionHandle
@@ -23,8 +27,8 @@ from .services import RuntimeServices
 from .streaming import StreamLimits, encode_terminal
 
 
-def native_stream_capabilities() -> dict[str, Any]:
-    return {
+def native_stream_capabilities(*, checkpoints: bool = False) -> dict[str, Any]:
+    result: dict[str, Any] = {
         "profile": LANGGRAPH_STREAMS,
         "endpoint": "/v1/invocations/{invocation_id}/stream",
         "transport": "sse",
@@ -37,6 +41,10 @@ def native_stream_capabilities() -> dict[str, Any]:
         "disconnectCancelsInvocation": False,
         "action": "invocations.stream",
     }
+    if checkpoints:
+        result["modes"].append("checkpoints")
+        result["checkpointModeProfile"] = LANGGRAPH_STREAM_CHECKPOINTS
+    return result
 
 
 class _NativeStreamResponse(StreamingResponse):
@@ -139,7 +147,7 @@ def mount_native_streams(
     async def observe(
         invocation_id: str,
         http_request: Request,
-        mode: Literal["all", "values", "updates", "tasks"] = "all",
+        mode: Literal["all", "values", "updates", "tasks", "checkpoints"] = "all",
         max_events: int = Query(default=100, ge=1, le=1000),
         max_bytes: int = Query(default=1_048_576, ge=256, le=16_777_216),
         timeout_seconds: float = Query(default=30, gt=0, le=300),

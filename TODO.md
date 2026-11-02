@@ -226,6 +226,10 @@ treated as a deferred task or as additional feature completion.
   owner isolation, failure/suspension/resume and ADK rejection evidence is
   recorded in [stream acceptance](docs/s4-02-native-streams-acceptance.md);
   hosted qualification and remaining T50 modes remain open.
+  A separate checkpoint-stream source profile requires state read and the base
+  stream profile, and emits only opaque root checkpoint references. References
+  are observations rather than proof of retained state; inspection retains its
+  independent authority and evidence checks.
   PR #93 (`b363f10`) adds immutable replay/branch policies, explicit effect
   acknowledgement and selected-checkpoint preflight with historical root/scope
   closure and original/current authority. The private SDK writer now commits
