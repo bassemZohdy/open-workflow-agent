@@ -606,15 +606,16 @@ the engine, then injecting an exception after the atomic fork and retrying the
 same request without repeating the downstream effect. This is an injected
 interruption, not a process-kill qualification of the expanded profile. Six
 existing SQLite multi-scope atomic-fork and rollback cases also passed. A dedicated
-hosted job includes the new tests but has not yet qualified this source.
+hosted job includes the new tests, with its result recorded below.
 The applicable local lineage-admission, state-consistency and checkpoint-recovery
 contract selection passed 110 cases with 106 other-engine/backend skips. Separate
 authority and checkpoint-fencing contracts passed eight with 16 skips.
-Hosted PostgreSQL qualification is queued for frozen source
+Hosted PostgreSQL qualification was dispatched for frozen source
 `bc8549f9195cff83b28c325d8303b48fbc7b57ed` on
 `codex/s4-02-nested-qualification-bc8549f`:
 [workflow run 41379193128](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41379193128).
-No result is claimed for that run yet.
+The dedicated PostgreSQL branch job passed; the overall workflow was still
+running when checked, so no full-workflow result is claimed yet.
 
 Development attempts retained here include the original unsupported-profile 409,
 an invalid branch fixture that attributed to a nested task rather than a root set
@@ -639,3 +640,25 @@ The hosted PostgreSQL workflow is queued against frozen source
 `codex/s4-02-repeated-qualification-1eca9a5`:
 [workflow run 41380271623](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41380271623).
 No result is claimed for that run yet.
+
+## Declared native channels in root lineage — 2026-11-02
+
+Root replay and attributed branch now retain declared channel values from the
+selected checkpoint. Target continuation applies later channel writes to that
+retained state; branch data replacement does not change the retained channels.
+Timing, native Command/Send routing, state-control bindings and the other
+documented profile boundaries remain unchanged.
+
+Separate local Windows SQLite and PostgreSQL selections each passed six cases,
+with two intentionally skipped nested/read-only combinations. They cover append
+and last-value reducers, both lineage operations and effect policies, and a
+completed nested scope with re-execution. The non-nested branch case also checks
+fresh-engine inspection and an injected post-fork interruption with idempotent
+recovery. An additional SQLite source-state check passed separately; it confirms
+the source's final channel values remain unchanged. Six existing native-channel
+tests and twelve lineage-admission/checkpoint contracts passed; twelve unrelated
+engine/backend contract cases were skipped. The initial channel replay returned
+409 under the old admission restriction. A branch test initially used an array
+for `values` and returned 422; the test was corrected to the existing object
+contract. These development failures are not counted as green runs. The new
+tests are configured in hosted CI, but this source has not been hosted-qualified.

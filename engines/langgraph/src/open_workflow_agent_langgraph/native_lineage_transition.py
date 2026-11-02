@@ -29,7 +29,7 @@ def _validate_root_basis(
 ) -> tuple[dict[str, Any], tuple[ReceiptDependency, ...], int]:
     """Check the supported source profile without creating a target invocation.
 
-    Native channels, timing, state controls and native routing remain excluded.
+    Timing, state controls and native routing remain excluded.
     """
     try:
         request = preflight.request
@@ -42,7 +42,6 @@ def _validate_root_basis(
             or policy.digest != request.policy_digest
             or policy.effect_policy != request.effect_policy
             or plan.uses_timing
-            or plan.native_channels is not None
             or any(
                 item.capability_id.startswith(("langgraph.command@", "langgraph.send@"))
                 for item in plan.native_extensions
