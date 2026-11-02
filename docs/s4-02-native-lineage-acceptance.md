@@ -553,3 +553,9 @@ one PostgreSQL replay history-read timeout under the replay fixture's five-secon
 view bound. The affected replay case passed alone on a fresh PostgreSQL database;
 the original run remains a failure, not a green combined result. Both branch
 revocation cases passed in the original selection.
+
+Hosted PostgreSQL qualification was dispatched for frozen source
+`43a0ffca8d52a0c5cc5660af767fbc90f69c12c5` on the dedicated
+`codex/s4-02-branch-qualification-43a0ffc` branch:
+[workflow run 41375652540](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41375652540).
+The run was queued when recorded; no hosted result or qualification is claimed.
