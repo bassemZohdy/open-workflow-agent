@@ -236,7 +236,8 @@ treated as a deferred task or as additional feature completion.
   A separate custom-stream source profile uses native SDK writes for declared
   root-task diagnostics, with bounded literal or task-output data and no
   publication to the Open Workflow business event bus. Observation failures
-  do not change workflow execution.
+  do not change workflow execution. Its frozen hosted native-stream job passed
+  189 cases with zero skips; the overall workflow and full T50 remain open.
   Native subgraph namespace streaming remains unimplemented: the SDK's
   inherited namespace changes the child's physical checkpoint lookup. A
   cross-store feasibility test and the remaining recovery, identity and public
