@@ -272,8 +272,20 @@ class NativeReplayCoordinator:
 class NativeBranchCoordinator(NativeReplayCoordinator):
     """Reconcile a private attributed root branch; it is not a public admission API."""
 
-    def __init__(self, engine: LangGraphWorkflowEngine, bounds: NativeStateConfig) -> None:
-        super().__init__(engine, bounds)
+    def __init__(
+        self,
+        engine: LangGraphWorkflowEngine,
+        bounds: NativeStateConfig,
+        *,
+        max_branches_per_source: int | None = None,
+        allow_branch_of_lineage: bool = True,
+    ) -> None:
+        super().__init__(
+            engine,
+            bounds,
+            max_replays_per_source=max_branches_per_source,
+            allow_replay_of_replay=allow_branch_of_lineage,
+        )
         self.reservations = NativeBranchReservations(self.services)
 
     async def run_branch(

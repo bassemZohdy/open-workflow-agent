@@ -506,6 +506,50 @@ The authorization/checkpoint selection passes eight cases with 16 other-engine
 or unavailable-backend skips. These are separate local runs, not one green
 cross-platform qualification.
 
-This coordinator is not public admission. Broader branch attribution and scopes,
-concurrent controls, public lifecycle/API tests, hosted qualification and the
-remaining S4-02/T49 criteria are still open.
+At the private coordinator stage, public admission had not been implemented.
+Broader branch attribution and scopes, hosted qualification and the remaining
+S4-02/T49 criteria are still open.
+
+## Public root branch source profile — 2026-11-02
+
+The optional `native_state_branch` installation exposes an original-owner branch
+route for the existing attributed root profile. It requires authenticated state
+views and state updates, checks both current and retained authority, validates
+the declared update schema and effect acknowledgement, and uses distinct
+idempotency keys, bounded active work, per-source limits and depth-one lineage.
+The source is unchanged; the new target continues under the original authority.
+The installation snapshots its configuration, includes branch settings in the
+execution-policy identity, and bounds the combined state-view, update, replay
+and branch decoding budgets. Active branches cannot exceed their native
+concurrency bound. The [operator guide](native-state-branch.md) and
+configuration-only example describe the finite profile.
+
+Local Windows selections pass 29 HTTP, limit, configuration and example cases
+across SQLite/PostgreSQL; six SQLite and six PostgreSQL route-level process-stop
+cases pass in separate runs. The SQLite cases cover reservation, admission,
+fork, binding and an in-flight model call with re-execution, plus read-only
+binding recovery. The PostgreSQL selection covers the same stop points. An
+in-flight uncertain model call faults without a repeat. Engine-neutral route and
+wire checks pass five cases; applicable LangGraph authorization, checkpoint and
+lineage-policy contracts pass 40 with 16 other-engine/backend skips. Two actual
+ADK required-branch rejection cases pass. Core branch/replay and startup checks
+pass 45 cases. A separate SQLite/PostgreSQL revocation selection faults an
+in-flight branch when its original execution policy changes. These are separate
+local runs; they are not a single green hosted qualification or a release/image claim.
+
+Retained development attempts include one PostgreSQL history-read timeout in an
+earlier 23-pass/one-failure HTTP run, a cancelled partial run when review found
+that active branch concurrency exceeded the memory-budget calculation, and an
+11-pass/one-failure SQLite run whose policy-mutation fixture attempted an invalid
+configuration. The final profile uses the supported 30-second view bound for its
+test fixture, accounts for active work in the combined budget, and tests a valid
+policy mutation. None of those superseded attempts is counted green. The dedicated
+hosted PostgreSQL branch job has been configured but not yet qualified. Broader
+scope/attribution, time travel, independent JavaScript parity and full S4-02/T49
+remain open.
+
+A separate branch-revocation and replay regression selection had nine passes and
+one PostgreSQL replay history-read timeout under the replay fixture's five-second
+view bound. The affected replay case passed alone on a fresh PostgreSQL database;
+the original run remains a failure, not a green combined result. Both branch
+revocation cases passed in the original selection.

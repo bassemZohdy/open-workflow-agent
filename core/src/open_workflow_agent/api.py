@@ -482,6 +482,12 @@ def create_app(
 
             if LANGGRAPH_STATE_REPLAY in value["nativeExtensions"]:
                 value["features"]["nativeStateReplay"] = state_replay_capabilities()
+        if runtime_services.native_branch_controller is not None:
+            from .branch_control_api import state_branch_capabilities
+            from .native_extensions import LANGGRAPH_STATE_BRANCH
+
+            if LANGGRAPH_STATE_BRANCH in value["nativeExtensions"]:
+                value["features"]["nativeStateBranch"] = state_branch_capabilities()
         value.setdefault("features", {})["events"] = event_capabilities(runtime_services.event_bus)
         value.setdefault("features", {})["approvals"] = runtime_services.approvals.capabilities()
         value.setdefault("features", {})["catalogs"] = (
@@ -901,6 +907,11 @@ def create_app(
     from .replay_control_api import mount_state_replay
 
     mount_state_replay(
+        app, runtime_services, runtime_engine, _authorize_request, authorized_invocation
+    )
+    from .branch_control_api import mount_state_branch
+
+    mount_state_branch(
         app, runtime_services, runtime_engine, _authorize_request, authorized_invocation
     )
 

@@ -1409,6 +1409,28 @@ class NativeStateReplayConfig(StrictModel):
         return self
 
 
+class NativeStateBranchConfig(StrictModel):
+    """Opt-in attributed branches of a root checkpoint into a new invocation."""
+
+    bounds: NativeStateConfig = Field(
+        default_factory=lambda: NativeStateConfig(
+            max_native_bytes=8_388_608, max_concurrency=2, timeout_seconds=30
+        )
+    )
+    max_active_branches: int = Field(default=2, ge=1, le=16, strict=True)
+    max_branches_per_source: int = Field(default=8, ge=1, le=64, strict=True)
+
+    @model_validator(mode="after")
+    def validate_branch_capacity(self) -> NativeStateBranchConfig:
+        if self.bounds.max_response_bytes < 1024:
+            raise ValueError("native state branch responses require at least 1024 bytes")
+        if self.max_active_branches > self.bounds.max_concurrency:
+            raise ValueError("active branches exceed the configured native concurrency bound")
+        if self.bounds.max_native_bytes * self.bounds.max_concurrency * 4 > 268_435_456:
+            raise ValueError("native state branch packet budget exceeds 256 MiB")
+        return self
+
+
 class RuntimeConfig(StrictModel):
     agent: AgentConfig = Field(default_factory=AgentConfig)
     model: ModelConfig = Field(default_factory=ModelConfig)
@@ -1435,6 +1457,7 @@ class RuntimeConfig(StrictModel):
     native_state: NativeStateConfig | None = None
     native_state_updates: NativeStateUpdateConfig | None = None
     native_state_replay: NativeStateReplayConfig | None = None
+    native_state_branch: NativeStateBranchConfig | None = None
 
     @model_serializer(mode="wrap")
     def serialized_runtime(self, handler: SerializerFunctionWrapHandler) -> Any:
@@ -1445,10 +1468,34 @@ class RuntimeConfig(StrictModel):
             value.pop("native_state_updates", None)
         if self.native_state_replay is None:
             value.pop("native_state_replay", None)
+        if self.native_state_branch is None:
+            value.pop("native_state_branch", None)
         return value
 
     @model_validator(mode="after")
     def validate_native_state_security(self) -> RuntimeConfig:
+        if self.native_state_branch is not None:
+            if self.native_state is None or self.native_state_updates is None:
+                raise ValueError("native state branch requires configured state views and updates")
+            updates = self.native_state_updates.bounds
+            branch = self.native_state_branch
+            replay_bytes = (
+                self.native_state_replay.bounds.max_native_bytes
+                * self.native_state_replay.max_active_replays
+                * 4
+                if self.native_state_replay is not None
+                else 0
+            )
+            if (
+                self.native_state.max_native_bytes * self.native_state.max_concurrency
+                + updates.max_native_bytes * updates.max_concurrency * 4
+                + branch.bounds.max_native_bytes * branch.max_active_branches * 4
+                + replay_bytes
+                > 268_435_456
+            ):
+                raise ValueError(
+                    "combined native state decoding and lineage budget exceeds 256 MiB"
+                )
         if self.native_state_replay is not None and self.native_state is None:
             raise ValueError("native state replay requires configured native state views")
         if self.native_state_replay is not None and self.native_state is not None:

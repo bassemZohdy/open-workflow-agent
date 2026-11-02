@@ -250,10 +250,11 @@ treated as a deferred task or as additional feature completion.
   a manually staged native fork, receipt binding and continuation on SQLite and
   PostgreSQL. Private reservation now supports exact retry, fresh-service
   reconstruction and a process stop immediately after reservation on both
-  stores. A private coordinator now reconciles reservation, admission, native
-  fork, binding and continuation, including selected process-stop cases on both
-  stores. Public branch admission, broader profiles and hosted qualification
-  remain open; see the [lineage record](docs/s4-02-native-lineage-acceptance.md#private-branch-coordinator--2026-11-02).
+  stores. An opt-in public root branch source profile now admits and continues
+  attributed branches, with local SQLite/PostgreSQL HTTP and process-stop
+  evidence. Broader profiles and hosted qualification remain open; see the
+  [lineage record](docs/s4-02-native-lineage-acceptance.md#public-root-branch-source-profile--2026-11-02)
+  and [operator guide](docs/native-state-branch.md).
   Frozen `479906c`
   passes 538 native combined cases per platform, zero skips and 1,288 unchanged
   Linux inputs; unchanged core/ADK inputs at `81691b7` pass 881/26 cases. See

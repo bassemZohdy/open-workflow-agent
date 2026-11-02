@@ -234,6 +234,9 @@ class RuntimeServices:
         from .native_replay import NativeReplayController
 
         self.native_replay_controller: NativeReplayController | None = None
+        from .native_branch import NativeBranchController
+
+        self.native_branch_controller: NativeBranchController | None = None
         memory_tools = (
             ("add_memory", "search_memory", "delete_memory") if self.memory_enabled else ()
         )
@@ -675,6 +678,8 @@ class RuntimeServices:
             policy["native_state_updates"] = self.config.native_state_updates.model_dump(
                 mode="json"
             )
+        if self.config.native_state_branch is not None:
+            policy["native_state_branch"] = self.config.native_state_branch.model_dump(mode="json")
         if self._bounded_memory and self.config.memory.bounds is not None:
             policy["memory_bounds"] = self.config.memory.bounds.model_dump(mode="json")
         if self.config.memory.native:

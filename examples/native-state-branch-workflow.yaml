@@ -1,0 +1,39 @@
+document:
+  dsl: '1.0.3'
+  namespace: examples
+  name: native-state-branch
+  version: '1.0.0'
+  title: Branch a completed root task into a new invocation
+  metadata:
+    owa:
+      nativeExtensions:
+        - name: langgraph.state.read
+          version: '1.0.0'
+          required: true
+        - name: langgraph.state.update
+          version: '1.0.0'
+          required: true
+        - name: langgraph.state.branch
+          version: '1.0.0'
+          required: true
+      nativeExtensionData:
+        langgraph.state.update@1.0.0:
+          authorizationPolicyRef: native-state-branch-example
+          allowedTaskRefs: ['/do/0', '/do/1']
+          updateSchema:
+            type: object
+            properties:
+              value: {type: integer}
+            required: [value]
+            additionalProperties: false
+        langgraph.state.branch@1.0.0:
+          authorizationPolicyRef: native-state-branch-example
+          branchEffectPolicy: reexecute
+do:
+  - first:
+      set: {value: 1}
+  - second:
+      set:
+        value: '${ .value + 1 }'
+  - third:
+      call: agent:1.0.0@default
