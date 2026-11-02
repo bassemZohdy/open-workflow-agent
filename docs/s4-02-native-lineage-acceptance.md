@@ -897,3 +897,7 @@ and hosted results are tracked separately as they finish. The stable-source
 receipt, preflight and admission selection passed 27 cases with 19 other-backend
 skips; workflow selection passed 63 cases. This bounded profile does not complete
 S4-02 or qualify broader time travel.
+
+Hosted qualification of frozen source `b448825` is running on
+`codex/s4-02-generations-qualification-b448825`:
+[workflow run 41396591915](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41396591915).
