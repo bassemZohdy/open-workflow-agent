@@ -862,3 +862,6 @@ selection checks passed 60 cases plus three dedicated job-selection checks.
 Lineage state controls now run in their own bounded PostgreSQL workflow job;
 the separate Send job retains its existing required selection.
 This is a bounded source profile, not full S4-02 qualification.
+Hosted qualification of frozen source `c767b59` is running on
+`codex/s4-02-target-controls-qualification-c767b59`:
+[workflow run 41394273676](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41394273676).
