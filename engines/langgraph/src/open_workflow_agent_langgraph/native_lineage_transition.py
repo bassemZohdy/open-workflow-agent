@@ -26,6 +26,25 @@ from .native_lineage_inspection import (
 from .native_lineage_preflight import NativeLineagePreflight
 
 
+def _forward_nested_scope(definition: dict[str, Any]) -> bool:
+    """Allow nested scopes whose tasks cannot redirect or terminate their parent."""
+    body = definition.get("do")
+    if not isinstance(body, list) or not body:
+        return False
+    for entry in body:
+        if not isinstance(entry, dict) or len(entry) != 1:
+            return False
+        child = next(iter(entry.values()))
+        if not isinstance(child, dict) or child.get("then") is not None:
+            return False
+        if "do" in child and "for" not in child:
+            if not _forward_nested_scope(child):
+                return False
+        elif not any(operation in child for operation in ("set", "call")):
+            return False
+    return True
+
+
 def root_lineage_position(plan: WorkflowPlan, native: dict[str, Any]) -> int:
     """Identify the last root task in a prefix or a verifiable forward route."""
     tasks = plan.scopes[0].tasks
@@ -71,7 +90,14 @@ def root_lineage_position(plan: WorkflowPlan, native: dict[str, Any]) -> int:
     while cursor < len(tasks):
         task = tasks[cursor]
         ref = references[cursor]
-        if ref not in root_visits or ref in reached or task.kind not in {"set", "call", "switch"}:
+        if (
+            ref not in root_visits
+            or ref in reached
+            or (
+                task.kind not in {"set", "call", "switch"}
+                and not (task.kind == "do" and _forward_nested_scope(task.definition))
+            )
+        ):
             raise lineage_error("replay_profile_unsupported")
         reached.add(ref)
         transitions = [task.definition.get("then")]

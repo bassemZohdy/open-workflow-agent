@@ -127,6 +127,35 @@ def test_forward_switch_route_requires_possible_visits(damage):
             root_lineage_position(plan, native)
 
 
+@pytest.mark.parametrize("damage", ["none", "nested_transition", "wrong_next", "backward"])
+def test_forward_route_through_completed_nested_scope(damage):
+    nested = {"do": [{"effect": {"call": "agent:1.0.0@default"}}]}
+    source = generate_default_workflow()
+    source["do"] = [
+        {"first": {"set": {"value": 1}, "then": "nested"}},
+        {"never": {"set": {"value": 2}}},
+        {"nested": nested},
+        {"finish": {"set": {"value": 3}}},
+        {"after": {"set": {"value": 4}}},
+    ]
+    if damage == "nested_transition":
+        nested["do"][0]["effect"]["then"] = "end"
+    if damage == "backward":
+        nested["then"] = "first"
+    plan = compile_workflow(source)
+    native = {
+        "snapshot": json.dumps(
+            {"task_visits": {"/do/0/first": 1, "/do/2/nested": 1, "/do/3/finish": 1}}
+        ),
+        "next_node": _node_name(plan.scopes[0].tasks[0 if damage == "wrong_next" else 4]),
+    }
+    if damage == "none":
+        assert root_lineage_position(plan, native) == 4
+    else:
+        with pytest.raises(OwaError):
+            root_lineage_position(plan, native)
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 async def test_reordered_contiguous_visits_do_not_authorize_wrong_attribution(

@@ -27,9 +27,12 @@ from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
 @pytest.mark.parametrize("kind", ["replay", "branch"])
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 @pytest.mark.parametrize("iterations", [1, 2])
+@pytest.mark.parametrize("forward_route", [False, True])
 async def test_root_lineage_after_completed_nested_scope_preserves_effects(
-    tmp_path, monkeypatch, policy, kind, backend, iterations
+    tmp_path, monkeypatch, policy, kind, backend, iterations, forward_route
 ):
+    if forward_route and iterations != 1:
+        pytest.skip("forward-route nested-loop attribution is not yet supported")
     for actor in ("alice", "bob"):
         monkeypatch.setenv("OWA_NATIVE_STREAM_TEST_" + actor.upper(), "replay-state-" + actor)
     config = configuration(timeout_seconds=30)
@@ -70,7 +73,7 @@ async def test_root_lineage_after_completed_nested_scope_preserves_effects(
         owa = source["document"]["metadata"]["owa"]
         owa["nativeExtensions"].append({"name": "langgraph.state.update", "version": "1.0.0"})
         owa["nativeExtensionData"]["langgraph.state.update@1.0.0"] = {
-            "allowedTaskRefs": ["/do/1"],
+            "allowedTaskRefs": ["/do/3" if forward_route else "/do/1"],
             "updateSchema": {
                 "type": "object",
                 "properties": {"value": {"type": "integer"}},
@@ -87,6 +90,12 @@ async def test_root_lineage_after_completed_nested_scope_preserves_effects(
         {"change": {"set": {"value": 1}}},
         {"after": {"call": "agent:1.0.0@default"}},
     ]
+    if forward_route:
+        source["do"] = [
+            {"start": {"set": {"value": 0}, "then": "nested"}},
+            {"never": {"set": {"value": -1}}},
+            *source["do"],
+        ]
     plan = compile_workflow(source)
     await engine.compile(plan)
     handle = services.invocations.create(
@@ -105,9 +114,13 @@ async def test_root_lineage_after_completed_nested_scope_preserves_effects(
         async with client_for((services, engine)) as client:
             history = await client.get(f"/v1/invocations/{handle.invocation_id}/states")
             assert history.status_code == 200, history.text
-            expected_visits = {"/do/0/nested": 1}
+            nested_reference = "/do/2/nested" if forward_route else "/do/0/nested"
+            change_reference = "/do/3/change" if forward_route else "/do/1/change"
+            expected_visits = {nested_reference: 1}
+            if forward_route:
+                expected_visits["/do/0/start"] = 1
             if kind == "branch":
-                expected_visits["/do/1/change"] = 1
+                expected_visits[change_reference] = 1
             reference = next(
                 item["reference"]
                 for item in history.json()["items"]
@@ -115,7 +128,7 @@ async def test_root_lineage_after_completed_nested_scope_preserves_effects(
             )
             body = {"reference": reference, "acknowledge_reexecution": policy == "reexecute"}
             if kind == "branch":
-                body.update({"task_reference": "/do/1/change", "values": {"value": 7}})
+                body.update({"task_reference": change_reference, "values": {"value": 7}})
             route = "state-replays" if kind == "replay" else "state-branches"
             response = await client.post(
                 f"/v1/invocations/{handle.invocation_id}/{route}",
@@ -175,7 +188,7 @@ async def test_root_lineage_after_completed_nested_scope_preserves_effects(
                 command = {
                     "request_id": request_id,
                     "source_reference": reference,
-                    "task_reference": "/do/1/change",
+                    "task_reference": change_reference,
                     "values": {"value": 7},
                     "acknowledge_reexecution": True,
                 }

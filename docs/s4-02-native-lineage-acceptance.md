@@ -922,6 +922,8 @@ SQLite and PostgreSQL selections both passed, in 244 and 734 seconds respectivel
 Hosted qualification of frozen source `4e7f261` is running on
 `codex/s4-02-generation-recovery-4e7f261`:
 [workflow run 41399457378](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41399457378).
+Its dedicated PostgreSQL lineage-generations job passed; the full workflow is
+still running.
 
 ## Forward switch routes — 2026-11-02
 
@@ -943,3 +945,19 @@ tests the intended attribution boundary. Hosted qualification is separate.
 Hosted qualification of frozen source `cfeb0b9` is running on
 `codex/s4-02-forward-switch-cfeb0b9`:
 [workflow run 41400460408](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41400460408).
+
+## Forward routes through completed nested scopes — 2026-11-02
+
+A forward root route that skips tasks can retain a completed `do` scope whose
+children are `set`, `call` or similarly bounded nested `do` tasks without
+their own transitions. The normal scope closure, effect receipts, authority
+and target attribution are still verified. Child transitions, nested loops,
+partial child scopes and other unsupported routing remain rejected in this
+forward profile; this does not complete S4-02 or qualify arbitrary time travel.
+
+All four replay/branch and effect-policy cases passed on both SQLite and
+PostgreSQL. The existing tests additionally check recovery after an injected
+fork interruption and fail-closed inspection after deleting a retained child
+checkpoint. Eight original nested-scope SQLite cases and 14 route-validation
+cases passed. The initial valid forward case returned the expected unsupported
+profile error before the route extension; hosted qualification is separate.
