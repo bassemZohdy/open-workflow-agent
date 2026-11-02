@@ -1,5 +1,44 @@
 # S4-02 native stream observations
 
+## Bounded literal loop candidate — 2026-11-02
+
+The candidate extends the subgraph profile to a `for` task with an explicit
+literal array of at most 32 items, no `while` condition and no descendant child
+scope inside its body. `try`/`catch` scopes, including retries, are not admitted.
+The loop body is limited to `set`, `call` and `wait` tasks.
+SDK occurrence suffixes are mapped to the corresponding
+existing private scope checkpoint, with strict thread, namespace and suffix
+validation. Projection validates and removes the suffix before exposing the
+public workflow task reference. Dynamic or larger loops, nested child scopes
+inside loops and fork scopes remain rejected before execution.
+
+The initial SDK probe failed on the second loop occurrence because its logical
+namespace gained an occurrence suffix. A test-only translation passed simple
+SQLite/PostgreSQL loops with and without waits. A deeper nested-loop probe with
+waits faulted on ambiguous SDK interruptions while the same workflow passed
+without the experimental streaming profile; that deeper shape remains rejected.
+The initial runtime candidate passed 67 focused cases with zero skips across
+both stores, covering root and nested-parent loops, waits, 32 items, admission,
+process exit, saver identity and projection. Four additional SQLite/PostgreSQL
+cases passed checkpoint-history pagination and replay evidence. The loop-body
+admission gate was then narrowed to `set`, `call` and `wait`, so those earlier
+results are not an exact-source qualification of the final gate. The first
+32-item test lost its earliest event to its deliberately small retention buffer;
+the corrected full-sequence test uses a sufficient buffer and preserves the
+normal bounded-retention contract. After narrowing the admission gate, a fresh
+complete stream, projection, saver, lineage and core-transport selection passed
+284 cases with zero skips on SQLite/PostgreSQL and satisfied all 42 hosted-job
+witness names. Source-matched hosted qualification remains open; this does not
+complete T50 or S4-02.
+An early full run was deliberately stopped after seven passing cases while retry
+admission was reviewed; it is not counted as a pass. An initial direct `retry`
+test was rejected by the official schema, so the admission test uses a valid
+`try`/`catch` retry scope instead.
+The first shared checkpoint selection stopped after 31 passes when one
+PostgreSQL wait setup exceeded its ten-second test timeout. That exact case
+passed on a fresh database; a fresh complete checkpoint and fencing selection
+then passed 80 cases with zero skips across SQLite/PostgreSQL.
+
 ## Direct nested subgraph source profile — 2026-11-02
 
 The opt-in `langgraph.streams.subgraphs@1.0.0` source profile projects SDK
@@ -42,6 +81,8 @@ stores without skips after correcting the Windows worker's loop selection.
 The broader LangGraph durable-timer contract selection passed 26 cases on both
 stores without skips, covering manual and due wakes, retries, cancellation and
 deadline behavior.
+The source-matched hosted native-stream job at `e1995c5` passed 239 cases with
+zero skips, and its complete GitHub PostgreSQL workflow finished successfully.
 An initial broader stream run for the follow-up stopped after 71 passing cases
 when a PostgreSQL replay-target state read timed out. Both backend variants
 passed in an isolated rerun, then a fresh complete stream/projection/saver/core
@@ -53,9 +94,10 @@ passed 223 cases with zero skips against SQLite and PostgreSQL. The additional
 malformed-projection tests were added after that run started and passed in
 separate focused runs. The hosted job includes these cases as required witnesses.
 The source-matched GitHub Actions native-stream job passed 231 cases at
-`2b263f9`, with zero skips and required-witness gates enforced; the wider workflow
-is still running. The earlier frozen `f0f29a5` PostgreSQL workflow completed
-successfully.
+`2b263f9`, with zero skips and required-witness gates enforced. Its wider
+workflow ended cancelled, with the native-state-branch job cancelled; it is not
+a full green workflow result. The earlier frozen `f0f29a5` PostgreSQL workflow
+completed successfully.
 
 Malformed child namespaces and public projection shapes are independently
 rejected by focused tests. The shared LangGraph checkpoint checks passed 40

@@ -29,9 +29,13 @@ event delivery and do not publish to the event bus.
 
 The separate `langgraph.streams.subgraphs@1.0.0` profile projects native
 updates from directly nested `do` scopes. It requires the base stream profile.
-The workflow must use only direct nested `do` scopes for its child scopes;
-loop and fork child scopes are rejected at admission. Each event identifies the
-public child scope and task, without exposing SDK checkpoint identifiers.
+It also admits a `for` task with a literal `in` array of at most 32 items,
+provided it has no `while` condition and its body contains no child scopes.
+The loop body may contain `set`, `call` and `wait` tasks.
+`try`/`catch` scopes, including their retry behavior, are not admitted.
+Dynamic or larger loops, nested child scopes inside a loop and fork child scopes
+are rejected at admission. Each event identifies the public child scope and task,
+without exposing SDK checkpoint identifiers.
 
 Mount [the configuration](../examples/native-stream.yaml) and [workflow](../examples/native-stream-workflow.yaml)
 at the configured paths, provide `OWA_NATIVE_STREAM_TOKEN` through deployment
@@ -98,7 +102,7 @@ To include debug observations, require `langgraph.streams.debug@1.0.0` in
 addition to the base stream declaration. The debug profile does not require
 state-read access and does not emit checkpoint references.
 
-To include direct child updates, require `langgraph.streams.subgraphs@1.0.0`
+To include supported child updates, require `langgraph.streams.subgraphs@1.0.0`
 alongside the base stream declaration. Child updates carry workflow data and use
 the same original-owner authorization and bounded retention as other data
 observations. Namespace projection accepts up to 32 nested scopes; an invalid

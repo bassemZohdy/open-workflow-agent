@@ -319,6 +319,30 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 for scope in plan.scopes for task in scope.tasks
                 if "do" in task.definition and "for" not in task.definition
             }
+            loop_scopes = {
+                task.reference + "/do"
+                for scope in plan.scopes for task in scope.tasks
+                if "do" in task.definition and "for" in task.definition
+                and isinstance(task.definition["for"], dict)
+                and isinstance(task.definition["for"].get("in"), list)
+                and len(task.definition["for"]["in"]) <= 32
+                and "while" not in task.definition
+            }
+            if any(
+                scope.reference.startswith(loop_scope + "/")
+                for scope in plan.scopes for loop_scope in loop_scopes
+            ):
+                raise UnsupportedWorkflowFeature(
+                    "native subgraph observations do not support nested loop scopes"
+                )
+            if any(
+                not any(operation in task.definition for operation in ("set", "call", "wait"))
+                for scope in plan.scopes if scope.reference in loop_scopes for task in scope.tasks
+            ):
+                raise UnsupportedWorkflowFeature(
+                    "native subgraph loop observations require set, call or wait tasks"
+                )
+            allowed |= loop_scopes
             if any(
                 scope.reference != "/do" and scope.reference not in allowed for scope in plan.scopes
             ):

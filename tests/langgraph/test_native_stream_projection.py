@@ -19,7 +19,9 @@ from open_workflow_agent_langgraph import LangGraphWorkflowEngine  # noqa: E402
 pytestmark = pytest.mark.asyncio
 
 
-@pytest.mark.parametrize("damage", ["segment", "identity", "depth", "payload"])
+@pytest.mark.parametrize(
+    "damage", ["segment", "identity", "depth", "payload", "unexpected_occurrence"]
+)
 async def test_subgraph_projection_fails_closed_on_invalid_sdk_namespace(damage):
     from native_stream_test_support import workflow
     from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor, _node_name
@@ -42,9 +44,35 @@ async def test_subgraph_projection_fails_closed_on_invalid_sdk_namespace(damage)
         namespace = ("task_" + "f" * 64 + ":" + str(uuid4()),)
     elif damage == "depth":
         namespace = (segment, segment)
+    elif damage == "unexpected_occurrence":
+        namespace = (segment, "1")
     else:
         payload = {"unknown-private-node": {}}
     executor._observe_subgraph_update(namespace, payload)
+    with pytest.raises(BufferError):
+        log.subscribe()
+
+
+@pytest.mark.parametrize("suffix", ["0", "01", "32", "-1", "private", "9" * 100])
+async def test_loop_subgraph_projection_rejects_invalid_occurrence_namespace(suffix):
+    from native_stream_test_support import workflow
+    from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor, _node_name
+
+    source = workflow().source
+    source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
+    )
+    source["do"] = [{"loop": {
+        "for": {"each": "turn", "in": [0, 1]},
+        "do": [{"item": {"set": {"turn": "${ $turn }"}}}],
+    }}]
+    plan = compile_workflow(source)
+    log = NativeStreamLog("invocation-a")
+    executor = LangGraphScopeExecutor(plan, None, "invocation-a", stream_observer=log)
+    parent = plan.scopes[0].tasks[0]
+    child = next(scope for scope in plan.scopes if scope.reference != "/do").tasks[0]
+    namespace = (_node_name(parent) + ":" + str(uuid4()), suffix)
+    executor._observe_subgraph_update(namespace, {_node_name(child): {}})
     with pytest.raises(BufferError):
         log.subscribe()
 

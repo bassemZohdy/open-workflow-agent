@@ -578,6 +578,14 @@ jobs:
               "test_subgraph_observation_rejects_invalid_public_projection",
               "test_subgraph_stream_repeated_direct_scope_keeps_distinct_checkpoints",
               "test_repeated_subgraph_wait_resume_preserves_each_effect",
+              "test_subgraph_stream_projects_bounded_loop_occurrences",
+              "test_subgraph_stream_accepts_the_maximum_literal_loop",
+              "test_optional_loop_subgraph_declaration_does_not_enable_observation",
+              "test_loop_subgraph_checkpoint_history_preserves_logical_namespace",
+              "test_loop_subgraph_stream_preserves_replay_evidence",
+              "test_loop_checkpoint_binding_rejects_invalid_occurrence",
+              "test_loop_subgraph_projection_rejects_invalid_occurrence_namespace",
+              "test_direct_scope_rejects_a_loop_occurrence_namespace",
           } <= names
           PY
       - name: Upload native stream results

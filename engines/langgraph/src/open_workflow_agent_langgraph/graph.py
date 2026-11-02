@@ -1537,7 +1537,11 @@ class LangGraphScopeExecutor:
                 namespace = inherited["checkpoint_ns"]
                 if self.saver is None or not isinstance(namespace, str) or not namespace:
                     raise ValueError("native subgraph context is unavailable")
-                checkpointer = ScopedSubgraphSaver(self.saver, thread_id, namespace)
+                _, parent_task = self._subgraph_parents[prefix]
+                checkpointer = ScopedSubgraphSaver(
+                    self.saver, thread_id, namespace,
+                    allow_occurrence="for" in parent_task.definition,
+                )
                 inherited["thread_id"] = thread_id
                 inherited[CONFIG_KEY_CHECKPOINTER] = checkpointer
                 inherited.pop("checkpoint_id", None)
@@ -1676,7 +1680,7 @@ class LangGraphScopeExecutor:
         if observer is None:
             return
         try:
-            if not isinstance(namespace, tuple) or not 1 <= len(namespace) <= 32:
+            if not isinstance(namespace, tuple) or not 1 <= len(namespace) <= 33:
                 raise ValueError("native subgraph namespace is invalid")
             if isinstance(payload, dict) and set(payload) == {"__interrupt__"}:
                 return
@@ -1693,9 +1697,12 @@ class LangGraphScopeExecutor:
                 ancestors.append(parent_task)
                 current = parent_scope.reference
             ancestors.reverse()
-            if len(namespace) != len(ancestors):
-                raise ValueError("native subgraph namespace depth is inconsistent")
-            for segment, parent_task in zip(namespace, ancestors, strict=True):
+            position = 0
+            for parent_task in ancestors:
+                if position >= len(namespace):
+                    raise ValueError("native subgraph namespace depth is inconsistent")
+                segment = namespace[position]
+                position += 1
                 if not isinstance(segment, str) or len(segment) != 106:
                     raise ValueError("native subgraph namespace segment is invalid")
                 name, separator, identifier = segment.rpartition(":")
@@ -1704,6 +1711,17 @@ class LangGraphScopeExecutor:
                     or len(identifier) != 36 or str(UUID(identifier)) != identifier
                 ):
                     raise ValueError("native subgraph namespace identity is inconsistent")
+                if position < len(namespace):
+                    suffix = namespace[position]
+                    if isinstance(suffix, str) and suffix.isascii() and suffix.isdigit():
+                        if (
+                            "for" not in parent_task.definition or len(suffix) > 2
+                            or str(int(suffix)) != suffix or not 1 <= int(suffix) <= 31
+                        ):
+                            raise ValueError("native subgraph occurrence namespace is invalid")
+                        position += 1
+            if position != len(namespace):
+                raise ValueError("native subgraph namespace depth is inconsistent")
             data = _decode_snapshot(native["snapshot"])["data"]
             observer.append(
                 "subgraphs", {"mode": "updates", "data": data},

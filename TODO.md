@@ -241,11 +241,15 @@ treated as a deferred task or as additional feature completion.
   A separate direct-nested-do subgraph-stream source profile projects public
   child updates while retaining physical child checkpoint identity. Local
   SQLite/PostgreSQL, process-exit, replay/branch and admission checks pass;
-  the source-matched hosted stream job passed at `2b263f9`. The wider hosted
-  workflow, broader child scope shapes and full T50 remain open.
+  the source-matched hosted stream job passed at `2b263f9`, whose wider hosted
+  workflow was cancelled. Broader child scope shapes and full T50 remain open.
   A follow-up fixes a stale interruption marker on a backward route after a
-  nested wait, with and without subgraph streaming; see the same acceptance
-  record for separate regression and process-restart evidence.
+  nested wait, with and without subgraph streaming; its `e1995c5` hosted
+  PostgreSQL workflow passed. See the same acceptance record for separate
+  regression and process-restart evidence.
+  A locally verified candidate also admits literal loops of up to 32 items with
+  no nested child scopes, preserving per-iteration checkpoints; broader loop
+  shapes and source-matched hosted qualification remain open.
   See [stream acceptance](docs/s4-02-native-streams-acceptance.md).
   PR #93 (`b363f10`) adds immutable replay/branch policies, explicit effect
   acknowledgement and selected-checkpoint preflight with historical root/scope
