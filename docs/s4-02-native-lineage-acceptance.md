@@ -831,3 +831,6 @@ preflight, receipt and admission selection passed 27 cases with 19 skips,
 including the formerly failing test. Private PostgreSQL replay and branch
 coordinator regressions passed two cases.
 The PostgreSQL workflow-selection checks passed 60 cases.
+Hosted qualification of frozen source `c4347a5` is running on
+`codex/s4-02-capability-qualification-c4347a5`:
+[workflow run 41390252297](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41390252297).
