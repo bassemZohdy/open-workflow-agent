@@ -1166,3 +1166,6 @@ on SQLite and PostgreSQL; six SQLite Send regressions passed with two intentiona
 skips. The common admission/receipt selection passed 27 with 19 other-backend
 skips. The focused pre-fix run failed two assertions because invalid successors
 were accepted. Hosted qualification remains separate.
+Hosted qualification of frozen source `3134d58` is running on
+`codex/s4-02-scope-successor-3134d58`:
+[workflow run 41411500844](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41411500844).
