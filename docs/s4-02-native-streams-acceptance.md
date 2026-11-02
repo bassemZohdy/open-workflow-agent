@@ -24,6 +24,10 @@ registry and transport selection then passed **151 cases with zero skips** on
 SQLite and PostgreSQL. Its JUnit report also passed the CI witness gates;
 strict type checking passed on 194 source files. Hosted qualification and the
 remaining stream modes, T50 and full S4-02 remain open.
+Frozen source `2577879` is queued on
+`codex/s4-02-debug-stream-qualification-2577879` in
+[workflow run 41420479657](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41420479657).
+The native-stream job has not completed, so no hosted result is claimed.
 
 ## Root checkpoint source profile — 2026-11-02
 
