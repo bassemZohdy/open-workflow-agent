@@ -1147,3 +1147,6 @@ continues, and an exact retry returns the same target. Nineteen route/counter
 checks and four unsafe-child admission regressions on each store also passed; the shared
 lineage selection passed 27 with 19 other-backend skips. The earlier static guard
 rejected the valid scope exit. Hosted evidence is tracked separately.
+Hosted qualification of frozen source `67e5f9f` is running on
+`codex/s4-02-child-exit-67e5f9f`:
+[workflow run 41410674591](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41410674591).
