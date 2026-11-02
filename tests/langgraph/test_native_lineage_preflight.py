@@ -18,6 +18,7 @@ pytest.importorskip("langgraph.graph")
 from open_workflow_agent_langgraph import native_lineage_preflight as module
 from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
 from open_workflow_agent_langgraph.native_lineage_preflight import prepare_native_lineage
+from open_workflow_agent_langgraph.native_replay_coordinator import NativeReplayCoordinator
 from open_workflow_agent_langgraph.native_state import state_reference
 
 preflight = _preflight
@@ -59,6 +60,32 @@ async def test_current_basis_has_completed_child_evidence_without_creating_any_b
     assert counts(preflight) == before and services.model.calls == []
     assert handle._execution_lease == lease
     assert "langgraph.state.replay@1.0.0" not in engine.capabilities().native_extensions
+
+
+@pytest.mark.asyncio
+async def test_unsupported_nested_timed_source_does_not_reserve_a_target(preflight):
+    services, engine, handle, actor, reference, *_ = preflight
+    coordinator = NativeReplayCoordinator(engine, NativeStateConfig())
+    before = counts(preflight)
+    reservations = coordinator.reservations.connection
+    before_reservations = reservations.execute(
+        "SELECT COUNT(*) FROM native_replay_reservations_v1"
+    ).fetchone()[0]
+    phases = []
+    with pytest.raises(OwaError):
+        await coordinator.run(
+            handle,
+            actor,
+            request_id=uuid4().hex * 2,
+            source_reference=reference,
+            _phase=lambda name, target: phases.append((name, target)),
+        )
+    assert counts(preflight) == before
+    assert (
+        reservations.execute("SELECT COUNT(*) FROM native_replay_reservations_v1").fetchone()[0]
+        == before_reservations
+    )
+    assert phases == [] and services.model.calls == []
 
 
 @pytest.mark.asyncio

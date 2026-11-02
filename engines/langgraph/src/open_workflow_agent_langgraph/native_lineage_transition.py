@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict
+from typing import Any
 
 from open_workflow_agent.effects import ReceiptDependency
 from open_workflow_agent.execution_authorization import AUTHORITY_OPERATION
@@ -19,13 +20,12 @@ from .native_lineage_inspection import selected_business_receipts
 from .native_lineage_preflight import NativeLineagePreflight
 
 
-def stage_root_replay(
+def validate_root_replay_basis(
     services: RuntimeServices,
     plan: WorkflowPlan,
     preflight: NativeLineagePreflight,
-    target: ExecutionHandle,
-) -> tuple[NativeForkProposal, tuple[ReceiptDependency, ...]]:
-    """Stage a root checkpoint; native proof and common binding must follow.
+) -> tuple[dict[str, Any], tuple[ReceiptDependency, ...], int]:
+    """Check the supported source profile without creating a target invocation.
 
     This first profile excludes native channels, timing, completed nested scopes,
     state controls and native routing extensions until their remapping is proven.
@@ -35,10 +35,7 @@ def stage_root_replay(
         preflight.verify_basis(preflight.input_json, preflight.snapshots)
         if (
             request.kind != "replay"
-            or request.target_invocation_id != target.invocation_id
             or request.workflow_fingerprint != plan.fingerprint
-            or target.workflow_fingerprint != plan.fingerprint
-            or target._execution_lease is None
             or plan.native_state_replay is None
             or plan.native_state_replay.digest != request.policy_digest
             or plan.uses_timing
@@ -77,6 +74,35 @@ def stage_root_replay(
                 )
             ):
                 raise lineage_error("replay_dependency_unsupported")
+        snapshot = json.loads(native["snapshot"])
+        visits = snapshot["task_visits"]
+        tasks = plan.scopes[0].tasks
+        completed = len(visits)
+        if not 0 < completed <= len(tasks) or visits != {
+            (item.execution_reference or item.reference): 1 for item in tasks[:completed]
+        }:
+            raise lineage_error("replay_profile_unsupported")
+        return native, dependencies, completed
+    except Exception:
+        raise lineage_error("replay_staging_unavailable") from None
+
+
+def stage_root_replay(
+    services: RuntimeServices,
+    plan: WorkflowPlan,
+    preflight: NativeLineagePreflight,
+    target: ExecutionHandle,
+) -> tuple[NativeForkProposal, tuple[ReceiptDependency, ...]]:
+    """Stage a root checkpoint; native proof and common binding must follow."""
+    try:
+        request = preflight.request
+        if (
+            request.target_invocation_id != target.invocation_id
+            or target.workflow_fingerprint != plan.fingerprint
+            or target._execution_lease is None
+        ):
+            raise lineage_error("replay_profile_unsupported")
+        native, dependencies, _ = validate_root_replay_basis(services, plan, preflight)
         authority = services.execution_authorizations.authority_receipt(target)
         if authority is None:
             raise lineage_error("original_authority_required")
@@ -86,8 +112,6 @@ def stage_root_replay(
             for item in dependencies
         )
         snapshot = json.loads(native["snapshot"])
-        if not snapshot["task_visits"]:
-            raise lineage_error("replay_profile_unsupported")
         snapshot["variables"]["workflow"]["id"] = target.invocation_id
         native["snapshot"] = _json_identity(snapshot)
         bindings = {

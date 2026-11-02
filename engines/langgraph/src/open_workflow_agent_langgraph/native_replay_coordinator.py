@@ -27,7 +27,7 @@ from .native_lineage_fork import apply_native_lineage_fork, prepare_lineage_stor
 from .native_lineage_inspection import inspect_native_lineage
 from .native_lineage_preflight import prepare_native_lineage
 from .native_lineage_reservation import NativeReplayReservations
-from .native_lineage_transition import stage_root_replay
+from .native_lineage_transition import stage_root_replay, validate_root_replay_basis
 
 if TYPE_CHECKING:
     from . import LangGraphWorkflowEngine
@@ -85,6 +85,7 @@ class NativeReplayCoordinator:
                 bounds=self.bounds,
             )
             plan = await self.services.recovery_definitions.resolve_inspection(source)
+            validate_root_replay_basis(self.services, plan, prepared)
             target = self.reservations.reserve(
                 source,
                 authority,

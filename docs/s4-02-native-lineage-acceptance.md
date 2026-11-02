@@ -405,3 +405,24 @@ unnecessary read. The original failure is not counted green. The separate
 authorization/checkpoint contract selection had eight passes and 16 skips for
 unavailable backend/engine cells. This is local evidence, not hosted or full
 S4-02 qualification.
+
+## Unsupported replay basis admission — 2026-11-02
+
+The root replay coordinator now validates the inspected source profile,
+completed-task prefix and source receipt dependencies before reserving a target.
+It repeats that validation while staging under ownership. Unsupported historical
+bases therefore fail before consuming an invocation, an idempotency key or a
+per-source reservation slot; this does not relax the supported replay profile.
+
+An HTTP test reproduced the prior defect on SQLite: rejection of an initial
+checkpoint left one new invocation and one reservation. After the change, a
+12-case Windows selection passes on SQLite and PostgreSQL 16, covering initial
+checkpoint rejection followed by reuse of the same key, later completed-task
+checkpoints, and real coordinator continuation under both effect policies. A
+separate two-case selection verifies an unsupported nested/timed source creates
+neither a target nor a reservation on both stores. A separate SQLite process-stop
+case passes for recovery after reservation under the re-execution policy. The applicable authorization
+and native checkpoint contract selection passes eight cases with 16 skipped
+other-backend/engine cells. An initial test setup failed before exercising replay
+because its reservation table was not initialized; the fixture was corrected.
+These are local results, not hosted qualification or completion of S4-02.

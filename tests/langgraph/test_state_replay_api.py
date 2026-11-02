@@ -22,7 +22,9 @@ from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow, generate_default_workflow
 
 pytest.importorskip("langgraph.graph")
-from open_workflow_agent_langgraph import LangGraphWorkflowEngine
+from open_workflow_agent_langgraph import LangGraphWorkflowEngine, native
+from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
+from open_workflow_agent_langgraph.native_state import state_reference
 
 TERMINAL = {"completed", "faulted", "cancelled"}
 
@@ -367,6 +369,51 @@ async def test_a_different_request_under_a_used_key_is_rejected(replay_runtime, 
 
 
 TIGHT = [NativeStateReplayConfig(max_replays_per_source=1)]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("replay_config", TIGHT, indirect=True)
+async def test_unsupported_initial_checkpoint_does_not_reserve_a_target(replay_runtime, policy):
+    services, _, handle, plan = replay_runtime
+    path = services.engine_database_path("langgraph", create_namespace=False)
+    saver_type = (
+        native.AsyncPostgresSaver if path.startswith("postgres") else native.AsyncSqliteSaver
+    )
+    root = LangGraphScopeExecutor(plan, None, handle.invocation_id).checkpoint_config("/do", 1)
+    async with saver_type.from_conn_string(path) as saver:
+        checkpoints = [item async for item in saver.alist(root)]
+        initial = next(
+            item for item in checkpoints if set(item.checkpoint["channel_values"]) == {"__start__"}
+        )
+    reference = state_reference(handle.invocation_id, plan.fingerprint, initial.checkpoint["id"])
+    connection = services.native_replay_controller.coordinator.reservations.connection
+    before = tuple(
+        connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+        for table in ("invocations", "native_replay_reservations_v1")
+    )
+    endpoint = f"/v1/invocations/{handle.invocation_id}/state-replays"
+    async with client_for(replay_runtime) as client:
+        rejected = await client.post(
+            endpoint,
+            json=request_body(reference, policy),
+            headers={"Idempotency-Key": "retry-after-unsupported"},
+        )
+        assert rejected.status_code == 409, rejected.text
+        assert (
+            tuple(
+                connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                for table in ("invocations", "native_replay_reservations_v1")
+            )
+            == before
+        )
+        supported = await first_task_reference(client, handle)
+        accepted = await client.post(
+            endpoint,
+            json=request_body(supported, policy),
+            headers={"Idempotency-Key": "retry-after-unsupported"},
+        )
+        assert accepted.status_code == 202, accepted.text
+        await wait_terminal(services, accepted.json()["invocation_id"])
 
 
 @pytest.mark.asyncio
