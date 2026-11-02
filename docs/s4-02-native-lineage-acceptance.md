@@ -919,3 +919,6 @@ the longer ancestry inspection before reaching the intended stop point. The
 worker now reports a rejected admission immediately and uses a 60-second lease;
 the tests wait for it to expire after the real process stop. The corrected
 SQLite and PostgreSQL selections both passed, in 244 and 734 seconds respectively.
+Hosted qualification of frozen source `4e7f261` is running on
+`codex/s4-02-generation-recovery-4e7f261`:
+[workflow run 41399457378](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41399457378).
