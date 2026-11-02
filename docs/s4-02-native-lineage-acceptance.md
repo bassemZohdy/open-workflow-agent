@@ -945,7 +945,14 @@ tests the intended attribution boundary. Hosted qualification is separate.
 Hosted qualification of frozen source `cfeb0b9` is running on
 `codex/s4-02-forward-switch-cfeb0b9`:
 [workflow run 41400460408](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41400460408).
-The PostgreSQL native state-branch job passed; the full workflow remains running.
+The PostgreSQL native state-branch job passed. The overall workflow failed in
+the separate LangGraph operation-adapter recovery job: its test run reported
+248 passed, 185 skipped and 433 deselected in 1,195 seconds, but the enclosing
+20-minute process deadline returned exit 124 as pytest completed. No failed test
+was reported. The bounded LangGraph operation deadline is now 30 minutes within
+a 35-minute job, matching the existing ADK budget; its selected tests and image
+dependency gates are unchanged. A replacement hosted run is required to qualify
+this correction.
 
 ## Forward routes through completed nested scopes — 2026-11-02
 
