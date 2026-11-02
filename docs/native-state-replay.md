@@ -87,8 +87,11 @@ way does not make the target eligible for another replay or branch.
 
 ## Not implemented
 
-Nested scopes, timing, declared channels and Command/Send workflows, replay from non-root
-checkpoints, time travel and JavaScript parity are not implemented in this replay profile.
+Completed nested scopes can accompany a root checkpoint when every task in each
+retained child scope has been visited exactly once, up to 64 retained scope
+snapshots. Partially completed or repeated nested scopes, timing, declared channels
+and Command/Send workflows, replay from non-root checkpoints, time travel and
+JavaScript parity are not implemented in this replay profile.
 Attributed root branching has a separate [opt-in source profile](native-state-branch.md).
 The replay profile is
 qualified on hosted Linux runners at a frozen commit (see the

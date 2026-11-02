@@ -210,6 +210,7 @@ on:
       - "tests/langgraph/test_state_branch_example.py"
       - "tests/langgraph/test_state_branch_revocation.py"
       - "tests/langgraph/test_native_lineage_state_views.py"
+      - "tests/langgraph/test_native_lineage_nested.py"
       - "examples/native-state-branch.yaml"
       - "examples/native-state-branch-workflow.yaml"
       - "tests/core/test_state_branch_config.py"
@@ -556,6 +557,7 @@ jobs:
             ../../tests/langgraph/test_state_branch_example.py \
             ../../tests/langgraph/test_state_branch_revocation.py \
             ../../tests/langgraph/test_native_lineage_state_views.py \
+            ../../tests/langgraph/test_native_lineage_nested.py \
             ../../tests/core/test_state_branch_config.py \
             ../../tests/core/test_state_branch_wire.py \
             ../../tests/core/test_state_branch_route.py -vv --durations=20

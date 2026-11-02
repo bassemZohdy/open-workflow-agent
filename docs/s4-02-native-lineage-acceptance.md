@@ -558,8 +558,9 @@ Hosted PostgreSQL qualification was dispatched for frozen source
 `43a0ffca8d52a0c5cc5660af767fbc90f69c12c5` on the dedicated
 `codex/s4-02-branch-qualification-43a0ffc` branch:
 [workflow run 41375652540](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41375652540).
-The dedicated PostgreSQL branch and replay jobs passed. The overall run still had
-other jobs in progress when checked; no full-workflow result is claimed.
+The entire hosted workflow completed successfully, including the dedicated
+PostgreSQL branch and replay jobs and both persistence acceptance jobs. This
+result applies to that frozen source; it does not qualify later changes.
 
 ## Lineage-bound target state views — 2026-11-02
 
@@ -585,3 +586,32 @@ PostgreSQL cases skipped because that separate run had no configured datasource.
 The SQLite re-execution branch-projection case passed separately with diagnostic
 authorization tracing in 154 seconds. It includes five process-stop stages and
 intentional lease-expiry waits, explaining its long periods without test output.
+
+## Completed nested-scope lineage — 2026-11-02
+
+The bounded root replay and attributed branch profiles now retain completed
+child-scope checkpoints and remap their receipt and scope-digest bindings to the
+new invocation. The fork writes the entire closure atomically. Admission requires
+at most 64 retained scopes and exactly one visit to each task in each completed
+child scope. Timing, native channels, Command/Send, state-control bindings,
+partially completed or repeated child scopes and deeper lineage remain excluded.
+
+On local Windows, four SQLite and four PostgreSQL cases passed separately for
+two nested levels, both operations and both effect policies. They verify that a
+completed nested effect is not repeated, a downstream effect follows the declared
+policy, owner state remains readable, and a removed child checkpoint fails closed.
+Separate SQLite and PostgreSQL re-execution branch cases passed after reopening
+the engine, then injecting an exception after the atomic fork and retrying the
+same request without repeating the downstream effect. This is an injected
+interruption, not a process-kill qualification of the expanded profile. Six
+existing SQLite multi-scope atomic-fork and rollback cases also passed. A dedicated
+hosted job includes the new tests but has not yet qualified this source.
+The applicable local lineage-admission, state-consistency and checkpoint-recovery
+contract selection passed 110 cases with 106 other-engine/backend skips. Separate
+authority and checkpoint-fencing contracts passed eight with 16 skips.
+
+Development attempts retained here include the original unsupported-profile 409,
+an invalid branch fixture that attributed to a nested task rather than a root set
+task, a runtime-profile mismatch caused by editing engine source during a test,
+and a malformed test route returning 404. An earlier PostgreSQL run was cancelled
+after that route error was identified. None of those attempts is counted green.

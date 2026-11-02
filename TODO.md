@@ -253,7 +253,12 @@ treated as a deferred task or as additional feature completion.
   stores. An opt-in public root branch source profile now admits and continues
   attributed branches, with local SQLite/PostgreSQL HTTP and process-stop
   evidence. Owner state views now also verify retained lineage before projecting
-  branch and replay targets. The frozen public branch PostgreSQL job passed;
+  branch and replay targets. Root replay and branch now also preserve a bounded
+  closure of completed nested scopes whose tasks were visited once; local
+  SQLite/PostgreSQL evidence covers two nested levels, effect policies, proof
+  damage, fresh-engine inspection and injected interruption after the fork.
+  Broader nested scope and real process-stop qualification remain open.
+  The frozen public branch PostgreSQL job passed;
   broader profiles and full hosted qualification remain open; see the
   [lineage record](docs/s4-02-native-lineage-acceptance.md#public-root-branch-source-profile--2026-11-02)
   and [operator guide](docs/native-state-branch.md).

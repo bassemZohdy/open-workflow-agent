@@ -29,8 +29,7 @@ def _validate_root_basis(
 ) -> tuple[dict[str, Any], tuple[ReceiptDependency, ...], int]:
     """Check the supported source profile without creating a target invocation.
 
-    This first profile excludes native channels, timing, completed nested scopes,
-    state controls and native routing extensions until their remapping is proven.
+    Native channels, timing, state controls and native routing remain excluded.
     """
     try:
         request = preflight.request
@@ -48,7 +47,7 @@ def _validate_root_basis(
                 item.capability_id.startswith(("langgraph.command@", "langgraph.send@"))
                 for item in plan.native_extensions
             )
-            or len(preflight.snapshots) != 1
+            or not 1 <= len(preflight.snapshots) <= 64
             or (
                 preflight.snapshots[0].reference,
                 preflight.snapshots[0].occurrence,
@@ -59,33 +58,58 @@ def _validate_root_basis(
             raise lineage_error("replay_profile_unsupported")
         native = json.loads(preflight.snapshots[0].native_json)
         bindings = json.loads(native["receipt_bindings"])
-        if bindings.get("version") != 2 or bindings.get("scopes"):
+        if bindings.get("version") != 2:
             raise lineage_error("replay_profile_unsupported")
-        source_receipts = [ReceiptDependency.from_value(value) for value in bindings["receipts"]]
         dependencies = selected_business_receipts(preflight, services.effect_journal)
         business = {item.identity.key for item in dependencies}
-        for item in source_receipts:
-            operation = item.identity.operation
-            if (
-                item.identity.key not in business
-                and operation != AUTHORITY_OPERATION
-                and not operation.startswith(
-                    (
-                        "policy:execution-authorization:v1:",
-                        "policy:execution-authorization-intent:v1:",
-                        "policy:execution-authorization-seal:v1",
+        for source in preflight.snapshots:
+            source_bindings = json.loads(json.loads(source.native_json)["receipt_bindings"])
+            for value in source_bindings["receipts"]:
+                dependency = ReceiptDependency.from_value(value)
+                operation = dependency.identity.operation
+                if (
+                    dependency.identity.key not in business
+                    and operation != AUTHORITY_OPERATION
+                    and not operation.startswith(
+                        (
+                            "policy:execution-authorization:v1:",
+                            "policy:execution-authorization-intent:v1:",
+                            "policy:execution-authorization-seal:v1",
+                        )
                     )
-                )
-            ):
-                raise lineage_error("replay_dependency_unsupported")
+                ):
+                    raise lineage_error("replay_dependency_unsupported")
         snapshot = json.loads(native["snapshot"])
         visits = snapshot["task_visits"]
         tasks = plan.scopes[0].tasks
-        completed = len(visits)
-        if not 0 < completed <= len(tasks) or visits != {
+        root_refs = {item.execution_reference or item.reference for item in tasks}
+        root_visits = {key: value for key, value in visits.items() if key in root_refs}
+        completed = len(root_visits)
+        if not 0 < completed <= len(tasks) or root_visits != {
             (item.execution_reference or item.reference): 1 for item in tasks[:completed]
         }:
             raise lineage_error("replay_profile_unsupported")
+        coordinates = {(item.reference, item.occurrence) for item in preflight.snapshots}
+        for item in preflight.snapshots[1:]:
+            scope = next(scope for scope in plan.scopes if scope.reference == item.reference)
+            packet = json.loads(item.native_json)
+            child_bindings = json.loads(packet["receipt_bindings"])
+            child_visits = json.loads(packet["snapshot"])["task_visits"]
+            if (
+                item.phase != "checkpoint"
+                or packet["next_node"] != "__end__"
+                or child_bindings.get("version") != 2
+                or not scope.tasks
+                or any(
+                    child_visits.get(task.execution_reference or task.reference) != 1
+                    for task in scope.tasks
+                )
+                or any(
+                    (entry["reference"], entry["occurrence"]) not in coordinates
+                    for entry in child_bindings["scopes"]
+                )
+            ):
+                raise lineage_error("replay_profile_unsupported")
         if kind == "branch":
             task = tasks[completed - 1]
             updates = plan.native_state_updates
@@ -135,33 +159,73 @@ def _stage_root_lineage(
             or target._execution_lease is None
         ):
             raise lineage_error("replay_profile_unsupported")
-        native, dependencies, _ = _validate_root_basis(services, plan, preflight, kind)
+        _, dependencies, _ = _validate_root_basis(services, plan, preflight, kind)
         authority = services.execution_authorizations.authority_receipt(target)
         if authority is None:
             raise lineage_error("original_authority_required")
-        target_receipts = [ReceiptDependency.capture(authority.identity, authority.receipt)]
-        target_receipts.extend(
-            ReceiptDependency(RemappedReceipt.capture(request, item).target, item.receipt_digest)
-            for item in dependencies
-        )
-        snapshot = json.loads(native["snapshot"])
-        snapshot["variables"]["workflow"]["id"] = target.invocation_id
-        if kind == "branch":
-            snapshot["data"] = request.values
-        native["snapshot"] = _json_identity(snapshot)
-        bindings = {
-            "version": 4,
-            "state_digest": "",
-            "receipts": [asdict(item) for item in target_receipts],
-            "scopes": [],
-            "lineage": request.request_digest,
+        source_packets: dict[tuple[str, int], dict[str, Any]] = {
+            (item.reference, item.occurrence): json.loads(item.native_json)
+            for item in preflight.snapshots
         }
-        native["receipt_bindings"] = _json_identity(bindings)
-        bindings["state_digest"] = LangGraphScopeExecutor._state_digest(native)
-        native["receipt_bindings"] = _json_identity(bindings)
-        return NativeForkProposal(
-            preflight, (NativeForkPacket("/do", 1, _json_identity(native)),)
-        ), dependencies
+        business = {item.identity.key: item for item in dependencies}
+        staged: dict[tuple[str, int], dict[str, Any]] = {}
+        visiting: set[tuple[str, int]] = set()
+
+        def stage(coordinate: tuple[str, int]) -> dict[str, Any]:
+            if coordinate in staged:
+                return staged[coordinate]
+            if coordinate in visiting or coordinate not in source_packets:
+                raise lineage_error("replay_scope_invalid")
+            visiting.add(coordinate)
+            packet = source_packets[coordinate]
+            original = json.loads(packet["receipt_bindings"])
+            target_receipts = [ReceiptDependency.capture(authority.identity, authority.receipt)]
+            for value in original["receipts"]:
+                dependency = ReceiptDependency.from_value(value)
+                if dependency.identity.key in business:
+                    target_receipts.append(
+                        ReceiptDependency(
+                            RemappedReceipt.capture(request, dependency).target,
+                            dependency.receipt_digest,
+                        )
+                    )
+            scopes = []
+            for child in original["scopes"]:
+                child_key = (child["reference"], child["occurrence"])
+                scopes.append(
+                    {
+                        **child,
+                        "state_digest": LangGraphScopeExecutor._state_digest(stage(child_key)),
+                    }
+                )
+            snapshot = json.loads(packet["snapshot"])
+            snapshot["variables"]["workflow"]["id"] = target.invocation_id
+            if kind == "branch" and coordinate == ("/do", 1):
+                snapshot["data"] = request.values
+            packet["snapshot"] = _json_identity(snapshot)
+            bindings = {
+                "version": 4,
+                "state_digest": "",
+                "receipts": [asdict(item) for item in target_receipts],
+                "scopes": scopes,
+                "lineage": request.request_digest,
+            }
+            packet["receipt_bindings"] = _json_identity(bindings)
+            bindings["state_digest"] = LangGraphScopeExecutor._state_digest(packet)
+            packet["receipt_bindings"] = _json_identity(bindings)
+            visiting.remove(coordinate)
+            staged[coordinate] = packet
+            return packet
+
+        packets = tuple(
+            NativeForkPacket(
+                item.reference,
+                item.occurrence,
+                _json_identity(stage((item.reference, item.occurrence))),
+            )
+            for item in preflight.snapshots
+        )
+        return NativeForkProposal(preflight, packets), dependencies
     except Exception:
         raise lineage_error("replay_staging_unavailable") from None
 

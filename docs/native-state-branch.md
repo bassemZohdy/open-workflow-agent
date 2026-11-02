@@ -63,10 +63,12 @@ An effect whose outcome is uncertain fails closed rather than being repeated.
 
 ## Current boundaries
 
-The supported source is one root checkpoint with a contiguous completed-task
-prefix, no completed nested scopes, timing, native channels, Command/Send routing
-or prior state-control bindings. The branch changes only root task data. Arbitrary
-attribution, nested scope remapping, branch-of-branch, time travel, independent
+The supported source is a root checkpoint with a contiguous completed-task
+prefix and up to 64 retained scope snapshots. Completed nested scopes are included
+when every task in each such scope has been visited exactly once. Timing, native
+channels, Command/Send routing and prior state-control bindings remain excluded.
+The branch changes only root task data. Arbitrary attribution, partially completed
+or repeated nested scopes, branch-of-branch, time travel, independent
 JavaScript parity and hosted/release qualification remain open. Local validation
 and its retained failures are recorded in the
 [lineage acceptance record](s4-02-native-lineage-acceptance.md).

@@ -210,7 +210,12 @@ class NativeReplayCoordinator:
                     proposal, dependencies = stage(self.services, plan, prepared, target)
                     snapshot = json.loads(json.loads(proposal.packets[0].native_json)["snapshot"])
                     tasks = plan.scopes[0].tasks
-                    visits = snapshot["task_visits"]
+                    root_refs = {item.execution_reference or item.reference for item in tasks}
+                    visits = {
+                        key: value
+                        for key, value in snapshot["task_visits"].items()
+                        if key in root_refs
+                    }
                     completed = len(visits)
                     if not 0 < completed <= len(tasks) or visits != {
                         (item.execution_reference or item.reference): 1
@@ -221,15 +226,23 @@ class NativeReplayCoordinator:
 
                     async def write(saver: Any, configs: Any) -> tuple[Any, ...]:
                         driver = LangGraphScopeExecutor(plan, saver, target.invocation_id)
-                        graph = driver.compile_scope(
-                            plan.scopes[0], self.engine.executor, ExecutionState(data=None)
-                        )
-                        result = await graph.aupdate_state(
-                            configs[0],
-                            json.loads(proposal.packets[0].native_json),
-                            as_node=_node_name(last),
-                        )
-                        return (result,)
+                        results = []
+                        for config, packet in zip(configs, proposal.packets, strict=True):
+                            scope = next(
+                                scope
+                                for scope in plan.scopes
+                                if scope.reference == packet.reference
+                            )
+                            graph = driver.compile_scope(
+                                scope, self.engine.executor, ExecutionState(data=None)
+                            )
+                            node = last if packet.reference == "/do" else scope.tasks[-1]
+                            results.append(
+                                await graph.aupdate_state(
+                                    config, json.loads(packet.native_json), as_node=_node_name(node)
+                                )
+                            )
+                        return tuple(results)
 
                     if target._execution_lease is None:
                         raise lineage_error("effect_ownership_lost")
