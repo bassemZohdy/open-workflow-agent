@@ -237,6 +237,10 @@ treated as a deferred task or as additional feature completion.
   root-task diagnostics, with bounded literal or task-output data and no
   publication to the Open Workflow business event bus. Observation failures
   do not change workflow execution.
+  Native subgraph namespace streaming remains unimplemented: the SDK's
+  inherited namespace changes the child's physical checkpoint lookup. A
+  cross-store feasibility test and the remaining recovery, identity and public
+  projection gates are recorded in [stream acceptance](docs/s4-02-native-streams-acceptance.md).
   PR #93 (`b363f10`) adds immutable replay/branch policies, explicit effect
   acknowledgement and selected-checkpoint preflight with historical root/scope
   closure and original/current authority. The private SDK writer now commits

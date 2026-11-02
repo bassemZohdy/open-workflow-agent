@@ -33,10 +33,12 @@ def test_postgres_job_runs_stream_profiles_on_both_stores_without_skips():
     assert "test_debug_stream_projects_timestamped_task_and_root_checkpoint_events" in command
     assert "test_debug_stream_requires_base_profile_before_invocation" in command
     assert "test_custom_observation_does_not_publish_or_duplicate_business_events" in command
+    assert "test_sdk_nested_streaming_and_checkpoint_namespace_are_independent" in command
     assert "test_actual_process_exit_loses_observation_replay_but_not_native_resume" in command
     for path in (
         "tests/langgraph/test_native_stream_api.py",
         "tests/langgraph/test_native_stream_projection.py",
+        "tests/langgraph/test_native_subgraph_sdk_boundary.py",
         "tests/core/test_native_streams.py",
         "tests/core/test_native_stream_registry.py",
         "tests/core/test_native_stream_transport.py",

@@ -1,5 +1,28 @@
 # S4-02 native stream observations
 
+## Native subgraph namespace boundary — 2026-11-02
+
+The current runtime's independently configured child scope preserves its
+separate thread and empty checkpoint namespace, but a direct SDK
+`subgraphs=True` probe does not propagate that child's events to the parent
+stream. Conversely, inheriting the SDK parent context propagates nested events
+but stores the child checkpoint under the SDK's generated non-empty namespace;
+the current child checkpoint lookup no longer finds it. Simply enabling
+`subgraphs=True` or inheriting the context therefore cannot qualify the
+existing recovery contract.
+
+The test-only prototype in
+[`test_native_subgraph_sdk_boundary.py`](../tests/langgraph/test_native_subgraph_sdk_boundary.py)
+translates the logical SDK namespace to the existing physical empty namespace
+for a simple completed child graph. Six cases passed with zero skips on SQLite
+and PostgreSQL, including a fresh saver reopening the child checkpoint and a
+pending-write round trip. This is feasibility evidence, not runtime code or a
+supported stream profile. The prototype does not qualify `alist`, native
+interrupt/resume, real process failure, concurrent/repeated scopes, branch
+routing, lineage verification or safe public namespace projection. A runtime
+implementation must preserve those identities and gates before advertising the
+subgraph capability; S4-02 and T50 remain open.
+
 ## Declared custom diagnostic source profile — 2026-11-02
 
 The separate required `langgraph.streams.custom@1.0.0` profile uses the native
