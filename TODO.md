@@ -245,7 +245,12 @@ treated as a deferred task or as additional feature completion.
   checkpoint/scope remapping, full
   lifecycle gate installation, branch attribution and public
   replay/branch admission remain open. Storage atomicity alone does not make a
-  business fork safe to resume. Frozen `479906c`
+  business fork safe to resume. A private root branch projection now replaces
+  schema-validated data at the last completed root task and is exercised through
+  a manually staged native fork, receipt binding and continuation on SQLite and
+  PostgreSQL. It has no branch reservation, public admission or process-recovery
+  qualification; see the [lineage record](docs/s4-02-native-lineage-acceptance.md#private-root-branch-projection--2026-11-02).
+  Frozen `479906c`
   passes 538 native combined cases per platform, zero skips and 1,288 unchanged
   Linux inputs; unchanged core/ADK inputs at `81691b7` pass 881/26 cases. See
   [lineage acceptance](docs/s4-02-native-lineage-acceptance.md) for source-matched

@@ -426,3 +426,34 @@ and native checkpoint contract selection passes eight cases with 16 skipped
 other-backend/engine cells. An initial test setup failed before exercising replay
 because its reservation table was not initialized; the fixture was corrected.
 These are local results, not hosted qualification or completion of S4-02.
+
+## Private root branch projection — 2026-11-02
+
+An unadvertised staging function validates the existing branch and update
+policies and prepares one root checkpoint with replacement data, a new workflow
+identity and remapped source receipt dependencies. Attribution must be the last
+completed root task; a different visited task or altered native node is rejected.
+The replacement is revalidated against the declared schema, and the declared
+effect policy must match the request. The existing fork writer and common lineage
+gate remain responsible for native proof and effects. This function does not
+reserve, admit or dispatch a branch and does not provide a public API.
+
+Manually staged tests execute a real native fork and continuation, including an
+earlier model receipt, source checkpoint preservation, repeated continuation,
+read-only denial and acknowledged re-execution of a later model call. A fresh
+Windows selection passes 12 cases across SQLite and PostgreSQL 16: eight branch
+cases and four later-checkpoint replay cases. The applicable authorization and
+checkpoint contract selection passes eight cases with 16 other-engine/backend
+skips. An earlier combined run had 15 passes and one PostgreSQL replay failure;
+an isolated trace showed its private test had bypassed creation of the engine
+namespace before writing native checkpoints. The corrected private tests create
+the namespace before direct native execution; the earlier run is not green
+evidence. An initial branch fixture also failed schema admission because it
+declared a call task as an update attribution; the corrected fixture uses set
+tasks and retains a separate prior model call.
+Tracking and PostgreSQL CI-selection checks pass 65 cases; the added branch
+test is selected by the existing hosted PostgreSQL replay job.
+
+Branch reservation, lifecycle admission, crash/restart reconciliation, broader
+attribution and scopes, public authorization and hosted qualification remain
+open. These local component checks do not complete S4-02 or T49.

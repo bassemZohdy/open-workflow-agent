@@ -97,6 +97,12 @@ public admission. Two additional process-kill cases interrupt a model call and
 verify that its uncertain outcome faults without a second call.
 No task or research row is promoted.
 
+The current branch additionally stages a private root data branch at the last
+completed task, with schema validation, source-receipt remapping and effect
+policy checks. Local native fork/continuation cases pass on SQLite and PostgreSQL;
+reservation, public admission and crash recovery remain open. See the
+[lineage record](docs/s4-02-native-lineage-acceptance.md#private-root-branch-projection--2026-11-02).
+
 S4-03 has bounded literal set/do/raise, try/catch, non-competing fork, jq `set` expression, `switch` and `for` execution with 111 shared
 success/fault cases (local, not hosted-qualified); public identity, durable services, expressions and full engine behavior
 remain missing. S4-04 has a new 13-case actual native outcome comparison with

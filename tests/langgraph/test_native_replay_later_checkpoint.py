@@ -39,6 +39,8 @@ async def test_replay_from_later_root_checkpoint_reexecutes_only_remaining_tasks
     services = RuntimeServices(
         config, model=FakeModel(), database_root=None if backend == "postgresql" else tmp_path
     )
+    # This private test calls the native adapter directly, bypassing invoke's namespace setup.
+    services.engine_database_path("langgraph")
     engine = LangGraphWorkflowEngine()
     await engine.initialize(services)
     await engine._timer_dispatcher.stop()
@@ -108,7 +110,7 @@ async def test_replay_from_later_root_checkpoint_reexecutes_only_remaining_tasks
         "acknowledge_reexecution": True,
     }
     result = await coordinator.run(parent, actor, **options)
-    assert result.status == "completed"
+    assert result.status == "completed", result.error
     assert len(services.model.calls) == len(TASKS) + (len(TASKS) - completed)
     repeated = await coordinator.run(parent, actor, **options)
     assert repeated.status == "completed"
