@@ -493,7 +493,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: Native streams on SQLite and PostgreSQL
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16
@@ -523,7 +523,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          timeout --signal=TERM --kill-after=30s 15m \
+          timeout --signal=TERM --kill-after=30s 25m \
             uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres --extra sqlite \
             --with pytest --with pytest-asyncio --with httpx pytest \
             ../../tests/langgraph/test_native_stream_api.py \
@@ -584,6 +584,8 @@ jobs:
               "test_subgraph_stream_projects_three_nested_loops",
               "test_subgraph_stream_accepts_maximum_three_level_occurrences",
               "test_subgraph_stream_observes_try_and_catch_with_waits",
+              "test_loop_try_subgraph_preserves_waits_and_effects",
+              "test_loop_try_profile_resumes_unrelated_wait",
               "test_subgraph_stream_repeated_try_scope_preserves_occurrences",
               "test_try_subgraph_stream_preserves_replay_evidence",
               "test_try_subgraph_projection_rejects_wrong_occurrence",

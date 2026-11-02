@@ -238,3 +238,15 @@ def try_subgraph_waiting_workflow(*, fault=False):
                          {"after": {"set": {"recovered": True}}}]},
     }}, {"done": {"set": {"done": True}}}]
     return compile_workflow(source)
+
+
+def try_loop_subgraph_waiting_workflow(*, fault=False, levels=1):
+    import copy
+
+    source = copy.deepcopy(try_subgraph_waiting_workflow(fault=fault).source)
+    body = [source["do"][0]]
+    for depth in range(levels):
+        values = [0, 1] if depth == 0 else [0]
+        body = [{f"loop{depth}": {"for": {"each": f"item{depth}", "in": values}, "do": body}}]
+    source["do"] = [*body, {"done": {"set": {"done": True}}}]
+    return compile_workflow(source)

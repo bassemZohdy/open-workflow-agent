@@ -380,6 +380,11 @@ class LangGraphScopeExecutor:
         self.native_nested_loop_stream = any(
             ancestor in loop_scopes
             for inner in loop_scopes for ancestor in ancestor_references(inner)
+        ) or any(
+            ancestor in loop_scopes
+            for reference, (_, parent_task) in self._subgraph_parents.items()
+            if "try" in parent_task.definition
+            for ancestor in ancestor_references(reference)
         )
         self.native_custom_events = (
             plan.native_custom_stream.events if plan.native_custom_stream is not None else ()
@@ -1710,7 +1715,7 @@ class LangGraphScopeExecutor:
         if observer is None:
             return
         try:
-            if not isinstance(namespace, tuple) or not 1 <= len(namespace) <= 35:
+            if not isinstance(namespace, tuple) or not 1 <= len(namespace) <= 36:
                 raise ValueError("native subgraph namespace is invalid")
             if isinstance(payload, dict) and set(payload) == {"__interrupt__"}:
                 return

@@ -26,6 +26,7 @@ from native_stream_test_support import (
     repeated_subgraph_waiting_workflow,
     subgraph_waiting_workflow,
     three_nested_loop_subgraph_waiting_workflow,
+    try_loop_subgraph_waiting_workflow,
     try_subgraph_waiting_workflow,
     workflow,
 )
@@ -228,7 +229,7 @@ async def test_subgraph_stream_resume_preserves_child_checkpoint_and_effect(stre
     "kind", [
         "missing_base", "dynamic_loop", "large_loop", "deep_loop", "large_nested",
         "wide_nested", "large_three_level", "empty_deep_overflow", "nested_scope",
-        "while_loop", "retry_scope", "try_nested_scope", "catch_nested_scope",
+        "while_loop", "retry_scope", "try_loop_retry", "try_nested_scope", "catch_nested_scope",
         "try_run_body", "run_body", "fork",
     ]
 )
@@ -287,6 +288,12 @@ async def test_subgraph_stream_rejects_unsupported_scope_before_execution(stream
             source["do"] = [{"protect": {
                 "try": source["do"], "catch": {"retry": {"limit": {"attempt": {"count": 1}}}},
             }}]
+    elif kind == "try_loop_retry":
+        source["do"] = [{"outer": {"for": {"each": "item", "in": [0, 1]}, "do": [
+            {"protect": {"try": [{"ok": {"set": {"value": 1}}}], "catch": {
+                "retry": {"limit": {"attempt": {"count": 1}}},
+            }}},
+        ]}}]
     elif kind in {"try_nested_scope", "catch_nested_scope", "try_run_body"}:
         nested = {"child": {"do": [{"item": {"set": {"value": 1}}}]}}
         unsupported = {"child": {"run": {"workflow": {
@@ -305,6 +312,65 @@ async def test_subgraph_stream_rejects_unsupported_scope_before_execution(stream
     with pytest.raises(UnsupportedWorkflowFeature):
         await engine.compile(compile_workflow(source))
     assert services.model.calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("levels", [1, 3])
+@pytest.mark.parametrize("fault", [False, True])
+@pytest.mark.parametrize(
+    "stream_runtime", [("sqlite", {"max_events": 256}), ("postgresql", {"max_events": 256})],
+    indirect=True,
+)
+async def test_loop_try_subgraph_preserves_waits_and_effects(stream_runtime, fault, levels):
+    services, engine = stream_runtime
+    plan = try_loop_subgraph_waiting_workflow(fault=fault, levels=levels)
+    owner, _ = await invoke(stream_runtime, plan=plan)
+    total = 4 if fault else 2
+    assert services.invocations.get(owner.invocation_id).status == "waiting"
+    for count in range(1, total + 1):
+        with authority_scope(authority(services, "alice")):
+            result = await engine.resume(owner, {}, plan)
+        assert result.status == ("completed" if count == total else "waiting"), result.error
+        assert len(services.model.calls) == min(count + 1, total)
+    protect = next(task.reference for scope in plan.scopes for task in scope.tasks
+                   if task.name == "protect")
+    async with client_for(stream_runtime) as client:
+        response = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "subgraphs"}
+        )
+        assert response.status_code == 200, response.text
+        refs = [item["task_reference"] for item in frames(response)]
+        assert refs.count(protect + "/try/0/first") == 2
+        assert refs.count(protect + "/catch/do/0/recover") == (2 if fault else 0)
+        assert re.search(r"task_[0-9a-f]{64}", response.text) is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("skip_loop", [False, True])
+@pytest.mark.parametrize(
+    "stream_runtime", [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
+    indirect=True,
+)
+async def test_loop_try_profile_resumes_unrelated_wait(stream_runtime, skip_loop):
+    from open_workflow_agent.workflow import compile_workflow
+
+    services, engine = stream_runtime
+    source = copy.deepcopy(try_loop_subgraph_waiting_workflow().source)
+    if skip_loop:
+        source["do"][0]["loop0"]["if"] = "${ false }"
+    source["do"].insert(0, {"before": {"wait": {"seconds": 300}}})
+    plan = compile_workflow(source)
+    owner, _ = await invoke(stream_runtime, plan=plan)
+    with authority_scope(authority(services, "alice")):
+        result = await engine.resume(owner, {}, plan)
+    assert result.status == ("completed" if skip_loop else "waiting"), result.error
+    assert len(services.model.calls) == (0 if skip_loop else 1)
+    if not skip_loop:
+        for count in (1, 2):
+            with authority_scope(authority(services, "alice")):
+                result = await engine.resume(owner, {}, plan)
+            assert result.status == ("completed" if count == 2 else "waiting"), result.error
+        assert len(services.model.calls) == 2
 
 
 @pytest.mark.asyncio
@@ -378,6 +444,7 @@ async def test_subgraph_stream_repeated_try_scope_preserves_occurrences(stream_r
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("nested_loop", [False, True])
 @pytest.mark.parametrize("fault", [False, True])
 @pytest.mark.parametrize(
     "stream_runtime",
@@ -385,7 +452,7 @@ async def test_subgraph_stream_repeated_try_scope_preserves_occurrences(stream_r
      ("postgresql", {"max_events": 128, "lineage": True, "lineage_timeout": 30})],
     indirect=True,
 )
-async def test_try_subgraph_stream_preserves_replay_evidence(stream_runtime, fault):
+async def test_try_subgraph_stream_preserves_replay_evidence(stream_runtime, fault, nested_loop):
     from open_workflow_agent.workflow import compile_workflow
 
     services, _ = stream_runtime
@@ -409,13 +476,17 @@ async def test_try_subgraph_stream_preserves_replay_evidence(stream_runtime, fau
         "try": [{"call": {"call": "llm:1.0.0@default"}}, {"action": action}],
         "catch": {"do": [{"recover": {"set": {"recovered": True}}}]},
     }}, {"done": {"set": {"done": True}}}]
+    if nested_loop:
+        source["do"] = [{"outer": {"for": {"each": "item", "in": [0, 1]},
+                                    "do": [source["do"][0]]}}, source["do"][1]]
     owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
+    root_reference = "/do/0/outer" if nested_loop else "/do/0/protect"
     async with client_for(stream_runtime) as client:
         history = await client.get(f"/v1/invocations/{owner.invocation_id}/states")
         assert history.status_code == 200, history.text
         reference = next(
             item["reference"] for item in history.json()["items"]
-            if item["root_task_visits"] == {"/do/0/protect": 1}
+            if item["root_task_visits"] == {root_reference: 1}
         )
         replay = await client.post(
             f"/v1/invocations/{owner.invocation_id}/state-replays",
@@ -430,7 +501,7 @@ async def test_try_subgraph_stream_preserves_replay_evidence(stream_runtime, fau
             }:
                 await asyncio.sleep(0.1)
         assert services.invocations.get(target).status == "completed"
-        assert len(services.model.calls) == 1
+        assert len(services.model.calls) == (2 if nested_loop else 1)
         target_state = await client.get(f"/v1/invocations/{target}/states")
         assert target_state.status_code == 200, target_state.text
 
@@ -761,19 +832,22 @@ async def test_subgraph_stream_resumes_sibling_nested_loops(stream_runtime):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("shape", ["nested_loop", "try_loop"])
 @pytest.mark.parametrize(
     "stream_runtime", [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
     indirect=True,
 )
 async def test_nested_loop_resume_rejects_mismatched_interrupt_identity(
-    stream_runtime, monkeypatch
+    stream_runtime, monkeypatch, shape
 ):
     from langgraph.graph.state import CompiledStateGraph
     from langgraph.types import Interrupt
     from open_workflow_agent.errors import InvocationStateError
 
     services, engine = stream_runtime
-    owner, plan = await invoke(stream_runtime, plan=nested_loop_subgraph_waiting_workflow())
+    plan = (nested_loop_subgraph_waiting_workflow() if shape == "nested_loop"
+            else try_loop_subgraph_waiting_workflow())
+    owner, plan = await invoke(stream_runtime, plan=plan)
     assert services.invocations.get(owner.invocation_id).status == "waiting"
     original = CompiledStateGraph.aget_state
 
@@ -2254,7 +2328,8 @@ async def test_actual_process_exit_loses_observation_replay_but_not_native_resum
     indirect=True,
 )
 @pytest.mark.parametrize(
-    "shape", ["direct", "repeated", "loop", "nested_loop", "three_nested_loop", "try", "catch"]
+    "shape", ["direct", "repeated", "loop", "nested_loop", "three_nested_loop", "try", "catch",
+              "try_loop", "catch_loop"]
 )
 async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_path, shape):
     services, engine = stream_runtime
@@ -2270,12 +2345,14 @@ async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_
         "three_nested_loop_subgraph_stream": shape == "three_nested_loop",
         "try_subgraph_stream": shape in {"try", "catch"},
         "catch_subgraph_stream": shape == "catch",
+        "try_loop_subgraph_stream": shape in {"try_loop", "catch_loop"},
+        "catch_loop_subgraph_stream": shape == "catch_loop",
     }), encoding="utf-8")
     completed = await asyncio.to_thread(
         subprocess.run,
         [sys.executable, str(Path(__file__).with_name("native_stream_restart_worker.py")),
          str(config_path), str(result_path)],
-        capture_output=True, text=True, timeout=180 if "nested_loop" in shape or shape == "catch"
+        capture_output=True, text=True, timeout=180 if "nested_loop" in shape or "catch" in shape
         else 60,
         cwd=Path(__file__).resolve().parents[2],
     )
@@ -2296,6 +2373,8 @@ async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_
                 "three_nested_loop": three_nested_loop_subgraph_waiting_workflow,
                 "try": try_subgraph_waiting_workflow,
                 "catch": lambda: try_subgraph_waiting_workflow(fault=True),
+                "try_loop": try_loop_subgraph_waiting_workflow,
+                "catch_loop": lambda: try_loop_subgraph_waiting_workflow(fault=True),
             }[shape]()
             result = await engine.resume(owner, {}, plan)
         assert result.status == "completed", result.error
@@ -2314,6 +2393,11 @@ async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_
                                   "/do/0/outer/do/0/inner"],
             "try": ["/do/0/protect/try/1/pause", "/do/0/protect/try/2/action"],
             "catch": ["/do/0/protect/catch/do/1/catchpause", "/do/0/protect/catch/do/2/after"],
+            "try_loop": ["/do/0/loop0/do/0/protect/try/1/pause",
+                         "/do/0/loop0/do/0/protect/try/2/action", "/do/0/loop0/do/0/protect"],
+            "catch_loop": ["/do/0/loop0/do/0/protect/catch/do/1/catchpause",
+                           "/do/0/loop0/do/0/protect/catch/do/2/after",
+                           "/do/0/loop0/do/0/protect"],
         }[shape]
         assert [item["task_reference"] for item in frames(observed)] == expected
     assert services.model.calls == []

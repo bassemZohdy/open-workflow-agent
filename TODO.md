@@ -251,8 +251,9 @@ treated as a deferred task or as additional feature completion.
   and passed its `24ee552` hosted PostgreSQL workflow. Two nested loop levels
   passed the `709af1e` hosted PostgreSQL workflow; a locally qualified candidate
   extends the bound to three levels and passed its `4205f55` hosted PostgreSQL
-  workflow. A locally qualified direct try/catch candidate awaits hosted checks;
-  broader shapes remain open.
+  workflow. Direct try/catch passed the `2604b12` hosted PostgreSQL workflow;
+  try/catch inside bounded loops passed local qualification and awaits hosted
+  checks; broader shapes remain open.
   See [stream acceptance](docs/s4-02-native-streams-acceptance.md).
   PR #93 (`b363f10`) adds immutable replay/branch policies, explicit effect
   acknowledgement and selected-checkpoint preflight with historical root/scope

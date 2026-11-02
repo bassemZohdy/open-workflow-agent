@@ -364,15 +364,19 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                     ancestor for ancestor in ancestor_references(scope.reference)
                     if ancestor in loop_scopes
                 ]
-                if parents and scope.reference not in loop_scopes:
+                if (
+                    parents
+                    and scope.reference not in loop_scopes
+                    and scope.reference not in protected_scopes
+                ):
                     raise UnsupportedWorkflowFeature(
                         "native subgraph observations do not support child scopes inside loops"
                     )
-                if len(parents) > 2:
+                if len(parents) > (3 if scope.reference in protected_scopes else 2):
                     raise UnsupportedWorkflowFeature(
                         "native subgraph observations allow at most three nested loops"
                     )
-                if parents:
+                if parents and scope.reference in loop_scopes:
                     parent = parents[0]
                     children.setdefault(parent, []).append(scope.reference)
             weights: dict[str, int] = {}
@@ -391,10 +395,11 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             if any(
                 not any(operation in task.definition for operation in ("set", "call", "wait"))
                 and task.reference + "/do" not in loop_scopes
+                and task.reference + "/try" not in protected_scopes
                 for scope in plan.scopes if scope.reference in loop_scopes for task in scope.tasks
             ):
                 raise UnsupportedWorkflowFeature(
-                    "native subgraph loop observations require set, call or wait tasks"
+                    "native subgraph loop observations require set, call, wait or protected tasks"
                 )
             if any(
                 not any(

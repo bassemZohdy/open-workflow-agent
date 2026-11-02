@@ -14,7 +14,7 @@ def test_postgres_job_runs_stream_profiles_on_both_stores_without_skips():
     job = workflow["jobs"]["postgres-native-stream"]
     assert job["services"]["postgres"]["image"] == "postgres:16"
     assert job["runs-on"] == "ubuntu-latest"
-    assert job["timeout-minutes"] == "20"
+    assert job["timeout-minutes"] == "30"
     step = next(
         item
         for item in job["steps"]
@@ -23,7 +23,7 @@ def test_postgres_job_runs_stream_profiles_on_both_stores_without_skips():
     assert "OWA_TEST_POSTGRES_URL" in step["env"]
     command = step["run"]
     assert "--extra postgres" in command and "--extra sqlite" in command
-    assert "timeout --signal=TERM --kill-after=30s 15m" in command
+    assert "timeout --signal=TERM --kill-after=30s 25m" in command
     assert "--junitxml=" in command and 'get("skipped", "0")' in command
     assert "test_task_stream_observes_replay_target_without_repeating_retained_effects" in command
     assert "test_task_stream_remains_available_during_native_send_fanout" in command

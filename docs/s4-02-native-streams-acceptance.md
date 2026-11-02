@@ -1,5 +1,34 @@
 # S4-02 native stream observations
 
+## Try/catch inside bounded loops candidate — 2026-11-02
+
+A test-only admission bypass and targeted interruption resume exercised a
+protected task inside a two-item loop with and without caught errors, including
+repeated waits and model-call counts. After correcting a fixture that reused
+the reserved loop index name, four SQLite/PostgreSQL probe cases passed. The
+runtime candidate then passed the same four cases without the bypass. It admits
+the existing finite `try`/`catch` profile inside supported literal loops and
+uses the verified targeted wake when a protected scope is nested in a loop.
+A focused selection then passed 18 cases with zero skips on both stores,
+covering one and three loop levels, unrelated waits, rejected retries and real
+process exit. Six replay cases then passed with zero skips across both stores,
+including caught-error paths with and without an enclosing loop. Nested child
+scopes inside `try`/`catch` and retries remain rejected. Four further cases
+passed on both stores, rejecting mismatched interruption identities for both
+nested-loop and loop-protected waits. The complete stream, projection, saver,
+lineage and core-transport selection passed 375 cases with zero skips and
+included all 58 hosted-job witnesses. The first shared recovery attempt stopped
+after seven passes when a PostgreSQL resume exceeded its existing ten-second
+test bound; the exact
+case passed on a fresh database. A complete fresh checkpoint, fencing,
+native-state and retry/error-context rerun then passed 161 LangGraph cases with
+zero skips on both stores. Hosted qualification remains pending.
+
+The prior 351-case hosted stream job took 748.9 seconds within a 15-minute
+step limit. Because the added cross-store nested-wait and restart matrix is
+materially larger, the candidate increases that step limit to 25 minutes and
+the enclosing job limit to 30 minutes; the prior timing result is retained.
+
 ## Try/catch subgraph observation candidate — 2026-11-02
 
 An admission-bypass probe mapped direct `try` and `catch/do` scopes to existing
@@ -21,8 +50,9 @@ without repeating the retained model effect; four passed repeated scope
 occurrences. The complete stream, projection, saver, lineage and core-transport
 selection passed 351 cases with zero skips and included all 56 hosted-job
 witnesses. The shared checkpoint, fencing, native-state and retry/error-context
-selection passed 161 LangGraph cases with zero skips on both stores. Hosted
-qualification remains pending.
+selection passed 161 LangGraph cases with zero skips on both stores. The
+[hosted PostgreSQL workflow at `2604b12`](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41500532506)
+passed; its native-stream job passed 351 cases with zero skips in 748.9 seconds.
 
 ## Native message-stream investigation — 2026-11-02
 
