@@ -16,7 +16,9 @@ from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 
 
 async def main():
-    root, source_id, key, reference, policy, phase = sys.argv[1:]
+    root, source_id, key, reference, policy, phase, *coordinates = sys.argv[1:]
+    task_reference = coordinates[0] if coordinates else "/do/1/second"
+    value = int(coordinates[1]) if coordinates else 7
     config = configuration(timeout_seconds=30)
     config.execution_authorization.policy.rules[0].actions.extend(
         ["state.branch", "state.update", "invocations.cancel"]
@@ -70,8 +72,8 @@ async def main():
             f"/v1/invocations/{source_id}/state-branches",
             json={
                 "reference": reference,
-                "task_reference": "/do/1/second",
-                "values": {"value": 7},
+                "task_reference": task_reference,
+                "values": {"value": value},
                 "acknowledge_reexecution": policy == "reexecute",
             },
             headers={"Idempotency-Key": key},

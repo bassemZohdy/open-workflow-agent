@@ -731,12 +731,11 @@ The initial forward replay returned 409 under the former contiguous-only rule;
 a synthetic reordered-contiguous case exposed the old attribution shortcut before
 the guard was tightened. Those expected development failures are not green runs.
 Hosted evidence for the frozen source follows.
-Hosted PostgreSQL qualification is queued for frozen source
+Hosted PostgreSQL qualification passed for frozen source
 `8dfd40e6e2bf76572352ba016194792a8c50b0e6` on
 `codex/s4-02-forward-qualification-8dfd40e`:
 [workflow run 41384290398](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41384290398).
-The dedicated PostgreSQL branch job passed; the overall workflow was still
-running when checked, so no full-workflow result is claimed yet.
+The complete workflow, including the dedicated PostgreSQL branch job, passed.
 
 ## Non-competing native Send in root lineage — 2026-11-02
 
@@ -757,10 +756,18 @@ covering a fan-out ahead of the checkpoint and a completed nested fan-out. The
 existing native Send, lineage-admission and checkpoint
 contract selection passed 24 cases with 13 other-backend/engine skips. The
 initial pre-fan-out replay returned 409 under the former Send restriction; it is
-retained as pre-change failure evidence. The new profile has not been
-hosted-qualified or qualified with an actual process kill.
-Hosted SQLite/PostgreSQL qualification is queued for frozen source
+retained as pre-change failure evidence.
+Hosted SQLite/PostgreSQL qualification ran for frozen source
 `0f11940714d4918932b942c3111bb28d9eace188` on
 `codex/s4-02-send-qualification-0f11940`:
 [workflow run 41386329048](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41386329048).
-No result is claimed for that run yet.
+The dedicated Send-lineage job passed; the overall workflow remains in progress.
+
+Subsequent local process-stop tests passed on Windows with both SQLite and
+PostgreSQL for a reexecuting branch after a completed direct Send fan-out.
+Stopping the worker immediately after the fork recovered the same target and
+executed its downstream effect once. Stopping inside that effect recovered the
+same target in a faulted state without repeating the uncertain effect. Repeated
+requests returned the same target. The existing SQLite public branch stop test
+also passed with the shared worker's original arguments. These tests do not
+qualify process stops for other Send positions or nested fan-outs.
