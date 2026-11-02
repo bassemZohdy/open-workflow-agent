@@ -99,6 +99,155 @@ def frames(response):
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "stream_runtime",
+    [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
+    indirect=True,
+)
+@pytest.mark.parametrize("required", [True, False])
+async def test_debug_stream_projects_timestamped_task_and_root_checkpoint_events(
+    stream_runtime, required
+):
+    services, _ = stream_runtime
+    owner, _ = await invoke(stream_runtime, plan=workflow(debug_stream=required, nested=True))
+    path = f"/v1/invocations/{owner.invocation_id}/stream"
+    async with client_for(stream_runtime) as client:
+        caps = (await client.get("/v1/capabilities")).json()
+        assert "langgraph.streams.debug@1.0.0" in caps["nativeExtensions"]
+        assert (
+            caps["features"]["nativeStreaming"]["debugModeProfile"]
+            == "langgraph.streams.debug@1.0.0"
+        )
+        response = await client.get(path, params={"mode": "debug"})
+        assert response.status_code == 200, response.text
+        events = frames(response)
+        if required:
+            assert {item["data"]["type"] for item in events} == {"task", "checkpoint"}
+            assert all(item["mode"] == "debug" and "timestamp" in item["data"] for item in events)
+            assert any(
+                item["task_reference"].endswith("/child")
+                for item in events
+                if item["task_reference"]
+            )
+            assert all(
+                item["scope"] == "/do" and item["task_reference"] is None
+                for item in events
+                if item["data"]["type"] == "checkpoint"
+            )
+            assert all(
+                set(item["data"])
+                == (
+                    {"type", "timestamp", "status"}
+                    if item["data"]["type"] == "task"
+                    else {"type", "timestamp"}
+                )
+                for item in events
+            )
+            assert "alice" not in response.text
+            async with client_for(stream_runtime, "bob") as other:
+                assert (await other.get(path, params={"mode": "debug"})).status_code == 404
+        else:
+            assert events == []
+        assert len(services.model.calls) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stream_runtime",
+    [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
+    indirect=True,
+)
+@pytest.mark.parametrize("outcome", ["interrupted", "faulted"])
+async def test_debug_stream_preserves_status_without_private_error_or_interrupt(
+    stream_runtime, outcome
+):
+    services, engine = stream_runtime
+    plan = workflow(debug_stream=True, waiting=outcome == "interrupted")
+    if outcome == "faulted":
+        services.model.failures = 1
+    owner = services.invocations.create(
+        engine="langgraph",
+        session_id="same",
+        user_id="same",
+        owner_principal="alice",
+        workflow_name=plan.name,
+        workflow_version=plan.version,
+        workflow_fingerprint=plan.fingerprint,
+    )
+    with authority_scope(authority(services, "alice")):
+        result = await engine.invoke(plan, owner, {"value": "private input"})
+    assert result.status == ("waiting" if outcome == "interrupted" else "faulted")
+    async with client_for(stream_runtime) as client:
+        response = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "debug"}
+        )
+        assert response.status_code == 200, response.text
+        events = frames(response)
+        tasks = [item for item in events if item["data"]["type"] == "task"]
+        assert tasks[-1]["data"]["status"] == outcome
+        assert (
+            "private input" not in response.text
+            and "controlled fake model failure" not in response.text
+        )
+
+
+@pytest.mark.asyncio
+async def test_debug_stream_requires_base_profile_before_invocation(stream_runtime):
+    from open_workflow_agent.errors import UnsupportedWorkflowFeature
+
+    services, engine = stream_runtime
+    plan = workflow(required=False, debug_stream=True)
+    before = services.invocations.connection.execute("SELECT COUNT(*) FROM invocations").fetchone()[
+        0
+    ]
+    with pytest.raises(UnsupportedWorkflowFeature):
+        await engine.compile(plan)
+    app = create_app(config=services.config, services=services, engine=engine)
+    app.state.plan = plan
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        headers={"Authorization": "Bearer controlled-stream-alice"},
+    ) as client:
+        response = await client.post("/v1/invoke", json={"input": {"value": "alice"}})
+        assert response.status_code == UnsupportedWorkflowFeature.status_code, response.text
+    assert (
+        services.invocations.connection.execute("SELECT COUNT(*) FROM invocations").fetchone()[0]
+        == before
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stream_runtime",
+    [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
+    indirect=True,
+)
+async def test_debug_stream_replays_after_resume_without_repeating_effect(stream_runtime):
+    services, engine = stream_runtime
+    owner, plan = await invoke(stream_runtime, plan=workflow(waiting=True, debug_stream=True))
+    path = f"/v1/invocations/{owner.invocation_id}/stream"
+    async with client_for(stream_runtime) as client:
+        paused = await client.get(path, params={"mode": "debug"})
+        assert paused.status_code == 200, paused.text
+        cursor = frames(paused)[-1]["id"]
+        with authority_scope(authority(services, "alice")):
+            result = await engine.resume(owner, {}, plan)
+        assert result.status == "completed", result.error
+        resumed = await client.get(
+            path, params={"mode": "debug"}, headers={"Last-Event-ID": cursor}
+        )
+        assert resumed.status_code == 200, resumed.text
+        events = frames(resumed)
+        assert any(
+            item["task_reference"] == "/do/3/last" and item["data"].get("status") == "completed"
+            for item in events
+        )
+        assert all(item["id"].partition(":")[0] == cursor.partition(":")[0] for item in events)
+    assert len(services.model.calls) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stream_runtime",
     [
         ("sqlite", {"max_events": 64, "state": True}),
         ("postgresql", {"max_events": 64, "state": True}),
@@ -434,7 +583,9 @@ async def test_task_stream_observes_replay_target_without_repeating_retained_eff
     from open_workflow_agent.workflow import compile_workflow
 
     services, _ = stream_runtime
-    source = copy.deepcopy(workflow(task_stream=True, checkpoint_stream=True).source)
+    source = copy.deepcopy(
+        workflow(task_stream=True, checkpoint_stream=True, debug_stream=True).source
+    )
     metadata = source["document"]["metadata"]["owa"]
     metadata["nativeExtensions"].extend(
         [
@@ -489,6 +640,15 @@ async def test_task_stream_observes_replay_target_without_repeating_retained_eff
             params={"reference": checkpoint_events[-1]["data"]["reference"]},
         )
         assert target_state.status_code == 200, target_state.text
+        debug_response = await client.get(
+            f"/v1/invocations/{target}/stream", params={"mode": "debug"}
+        )
+        assert debug_response.status_code == 200, debug_response.text
+        assert [
+            (item["task_reference"], item["data"]["status"])
+            for item in frames(debug_response)
+            if item["data"]["type"] == "task"
+        ] == [("/do/2/last", "started"), ("/do/2/last", "completed")]
         assert len(services.model.calls) == 1
 
 
@@ -502,7 +662,7 @@ async def test_task_stream_remains_available_during_native_send_fanout(stream_ru
     from open_workflow_agent.workflow import compile_workflow
 
     services, _ = stream_runtime
-    source = copy.deepcopy(workflow(task_stream=True).source)
+    source = copy.deepcopy(workflow(task_stream=True, debug_stream=True).source)
     source["document"]["metadata"]["owa"]["nativeExtensions"].append(
         {"name": "langgraph.send", "version": "1.0.0"}
     )
@@ -539,6 +699,16 @@ async def test_task_stream_remains_available_during_native_send_fanout(stream_ru
                 for item in events
                 if item["task_reference"].endswith("/" + name)
             ] == ["started", "completed"]
+        debug = await client.get(
+            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "debug"}
+        )
+        assert debug.status_code == 200, debug.text
+        for name in ("left", "right"):
+            assert [
+                item["data"]["status"]
+                for item in frames(debug)
+                if item["task_reference"] and item["task_reference"].endswith("/" + name)
+            ] == ["started", "completed"]
         assert len(services.model.calls) == 0
 
 
@@ -567,7 +737,7 @@ async def test_owner_stream_is_bounded_mode_filtered_and_has_explicit_replay_gap
         assert '"reason":"event_limit"' in selected.text
         small = await client.get(path, params={"max_bytes": 256})
         assert not frames(small) and '"reason":"byte_limit"' in small.text
-        assert (await client.get(path, params={"mode": "debug"})).status_code == 422
+        assert (await client.get(path, params={"mode": "custom"})).status_code == 422
     assert len(services.model.calls) == 1
     assert not services.native_streams._consumers
 
@@ -726,20 +896,21 @@ async def test_cancelled_http_observer_releases_capacity_without_cancelling_exec
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("stream_runtime", "task_stream", "checkpoint_stream"),
+    ("stream_runtime", "task_stream", "checkpoint_stream", "debug_stream"),
     [
-        ((backend, {"max_events": 32}), tasks, False)
+        ((backend, {"max_events": 32}), tasks, False, False)
         for backend in ("sqlite", "postgresql")
         for tasks in (False, True)
     ]
     + [
-        ((backend, {"max_events": 32, "state": True}), False, True)
+        ((backend, {"max_events": 32, "state": True}), False, True, False)
         for backend in ("sqlite", "postgresql")
-    ],
+    ]
+    + [((backend, {"max_events": 32}), False, False, True) for backend in ("sqlite", "postgresql")],
     indirect=["stream_runtime"],
 )
 async def test_actual_process_exit_loses_observation_replay_but_not_native_resume(
-    stream_runtime, tmp_path, task_stream, checkpoint_stream
+    stream_runtime, tmp_path, task_stream, checkpoint_stream, debug_stream
 ):
     services, engine = stream_runtime
     config_path = tmp_path / "worker-config.json"
@@ -751,6 +922,7 @@ async def test_actual_process_exit_loses_observation_replay_but_not_native_resum
                 "root": str(services.database_root) if services.database_root is not None else None,
                 "task_stream": task_stream,
                 "checkpoint_stream": checkpoint_stream,
+                "debug_stream": debug_stream,
             }
         ),
         encoding="utf-8",
@@ -786,6 +958,7 @@ async def test_actual_process_exit_loses_observation_replay_but_not_native_resum
                     waiting=True,
                     task_stream=True if task_stream else None,
                     checkpoint_stream=True if checkpoint_stream else None,
+                    debug_stream=True if debug_stream else None,
                 ),
             )
         assert result.status == "completed", result.error
@@ -809,6 +982,9 @@ async def test_actual_process_exit_loses_observation_replay_but_not_native_resum
                 params={"reference": checkpoint_events[-1]["data"]["reference"]},
             )
             assert selected.status_code == 200, selected.text
+        if debug_stream:
+            debug_events = frames(await client.get(path, params={"mode": "debug"}))
+            assert any(item["data"].get("status") == "completed" for item in debug_events)
     assert services.model.calls == []
 
 

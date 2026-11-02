@@ -16,6 +16,12 @@ checkpoint references. It requires the base stream profile, the
 `langgraph.state.read@1.0.0` profile, and the configured native state reader.
 It does not expose native IDs, checkpoint contents or nested-scope checkpoints.
 
+The separate `langgraph.streams.debug@1.0.0` profile observes a bounded,
+timestamped projection of native task and root-checkpoint debug events. It
+requires the base stream profile. It does not expose native step numbers,
+identifiers, task inputs or outputs, exceptions, checkpoint contents or
+nested-scope checkpoint events.
+
 Mount [the configuration](../examples/native-stream.yaml) and [workflow](../examples/native-stream-workflow.yaml)
 at the configured paths, provide `OWA_NATIVE_STREAM_TOKEN` through deployment
 secrets, and retain the normal SQLite `/data` volume. PostgreSQL is optional.
@@ -77,6 +83,10 @@ add these required declarations alongside the base stream declaration:
         - {name: langgraph.streams.checkpoints, version: '1.0.0', required: true}
 ```
 
+To include debug observations, require `langgraph.streams.debug@1.0.0` in
+addition to the base stream declaration. The debug profile does not require
+state-read access and does not emit checkpoint references.
+
 | Deployment setting | Default | Bound |
 | --- | --- | --- |
 | `max_logs` | 16 | 1–128 retained invocation logs |
@@ -96,7 +106,7 @@ Responses keep their slot until closed, including after their log is evicted.
 
 ## Stream and replay behavior
 
-`mode` selects `values`, `updates`, `tasks`, `checkpoints` or `all` (default).
+`mode` selects `values`, `updates`, `tasks`, `checkpoints`, `debug` or `all` (default).
 Other modes are rejected.
 Each `native.observation` SSE event contains an immutable JSON envelope with
 schema `owa/native-observation/v1`, event ID, invocation ID, mode, public OWS
@@ -112,7 +122,9 @@ produce additional events. A checkpoint event contains only an opaque root
 `reference` and no task reference. It can be supplied to the state-read endpoint,
 which independently verifies owner, authorization and retained native evidence.
 An emitted reference is an observation, not proof of a committed or retained
-checkpoint; the read may be unavailable. Messages, debug, custom and JavaScript
+checkpoint; the read may be unavailable. A debug event carries a timestamp and
+either a public task reference with lifecycle status or an opaque root
+checkpoint occurrence without a checkpoint reference. Messages, custom and JavaScript
 tool stream modes remain unsupported.
 
 Events follow native emission order and are observations, not proof that a

@@ -93,6 +93,41 @@ async def test_checkpoint_projection_never_exposes_native_identity_or_data(damag
         subscriber.close()
 
 
+@pytest.mark.parametrize("damage", ["kind", "phase", "thread", "timestamp"])
+async def test_debug_projection_fails_closed_for_malformed_sdk_events(damage):
+    from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor, _node_name
+
+    plan = compile_workflow(generate_default_workflow())
+    log = NativeStreamLog("invocation-a")
+    executor = LangGraphScopeExecutor(plan, None, "invocation-a", stream_observer=log)
+    scope = plan.scopes[0]
+    payload = {
+        "type": "task",
+        "timestamp": "2026-01-01T00:00:00+00:00",
+        "payload": {"name": _node_name(scope.tasks[0]), "input": {"secret": True}},
+    }
+    if damage == "kind":
+        payload["type"] = "unexpected"
+    elif damage == "phase":
+        payload["type"] = "task_result"
+    elif damage == "thread":
+        payload["type"] = "checkpoint"
+        payload["payload"] = {
+            "config": {
+                "configurable": {
+                    "thread_id": "foreign",
+                    "checkpoint_ns": "",
+                    "checkpoint_id": str(uuid4()),
+                }
+            }
+        }
+    elif damage == "timestamp":
+        payload["timestamp"] = "not-a-time"
+    executor._observe_scope_event("debug", payload, scope)
+    with pytest.raises(BufferError):
+        log.subscribe()
+
+
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 @pytest.mark.parametrize("observation", ["normal", "closed", "oversized"])
 async def test_native_stream_driver_preserves_effects_and_hides_private_state(

@@ -88,6 +88,7 @@ async def test_native_adk_dynamic_plan_invocation(tmp_path):
         "langgraph.send",
         "langgraph.streams.tasks",
         "langgraph.streams.checkpoints",
+        "langgraph.streams.debug",
     ],
 )
 async def test_adk_rejects_required_langgraph_channel_extension_before_native_mutation(

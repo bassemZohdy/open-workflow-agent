@@ -30,6 +30,8 @@ def test_postgres_job_runs_stream_profiles_on_both_stores_without_skips():
     assert "test_checkpoint_stream_references_root_history_only_with_opt_in" in command
     assert "test_checkpoint_stream_fails_admission_when_dependencies_are_missing" in command
     assert "test_checkpoint_reference_does_not_grant_state_inspection" in command
+    assert "test_debug_stream_projects_timestamped_task_and_root_checkpoint_events" in command
+    assert "test_debug_stream_requires_base_profile_before_invocation" in command
     assert "test_actual_process_exit_loses_observation_replay_but_not_native_resume" in command
     for path in (
         "tests/langgraph/test_native_stream_api.py",

@@ -1119,10 +1119,10 @@ child checkpoint. The prior implementation rejected the combined route before
 target reservation. Twenty-three route tests, four existing SQLite Send cases,
 and 27 shared admission/receipt cases also passed; the latter had 19 other-backend
 skips. Hosted qualification is separate.
-Hosted qualification of frozen source `7e6e016` is running on
-`codex/s4-02-combined-routes-7e6e016`:
-[workflow run 41407027218](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41407027218).
-The PostgreSQL native state-branch job passed; the full workflow is still running.
+Hosted qualification of frozen source `7e6e016` on
+`codex/s4-02-combined-routes-7e6e016` completed successfully: all 18 jobs in
+[workflow run 41407027218](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41407027218)
+passed. Later repairs and broader S4-02 qualification remain separate.
 
 ## Routed child scopes inside a forward Send fan-out — 2026-11-02
 
@@ -1152,9 +1152,10 @@ lineage admission and receipt selection passed 27 with 19 other-backend skips.
 The earlier aggregate-only predicate would accept the complete-looking totals;
 the test that initially imported the new validator failed collection until the
 validator was implemented. Hosted qualification remains separate.
-Hosted qualification of frozen source `8f93f2b` is running on
-`codex/s4-02-child-integrity-8f93f2b`:
-[workflow run 41408807023](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41408807023).
+Hosted qualification of frozen source `8f93f2b` on
+`codex/s4-02-child-integrity-8f93f2b` completed successfully: all 18 jobs in
+[workflow run 41408807023](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41408807023)
+passed. Later repairs and broader S4-02 qualification remain separate.
 
 ## Completed child route order — 2026-11-02
 
@@ -1174,9 +1175,10 @@ Valid one- and two-occurrence nested replay/branch regressions passed on SQLite
 and PostgreSQL, as did the two-occurrence combined root/child forward-route
 regressions on both stores. These tests cover re-execution and retained proof
 damage; broader profile and hosted qualification remain separate.
-Hosted qualification of frozen source `e24bf63` is running on
-`codex/s4-02-child-order-e24bf63`:
-[workflow run 41409654472](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41409654472).
+Hosted qualification of frozen source `e24bf63` on
+`codex/s4-02-child-order-e24bf63` completed successfully: all 18 jobs in
+[workflow run 41409654472](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41409654472)
+passed. Later repairs and broader S4-02 qualification remain separate.
 
 ## Child scope exit on a forward route — 2026-11-02
 

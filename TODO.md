@@ -230,6 +230,9 @@ treated as a deferred task or as additional feature completion.
   stream profile, and emits only opaque root checkpoint references. References
   are observations rather than proof of retained state; inspection retains its
   independent authority and evidence checks.
+  A separate debug-stream source profile projects timestamped native task and
+  root-checkpoint events without SDK identifiers, state or internal scheduler
+  details; other native stream modes and full T50 remain open.
   PR #93 (`b363f10`) adds immutable replay/branch policies, explicit effect
   acknowledgement and selected-checkpoint preflight with historical root/scope
   closure and original/current authority. The private SDK writer now commits

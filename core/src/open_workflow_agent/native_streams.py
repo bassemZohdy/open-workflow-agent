@@ -10,12 +10,13 @@ import asyncio
 import json
 from collections import deque
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Literal
 from uuid import uuid4
 
 from .expressions import validate_expression_data
 
-NativeStreamMode = Literal["values", "updates", "tasks", "checkpoints"]
+NativeStreamMode = Literal["values", "updates", "tasks", "checkpoints", "debug"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,7 +141,13 @@ class NativeStreamLog:
     ) -> NativeStreamFrame:
         if self._closed or self._finished_reason is not None:
             raise RuntimeError("native observation log is closed")
-        if not isinstance(mode, str) or mode not in {"values", "updates", "tasks", "checkpoints"}:
+        if not isinstance(mode, str) or mode not in {
+            "values",
+            "updates",
+            "tasks",
+            "checkpoints",
+            "debug",
+        }:
             raise ValueError("native observation mode is unsupported")
         for reference in (scope, task_reference):
             if reference is not None and (
@@ -168,6 +175,36 @@ class NativeStreamLog:
             or any(char not in "0123456789abcdef" for char in data["reference"])
         ):
             raise ValueError("native checkpoint observation must contain an opaque root reference")
+        if mode == "debug":
+            if (
+                not isinstance(data, dict)
+                or not isinstance(data.get("type"), str)
+                or data["type"] not in {"task", "checkpoint"}
+            ):
+                raise ValueError("native debug observation type is unsupported")
+            timestamp = data.get("timestamp")
+            if not isinstance(timestamp, str) or not 1 <= len(timestamp) <= 40:
+                raise ValueError("native debug timestamp is invalid")
+            try:
+                parsed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+                if parsed.tzinfo is None or parsed.utcoffset() is None:
+                    raise ValueError("timestamp requires a timezone")
+            except ValueError:
+                raise ValueError("native debug timestamp is invalid") from None
+            if data["type"] == "checkpoint":
+                if (
+                    set(data) != {"type", "timestamp"}
+                    or scope != "/do"
+                    or task_reference is not None
+                ):
+                    raise ValueError("native debug checkpoint must be an opaque root event")
+            elif (
+                set(data) != {"type", "timestamp", "status"}
+                or task_reference is None
+                or not isinstance(data["status"], str)
+                or data["status"] not in {"started", "completed", "faulted", "interrupted"}
+            ):
+                raise ValueError("native debug task must contain only its public status")
         validate_expression_data(data)
         sequence = self._sequence + 1
         event_id = f"{self._epoch}:{sequence}"

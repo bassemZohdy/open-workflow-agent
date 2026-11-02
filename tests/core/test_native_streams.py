@@ -210,3 +210,24 @@ def test_checkpoint_stream_accepts_only_opaque_root_references(data, scope, refe
         NativeStreamLog("invocation-a").append(
             "checkpoints", data, scope=scope, task_reference=reference
         )
+
+
+@pytest.mark.parametrize(
+    "data,scope,reference",
+    [
+        ({"type": [], "timestamp": "2026-01-01T00:00:00Z"}, "/do", None),
+        ({"type": "checkpoint", "timestamp": "bad"}, "/do", None),
+        ({"type": "checkpoint", "timestamp": "2026-01-01T00:00:00"}, "/do", None),
+        ({"type": "checkpoint", "timestamp": "2026-01-01T00:00:00Z", "id": "secret"}, "/do", None),
+        ({"type": "checkpoint", "timestamp": "2026-01-01T00:00:00Z"}, "/do/0/nested", None),
+        ({"type": "task", "timestamp": "2026-01-01T00:00:00Z", "status": "started"}, "/do", None),
+        (
+            {"type": "task", "timestamp": "2026-01-01T00:00:00Z", "status": [], "input": "secret"},
+            "/do",
+            "/do/0/task",
+        ),
+    ],
+)
+def test_debug_stream_rejects_private_payloads_or_invalid_timestamps(data, scope, reference):
+    with pytest.raises(ValueError):
+        NativeStreamLog("invocation-a").append("debug", data, scope=scope, task_reference=reference)

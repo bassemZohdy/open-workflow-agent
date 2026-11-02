@@ -32,6 +32,7 @@ from open_workflow_agent.native_extensions import (
     LANGGRAPH_COMMAND,
     LANGGRAPH_SEND,
     LANGGRAPH_STREAM_CHECKPOINTS,
+    LANGGRAPH_STREAM_DEBUG,
     LANGGRAPH_STREAM_TASKS,
     MAX_CHANNEL_VALUE_BYTES,
     MAX_CHANNEL_VALUE_TOTAL_BYTES,
@@ -339,6 +340,10 @@ class LangGraphScopeExecutor:
         )
         self.native_stream_checkpoints = any(
             item.required and item.capability_id == LANGGRAPH_STREAM_CHECKPOINTS
+            for item in plan.native_extensions
+        )
+        self.native_stream_debug = any(
+            item.required and item.capability_id == LANGGRAPH_STREAM_DEBUG
             for item in plan.native_extensions
         )
         self._channels_by_id = (
@@ -1555,6 +1560,8 @@ class LangGraphScopeExecutor:
             modes.append("tasks")
         if self.native_stream_checkpoints and scope.reference == "/do":
             modes.append("checkpoints")
+        if self.native_stream_debug:
+            modes.append("debug")
         async for mode, payload in graph.astream(
             native_input,
             config=config,
@@ -1587,53 +1594,36 @@ class LangGraphScopeExecutor:
                 data = _decode_snapshot(native["snapshot"])["data"]
                 reference = task.reference
             elif mode == "tasks":
-                if not isinstance(payload, dict) or not isinstance(payload.get("name"), str):
-                    raise ValueError("unsupported native task projection")
-                task = next(
-                    (task for task in scope.tasks if _node_name(task) == payload["name"]), None
-                )
-                if task is None:
-                    raise ValueError("unsupported native task node")
-                reference = task.reference
-                if "input" in payload and "result" not in payload:
-                    status = "started"
-                elif "result" in payload and "input" not in payload:
-                    interrupts = payload.get("interrupts")
-                    if not isinstance(interrupts, (list, tuple)) or "error" not in payload:
-                        raise ValueError("unsupported native task result")
-                    status = (
-                        "faulted"
-                        if payload["error"] is not None
-                        else "interrupted"
-                        if interrupts
-                        else "completed"
-                    )
-                else:
-                    raise ValueError("ambiguous native task event")
+                reference, status = self._project_native_task(payload, scope)
                 data = {"status": status}
             elif mode == "checkpoints":
                 from .native_state import state_reference
 
-                if scope.reference != "/do" or not isinstance(payload, dict):
-                    raise ValueError("unsupported native checkpoint projection")
-                config = payload["config"]["configurable"]
-                expected = self.checkpoint_config("/do", 1)["configurable"]
-                checkpoint_id = config["checkpoint_id"]
-                if (
-                    not isinstance(config, dict)
-                    or config.get("thread_id") != expected["thread_id"]
-                    or config.get("checkpoint_ns") != ""
-                    or not isinstance(checkpoint_id, str)
-                    or len(checkpoint_id) != 36
-                    or str(UUID(checkpoint_id)) != checkpoint_id
-                ):
-                    raise ValueError("unsupported native checkpoint identity")
+                checkpoint_id = self._validate_root_checkpoint(payload, scope)
                 data = {
                     "reference": state_reference(
                         self.invocation_id, self.plan.fingerprint, checkpoint_id
                     )
                 }
                 reference = None
+            elif mode == "debug":
+                if not isinstance(payload, dict) or not isinstance(payload.get("timestamp"), str):
+                    raise ValueError("unsupported native debug projection")
+                kind = payload.get("type")
+                timestamp = payload["timestamp"]
+                if kind == "checkpoint":
+                    if scope.reference != "/do":
+                        return
+                    self._validate_root_checkpoint(payload["payload"], scope)
+                    reference = None
+                    data = {"type": "checkpoint", "timestamp": timestamp}
+                elif kind in {"task", "task_result"}:
+                    reference, status = self._project_native_task(payload["payload"], scope)
+                    if (kind == "task") != (status == "started"):
+                        raise ValueError("native debug task phase is inconsistent")
+                    data = {"type": "task", "timestamp": timestamp, "status": status}
+                else:
+                    raise ValueError("unsupported native debug event")
             else:
                 raise ValueError("unsupported native stream mode")
         except (KeyError, TypeError, ValueError, OwaError):
@@ -1648,3 +1638,43 @@ class LangGraphScopeExecutor:
             observer.fail("frame_limit")
         except RuntimeError:
             pass  # A closed observation never stops or cancels execution.
+
+    @staticmethod
+    def _project_native_task(payload: Any, scope: ScopePlan) -> tuple[str, str]:
+        if not isinstance(payload, dict) or not isinstance(payload.get("name"), str):
+            raise ValueError("unsupported native task projection")
+        task = next((task for task in scope.tasks if _node_name(task) == payload["name"]), None)
+        if task is None:
+            raise ValueError("unsupported native task node")
+        if "input" in payload and "result" not in payload:
+            return task.reference, "started"
+        if "result" in payload and "input" not in payload:
+            interrupts = payload.get("interrupts")
+            if not isinstance(interrupts, (list, tuple)) or "error" not in payload:
+                raise ValueError("unsupported native task result")
+            status = (
+                "faulted"
+                if payload["error"] is not None
+                else "interrupted"
+                if interrupts
+                else "completed"
+            )
+            return task.reference, status
+        raise ValueError("ambiguous native task event")
+
+    def _validate_root_checkpoint(self, payload: Any, scope: ScopePlan) -> str:
+        if scope.reference != "/do" or not isinstance(payload, dict):
+            raise ValueError("unsupported native checkpoint projection")
+        config = payload["config"]["configurable"]
+        expected = self.checkpoint_config("/do", 1)["configurable"]
+        checkpoint_id = config["checkpoint_id"]
+        if (
+            not isinstance(config, dict)
+            or config.get("thread_id") != expected["thread_id"]
+            or config.get("checkpoint_ns") != ""
+            or not isinstance(checkpoint_id, str)
+            or len(checkpoint_id) != 36
+            or str(UUID(checkpoint_id)) != checkpoint_id
+        ):
+            raise ValueError("unsupported native checkpoint identity")
+        return checkpoint_id

@@ -1,5 +1,30 @@
 # S4-02 native stream observations
 
+## Timestamped debug source profile — 2026-11-02
+
+The separate required `langgraph.streams.debug@1.0.0` declaration observes a
+bounded projection of the pinned SDK's native debug stream. It requires the
+base stream profile. Public events contain a timestamp and either a public
+task reference with lifecycle status or a root-checkpoint occurrence. Native
+step numbers, IDs, task inputs and outputs, exceptions, checkpoint contents and
+nested checkpoint events are excluded. Malformed SDK events terminate
+observation without taking over execution. No checkpoint reference is emitted
+by this profile, and it does not grant state-read access.
+
+Local SQLite/PostgreSQL checks cover required and optional declarations, owner
+isolation, nested tasks, failures, interruptions, resume, native Send and replay
+targets. Eight actual-process exit/restart cases across the base, task,
+checkpoint and debug profiles and four malformed-debug projection cases pass;
+the ADK adapter rejects the required capability. A parallel test attempt sharing
+one PostgreSQL database produced `runtime_profile_changed` and a separate
+state-unavailable response. A subsequent isolated selection using a fresh
+database passed 10 cases; the latter response did not expose enough detail to
+prove its cause. The isolated complete stream/API, projection, buffer,
+registry and transport selection then passed **151 cases with zero skips** on
+SQLite and PostgreSQL. Its JUnit report also passed the CI witness gates;
+strict type checking passed on 194 source files. Hosted qualification and the
+remaining stream modes, T50 and full S4-02 remain open.
+
 ## Root checkpoint source profile — 2026-11-02
 
 The separately required `langgraph.streams.checkpoints@1.0.0` profile adds

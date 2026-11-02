@@ -78,6 +78,7 @@ def workflow(
     task_stream=None,
     nested=False,
     checkpoint_stream=None,
+    debug_stream=None,
 ):
     definition = generate_default_workflow()
     definition["document"]["name"] = "native-stream-test"
@@ -107,6 +108,10 @@ def workflow(
                         "required": checkpoint_stream,
                     },
                 ]
+            )
+        if debug_stream is not None:
+            definition["document"]["metadata"]["owa"]["nativeExtensions"].append(
+                {"name": "langgraph.streams.debug", "version": "1.0.0", "required": debug_stream}
             )
     definition["do"] = [
         *([{"outer": {"do": [{"child": {"set": {"value": "${ .value }"}}}]}}] if nested else []),
