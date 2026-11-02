@@ -532,29 +532,13 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
     def _resume_lineage(self, handle: ExecutionHandle) -> Any:
         """Reconstruct the verifier from durable evidence before native recovery."""
         from open_workflow_agent.config import NativeStateConfig
-        from open_workflow_agent.lineage_registry import LineageRegistry, lineage_identity
 
-        from .native_lineage_inspection import inspect_native_lineage
+        from .native_lineage_inspection import lineage_registry_for_target
 
-        journal = self.services.effect_journal
-        identity = lineage_identity(handle)
-        indexed = journal.connection.execute(
-            "SELECT 1 FROM workflow_effect_invocations WHERE identity=?", (identity.key,)
-        ).fetchone()
-        if indexed is None and journal.get(identity) is None:
-            return None
-        database = self.services.engine_database_path("langgraph", create_namespace=False)
         bounds = NativeStateConfig.model_validate(
             (self.services.config.native_state or NativeStateConfig()).model_dump()
         )
-        registry = LineageRegistry(
-            journal,
-            self.services.invocations,
-            self.services.execution_authorizations,
-            lambda request, digest: inspect_native_lineage(database, request, bounds) == digest,
-        )
-        registry.read(handle)
-        return registry
+        return lineage_registry_for_target(self.services, handle, bounds)
 
     async def _verify_resume_state(self, handle: ExecutionHandle, plan: WorkflowPlan) -> Any:
         if self.state_controller is not None and plan.native_state_updates is not None:

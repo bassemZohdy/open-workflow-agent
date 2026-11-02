@@ -50,6 +50,10 @@ and `state`. The target continues asynchronously and can be observed or cancelle
 through the ordinary invocation APIs. Repeating the same key and request returns
 the same target; changing the request under that key is rejected.
 
+The original owner can also inspect the target's retained state and history through
+the ordinary state views. Reads verify the retained lineage and fail closed if its
+native proof or authority is unavailable or inconsistent.
+
 Both the current caller and retained original authority must permit `state.branch`;
 only the original owner can select the source. Unsupported checkpoints, invalid
 data and acknowledgement mismatches fail before creating a target. Active-work

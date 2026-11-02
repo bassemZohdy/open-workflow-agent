@@ -140,9 +140,22 @@ class LangGraphStateReader:
             async with self.services.recovery_definitions.inspection_profile(handle) as verified:
                 if verified.fingerprint != plan.fingerprint:
                     raise ValueError("native state definition changed during its read")
+                from .native_lineage_inspection import lineage_registry_for_target
+
+                lineage = lineage_registry_for_target(
+                    self.services, handle, bounds, available_bytes=budget
+                )
                 items = [
                     self._project(
-                        handle, plan, saver, checkpoint, thread, key, parent, expected_input
+                        handle,
+                        plan,
+                        saver,
+                        checkpoint,
+                        thread,
+                        key,
+                        parent,
+                        expected_input,
+                        lineage,
                     )
                     for checkpoint, key, parent in checkpoints
                 ]
@@ -174,6 +187,7 @@ class LangGraphStateReader:
         key: str,
         parent: str | None,
         expected_input: Any,
+        lineage: Any,
     ) -> dict[str, Any]:
         native_config = checkpoint.config["configurable"]
         if (
@@ -200,6 +214,8 @@ class LangGraphStateReader:
             saver,
             handle.invocation_id,
             effect_journal=self.services.effect_journal,
+            lineage_registry=lineage,
+            lineage_target=handle if lineage is not None else None,
         )
         driver._expected_input_json = _json_identity(expected_input)
         native = checkpoint.checkpoint["channel_values"]

@@ -544,7 +544,7 @@ that active branch concurrency exceeded the memory-budget calculation, and an
 configuration. The final profile uses the supported 30-second view bound for its
 test fixture, accounts for active work in the combined budget, and tests a valid
 policy mutation. None of those superseded attempts is counted green. The dedicated
-hosted PostgreSQL branch job has been configured but not yet qualified. Broader
+hosted PostgreSQL branch job later passed for the frozen source identified below. Broader
 scope/attribution, time travel, independent JavaScript parity and full S4-02/T49
 remain open.
 
@@ -558,4 +558,27 @@ Hosted PostgreSQL qualification was dispatched for frozen source
 `43a0ffca8d52a0c5cc5660af767fbc90f69c12c5` on the dedicated
 `codex/s4-02-branch-qualification-43a0ffc` branch:
 [workflow run 41375652540](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41375652540).
-The run was queued when recorded; no hosted result or qualification is claimed.
+The dedicated PostgreSQL branch and replay jobs passed. The overall run still had
+other jobs in progress when checked; no full-workflow result is claimed.
+
+## Lineage-bound target state views — 2026-11-02
+
+The original owner can inspect retained branch and replay target state through
+the existing bounded state views. Projection reconstructs the durable lineage
+verifier without acquiring ownership or changing the target, checks native
+proof, retained authorization and receipt bindings, and shares the selected
+checkpoint's native decoding budget. Missing or inconsistent proof fails closed.
+Lineage depth and the existing replay/branch admission restrictions are unchanged.
+
+On local Windows, a combined SQLite/PostgreSQL selection passed eight branch
+proof-change/proof-removal cases and three replay-owner cases; its last PostgreSQL
+re-execution view timed out under the replay fixture's default five-second limit.
+That combined run therefore failed (11 passed, one failed). The affected case
+passed separately on a fresh PostgreSQL database with a supported 30-second view
+limit. This is separate local evidence, not a green combined or hosted result.
+The initial owner-state regression reproduced a 409 before the change and passed
+afterward. The frozen hosted run above covers its earlier source, not these views.
+Two additional local state-reader/branch-projection regression selections were
+interrupted after they stopped making visible progress; neither is counted green.
+A subsequent focused SQLite state-reader selection passed four cases, with four
+PostgreSQL cases skipped because that separate run had no configured datasource.

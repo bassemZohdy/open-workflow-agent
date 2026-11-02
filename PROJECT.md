@@ -52,7 +52,7 @@ Current S4-02 component evidence is organized by feature rather than by candidat
 | Channels/routing | Bounded native channels/reducers, Command/Send; [acceptance](docs/s4-02-native-channels-acceptance.md) retains hosted repair gaps. |
 | Native memory | Configured filtered/semantic memory, owned recovery, expiry/capacity and lifecycle; [acceptance](docs/s4-02-native-memory-acceptance.md) retains broader T51/T68 gates. |
 | Streams | Public original-owner values/updates observation; [acceptance](docs/s4-02-native-streams-acceptance.md) retains broader modes/T50. |
-| State/history | Bounded original-owner projected views and opaque references; [guide](docs/native-state.md) and [acceptance](docs/s4-02-native-state-acceptance.md). |
+| State/history | Bounded original-owner projected views and opaque references, including proof-verified branch/replay targets; [guide](docs/native-state.md) and [lineage evidence](docs/s4-02-native-lineage-acceptance.md). |
 | State controls | Configured public root updates, attestation and recovery merged in PR #92 (`6ec11f1`); [profile guide](docs/native-state-updates.md) covers API/restart/cancellation and continuation. |
 
 Latest public state-control source `db437d8` passes 420 combined cases and 22

@@ -66,11 +66,18 @@ def task_count(request):
     return getattr(request, "param", 2)
 
 
+@pytest.fixture
+def state_view_timeout(request):
+    return getattr(request, "param", 5)
+
+
 @pytest.fixture(params=["sqlite", "postgresql"])
-async def replay_runtime(request, tmp_path, monkeypatch, policy, replay_config, task_count):
+async def replay_runtime(
+    request, tmp_path, monkeypatch, policy, replay_config, task_count, state_view_timeout
+):
     for actor in ("alice", "bob"):
         monkeypatch.setenv("OWA_NATIVE_STREAM_TEST_" + actor.upper(), "replay-state-" + actor)
-    config = configuration()
+    config = configuration(timeout_seconds=state_view_timeout)
     config.execution_authorization.policy.rules[0].actions.extend(
         ["state.replay", "invocations.cancel"]
     )

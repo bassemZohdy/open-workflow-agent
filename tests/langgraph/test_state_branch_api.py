@@ -183,6 +183,11 @@ async def test_branch_api_enforces_authority_idempotency_and_effect_policy(branc
         assert changed.status_code != 202 and 400 <= changed.status_code < 500
         assert len(services.model.calls) == calls
         assert services.invocations.get(handle.invocation_id).status == "completed"
+        branch_history = await alice.get(f"/v1/invocations/{target}/states")
+        assert branch_history.status_code == 200, branch_history.text
+        assert any(item["data"] == {"value": 7} for item in branch_history.json()["items"])
+        foreign_history = await bob.get(f"/v1/invocations/{target}/states")
+        assert foreign_history.status_code == 404
 
 
 @pytest.mark.asyncio

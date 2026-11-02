@@ -9,10 +9,12 @@ from __future__ import annotations
 import hashlib
 import json
 from importlib import import_module
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from open_workflow_agent.config import NativeStateConfig
 from open_workflow_agent.effects import EffectJournal, ReceiptDependency
+from open_workflow_agent.lineage_registry import LineageRegistry, lineage_identity
+from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.state_lineage import StateLineageRequest, lineage_error
 
 from .graph import LangGraphScopeExecutor, _json_identity
@@ -22,6 +24,45 @@ from .native_state_controls import _proof_connection
 from .native_state_mutations import _checkpoint
 from .native_state_storage import guard_checkpoint_sync
 from .native_state_transition import projection
+
+if TYPE_CHECKING:
+    from open_workflow_agent.services import RuntimeServices
+
+
+def lineage_registry_for_target(
+    services: RuntimeServices,
+    handle: ExecutionHandle,
+    bounds: NativeStateConfig,
+    *,
+    available_bytes: int | None = None,
+) -> LineageRegistry | None:
+    """Reconstruct verified lineage without acquiring ownership or writing state."""
+    journal = services.effect_journal
+    identity = lineage_identity(handle)
+    indexed = journal.connection.execute(
+        "SELECT 1 FROM workflow_effect_invocations WHERE identity=?", (identity.key,)
+    ).fetchone()
+    if indexed is None and journal.get(identity) is None:
+        return None
+    proof_bounds = bounds
+    if available_bytes is not None:
+        if available_bytes < 1024:
+            raise lineage_error("native_proof_budget")
+        proof_bounds = NativeStateConfig.model_validate(
+            {
+                **bounds.model_dump(),
+                "max_native_bytes": min(available_bytes, bounds.max_native_bytes),
+            }
+        )
+    database = services.engine_database_path("langgraph", create_namespace=False)
+    registry = LineageRegistry(
+        journal,
+        services.invocations,
+        services.execution_authorizations,
+        lambda request, digest: inspect_native_lineage(database, request, proof_bounds) == digest,
+    )
+    registry.read(handle)
+    return registry
 
 
 def selected_business_receipts(

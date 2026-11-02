@@ -80,8 +80,10 @@ source (`429` beyond either). The per-source limit is enforced inside the reserv
 transaction that every replay serializes on, so concurrent distinct requests cannot
 exceed it; a repeat of an admitted request is never a new admission and is never limited.
 A replay target cannot itself be replayed (`409`, checked before any preflight work).
-The state history of a replay target is also not currently readable through the state
-views, so no reference to one can be obtained.
+The original owner can read a replay target's retained state and history through the
+ordinary state views. Those reads verify the retained lineage and fail closed if its
+native proof or authority is unavailable or inconsistent. A reference obtained this
+way does not make the target eligible for another replay or branch.
 
 ## Not implemented
 
