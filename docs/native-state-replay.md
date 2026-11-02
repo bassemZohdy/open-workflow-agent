@@ -29,6 +29,10 @@ the state-update backend to verify those retained controls. The block bounds nat
 (`bounds`), the number of concurrently admitting replays (`max_active_replays`, default 2)
 and the number of replays of one source invocation (`max_replays_per_source`, default 8). Default installations and ADK reject workflows that require replay.
 
+A waiting replay target can itself receive an authorized state update when its
+workflow also declares the update profile. The original source lineage and the
+target's own ordered update proofs remain required for continuation and retries.
+
 The workflow declares the profile and its effect policy; infrastructure never decides it:
 
 ```yaml

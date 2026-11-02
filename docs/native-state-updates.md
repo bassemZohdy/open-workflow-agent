@@ -55,6 +55,12 @@ Using the same update key and identical request returns its verified retained
 outcome, including after workflow completion. Changing its request conflicts.
 Terminal invocations cannot admit new updates or new recovery decisions.
 
+A waiting replay or branch target can also be updated when its workflow declares
+this profile and the original owner is authorized. Its retained source lineage and
+the target's own ordered controls are both verified for continuation and for
+acknowledging update retries. A damaged source or prior control proof prevents
+further updates or recovery decisions. The update does not change the source.
+
 ## Ownership and declared policy
 
 The original authenticated owner needs both current and retained original

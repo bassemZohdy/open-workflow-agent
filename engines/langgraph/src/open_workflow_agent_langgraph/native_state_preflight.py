@@ -214,13 +214,21 @@ async def _prepare_native_state_update(
         state_control_storage_identity(path, plan.fingerprint),
     )
     limits = NativeStateConfig.model_validate((bounds or NativeStateConfig()).model_dump())
+    from .native_lineage_inspection import lineage_registry_for_target
+
+    lineage = lineage_registry_for_target(services, handle, limits)
     async with (
         asyncio.timeout(limits.timeout_seconds),
         readonly_saver(path, limits) as (saver, postgres),
     ):
         guarded = _BoundedSaver(saver, limits, postgres)
         driver = _InspectionDriver(
-            plan, guarded, handle.invocation_id, effect_journal=services.effect_journal
+            plan,
+            guarded,
+            handle.invocation_id,
+            effect_journal=services.effect_journal,
+            lineage_registry=lineage,
+            lineage_target=handle if lineage is not None else None,
         )
         original = services.invocations.read_input(handle)
         driver._expected_input_json = _json_identity(original)
@@ -243,7 +251,12 @@ async def _prepare_native_state_update(
             if verified.fingerprint != plan.fingerprint:
                 raise state_update_error("native_definition_changed")
             fresh = LangGraphScopeExecutor(
-                plan, saver, handle.invocation_id, effect_journal=services.effect_journal
+                plan,
+                saver,
+                handle.invocation_id,
+                effect_journal=services.effect_journal,
+                lineage_registry=lineage,
+                lineage_target=handle if lineage is not None else None,
             )
             fresh._expected_input_json = _json_identity(original)
             observed = {}

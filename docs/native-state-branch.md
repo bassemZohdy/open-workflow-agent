@@ -53,6 +53,9 @@ the same target; changing the request under that key is rejected.
 The original owner can also inspect the target's retained state and history through
 the ordinary state views. Reads verify the retained lineage and fail closed if its
 native proof or authority is unavailable or inconsistent.
+When a target is waiting, the configured state-update profile can change its data
+under the declared update policy; its source lineage and update history remain
+separately verified.
 
 Both the current caller and retained original authority must permit `state.branch`;
 only the original owner can select the source. Unsupported checkpoints, invalid

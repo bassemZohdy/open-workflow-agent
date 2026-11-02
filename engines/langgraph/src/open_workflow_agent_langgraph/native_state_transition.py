@@ -49,7 +49,7 @@ def plan_state_transition(preflight: NativeStatePreflight) -> NativeStateTransit
     snapshot["data"] = preflight.request.values
     native["snapshot"] = _json_identity(snapshot)
     bindings = json.loads(native["receipt_bindings"])
-    if bindings["version"] not in {2, 3}:
+    if bindings["version"] not in {2, 3, 4, 5}:
         raise state_update_error("native_binding_version_unsupported")
     controls = bindings.get("controls", [])
     if (
@@ -58,7 +58,7 @@ def plan_state_transition(preflight: NativeStatePreflight) -> NativeStateTransit
         or preflight.request.request_id in controls
     ):
         raise state_update_error("control_lineage_invalid")
-    bindings["version"] = 3
+    bindings["version"] = 5 if bindings["version"] in {4, 5} else 3
     bindings["controls"] = [*controls, preflight.request.request_id]
     native["receipt_bindings"] = _json_identity(bindings)
     bindings["state_digest"] = LangGraphScopeExecutor._state_digest(native)

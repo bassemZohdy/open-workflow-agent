@@ -268,6 +268,8 @@ treated as a deferred task or as additional feature completion.
   effect policy to later ones.
   Updated root checkpoints now retain their attested source control dependencies;
   later source updates do not alter the selected state or prevent an exact retry.
+  Waiting replay/branch targets can receive declared, authorized root updates
+  while retaining both source lineage and ordered target-control proofs.
   The coordinator now rechecks all required workflow capabilities before a new
   replay or branch reservation and again before recovering a reservation. The
   previously failing unsupported-source rejection test is retained as regression

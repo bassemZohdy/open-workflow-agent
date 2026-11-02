@@ -806,8 +806,8 @@ profile.
 Hosted qualification of frozen source `ab43bef` is running on
 `codex/s4-02-updated-lineage-qualification-ab43bef`:
 [workflow run 41389345302](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41389345302).
-Its dedicated Send and updated-checkpoint lineage job passed; the overall
-workflow is still running.
+The complete workflow passed, including its dedicated Send and
+updated-checkpoint lineage job.
 
 ## Required capability recheck — 2026-11-02
 
@@ -834,3 +834,31 @@ The PostgreSQL workflow-selection checks passed 60 cases.
 Hosted qualification of frozen source `c4347a5` is running on
 `codex/s4-02-capability-qualification-c4347a5`:
 [workflow run 41390252297](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41390252297).
+The complete workflow passed, including its dedicated Send, updated-checkpoint
+and required-capability job.
+
+## Updates to waiting lineage targets — 2026-11-02
+
+Authorized root state updates can now apply to a waiting replay or branch target.
+An internal checkpoint binding retains both the original immutable lineage and
+the target's ordered state-control history. The update, continuation, inspection,
+retry and resolution paths verify their applicable source and target proofs;
+resolution rechecks the lineage and predecessor controls after acquiring the
+target execution lease. No OWS schema or public request format changed.
+
+The local SQLite cases cover both lineage operations and effect policies, two
+target updates, a fresh-engine continuation, damaged source and predecessor
+proofs, a proof change during lease acquisition, and a real process stop after
+the native commit before common acknowledgement. Nested-scope and declared-channel
+cases preserve those retained values. The earlier implementation rejected the
+target update, and intermediate tests exposed acknowledgements and resolutions
+that failed to recheck damaged source or target proofs. The corresponding six
+PostgreSQL target-update cases passed, including both post-commit process stops
+and both nested/channel cases. The SQLite original-source-only compatibility
+selection passed four further cases. The standard state-control, preflight,
+receipt and admission selection passed 30 cases with 22 other-backend skips;
+the final state-resolution regression passed two cases with two skips. CI
+selection checks passed 60 cases plus three dedicated job-selection checks.
+Lineage state controls now run in their own bounded PostgreSQL workflow job;
+the separate Send job retains its existing required selection.
+This is a bounded source profile, not full S4-02 qualification.

@@ -237,6 +237,23 @@ class LangGraphStateController:
     ) -> dict[str, Any]:
         async def operation() -> dict[str, Any]:
             plan = await self._plan(handle)
+            from .native_lineage_inspection import lineage_registry_for_target
+
+            lineage = lineage_registry_for_target(self.services, handle, self.config.bounds)
+
+            def verify_lineage_control(request: StateUpdateRequest) -> None:
+                if lineage is None:
+                    return
+                from .graph import LangGraphScopeExecutor
+
+                lineage.read(handle)
+                driver = LangGraphScopeExecutor(
+                    plan, None, handle.invocation_id, effect_journal=self.services.effect_journal
+                )
+                driver._validate_state_controls(
+                    [*request.previous_controls, request.request_id], "/do", 1
+                )
+
             self.services.invocations.refresh(handle)
             assert plan.native_state_updates is not None
             encoded = plan.native_state_updates.validate(
@@ -265,6 +282,7 @@ class LangGraphStateController:
                     raise InvocationStateError("terminal invocations cannot admit state controls")
                 proof = self.coordinator._proof(previous)
                 assert proof is not None
+                verify_lineage_control(previous)
                 return self._proof_result(previous, proof)
             with self._binding(plan) as bridge:
                 async with self.engine._own_execution(handle):
@@ -296,6 +314,7 @@ class LangGraphStateController:
                             request = candidate
                         assert request is not None
                         proof = await self.coordinator.update(handle, request, authority)
+                        verify_lineage_control(request)
                         return self._proof_result(request, proof)
                     except OwaError as error:
                         if request is not None:
@@ -342,7 +361,10 @@ class LangGraphStateController:
         decision: StateUpdateResolution,
     ) -> dict[str, Any]:
         async def operation() -> dict[str, Any]:
-            await self._plan(handle)
+            plan = await self._plan(handle)
+            from .native_lineage_inspection import lineage_registry_for_target
+
+            lineage = lineage_registry_for_target(self.services, handle, self.config.bounds)
             target = next(
                 (
                     item
@@ -355,6 +377,25 @@ class LangGraphStateController:
                 raise InvocationNotFound("state control not found")
             if target.request_digest != request_digest:
                 raise state_update_error("request_changed")
+
+            def verify_lineage_controls(*, include_target: bool = False) -> None:
+                if lineage is None:
+                    return
+                from .graph import LangGraphScopeExecutor
+
+                lineage.read(handle)
+                controls = [*target.previous_controls]
+                if include_target:
+                    controls.append(target.request_id)
+                if controls:
+                    driver = LangGraphScopeExecutor(
+                        plan,
+                        None,
+                        handle.invocation_id,
+                        effect_journal=self.services.effect_journal,
+                    )
+                    driver._validate_state_controls(controls, "/do", 1)
+
             self.services.invocations.refresh(handle)
             if handle.status in {"completed", "faulted", "cancelled"}:
                 audit = self.services.effect_journal.get(resolution_identity(target.identity))
@@ -365,7 +406,9 @@ class LangGraphStateController:
             else:
                 async with self.engine._own_execution(handle):
                     self._waiting(handle)
+                    verify_lineage_controls()
                     audit = await self.coordinator.resolve(handle, target, decision, authority)
+            verify_lineage_controls(include_target=decision.decision == "complete")
             return {
                 "profile": CAPABILITY,
                 "operation_id": operation_id,

@@ -881,9 +881,9 @@ class LangGraphScopeExecutor:
         ]
         if "native_channels" in native:
             value.insert(3, native["native_channels"])
-        if bindings.get("version") == 3:
+        if bindings.get("version") in {3, 5}:
             value.append(bindings["controls"])
-        if bindings.get("version") == 4:
+        if bindings.get("version") in {4, 5}:
             value.append(bindings["lineage"])
         return hashlib.sha256(_json_identity(value).encode()).hexdigest()
 
@@ -896,19 +896,19 @@ class LangGraphScopeExecutor:
             or set(bindings)
             != (
                 {"version", "state_digest", "receipts", "scopes"}
-                | ({"controls"} if bindings.get("version") == 3 else set())
-                | ({"lineage"} if bindings.get("version") == 4 else set())
+                | ({"controls"} if bindings.get("version") in {3, 5} else set())
+                | ({"lineage"} if bindings.get("version") in {4, 5} else set())
             )
             or type(bindings["version"]) is not int
-            or bindings["version"] not in {2, 3, 4}
+            or bindings["version"] not in {2, 3, 4, 5}
             or bindings["state_digest"] != self._state_digest(native)
             or not isinstance(bindings["receipts"], list)
         ):
             raise ValueError("native receipt bindings disagree with saved state")
-        if bindings["version"] == 3:
+        if bindings["version"] in {3, 5}:
             self._validate_state_controls(bindings["controls"], reference, occurrence)
         mappings = {}
-        if bindings["version"] == 4:
+        if bindings["version"] in {4, 5}:
             if self.lineage_registry is None or self.lineage_target is None:
                 raise ValueError("native lineage binding is required")
             request, mapped, _ = self.lineage_registry.read(self.lineage_target)
@@ -1019,7 +1019,7 @@ class LangGraphScopeExecutor:
         self, native: dict[str, Any], *, prepared_request_id: str | None = None
     ) -> None:
         bindings = _native_json(native["receipt_bindings"])
-        controls = bindings.get("controls", []) if bindings.get("version") == 3 else []
+        controls = bindings.get("controls", []) if bindings.get("version") in {3, 5} else []
         coordinator = (
             self.effect_journal._state_updates if self.effect_journal is not None else None
         )
@@ -1235,10 +1235,10 @@ class LangGraphScopeExecutor:
             bindings["controls"] = list(self.state_controls)
             native["receipt_bindings"] = json.dumps(bindings, allow_nan=False)
         if self.lineage_registry is not None:
-            if self.state_controls or self.lineage_target is None:
+            if self.lineage_target is None:
                 raise WorkflowExecutionError("native lineage controls are unsupported")
             request, _, _ = self.lineage_registry.read(self.lineage_target)
-            bindings["version"] = 4
+            bindings["version"] = 5 if reference == "/do" and self.state_controls else 4
             bindings["lineage"] = request.request_digest
             native["receipt_bindings"] = json.dumps(bindings, allow_nan=False)
         digest_native = dict(native)
