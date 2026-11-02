@@ -730,3 +730,8 @@ The initial forward replay returned 409 under the former contiguous-only rule;
 a synthetic reordered-contiguous case exposed the old attribution shortcut before
 the guard was tightened. Those expected development failures are not green runs.
 This expanded source profile has not been hosted-qualified.
+Hosted PostgreSQL qualification is queued for frozen source
+`8dfd40e6e2bf76572352ba016194792a8c50b0e6` on
+`codex/s4-02-forward-qualification-8dfd40e`:
+[workflow run 41384290398](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41384290398).
+No result is claimed for that run yet.
