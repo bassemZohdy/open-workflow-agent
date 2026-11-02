@@ -1,5 +1,21 @@
 # S4-02 native stream observations
 
+## Native message-stream investigation — 2026-11-02
+
+A local pinned-SDK probe using a deterministic LangChain chat model confirmed
+that `messages` mode emits individual content chunks alongside native node,
+checkpoint and scheduling metadata. The production common `Model` contract
+returns a completed response, while the configured LiteLLM provider explicitly
+rejects streaming. The probe therefore does not qualify a workflow feature or
+demonstrate provider recovery. A future source profile must establish a real
+bounded streaming provider path, strip private metadata, preserve authorization
+and uncertain-outcome handling, and prevent literal credential disclosure
+across chunk boundaries before exposing observations. No message capability is
+advertised by this investigation. A deterministic split-literal probe showed
+that applying the existing whole-value credential guard independently to each
+chunk misses a credential split across chunks; applying it to the reassembled
+value removes the literal.
+
 ## Three-level literal nested-loop candidate — 2026-11-02
 
 An isolated admission-bypass probe exercised three nested literal loops with
@@ -13,8 +29,9 @@ core-transport selection passed 325 cases with zero skips and included all 51
 hosted-job witnesses. The first shared recovery attempt stopped after 21 passes
 when a PostgreSQL resume exceeded its existing ten-second test bound; the exact
 case passed on a fresh database. A complete fresh recovery rerun then passed
-144 LangGraph cases with zero skips across both stores. Hosted qualification
-remains pending.
+144 LangGraph cases with zero skips across both stores. The
+[hosted native-stream job at `4205f55`](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41486574902)
+passed 325 cases with zero skips; the wider workflow is still running.
 
 ## Two-level literal nested-loop candidate — 2026-11-02
 
