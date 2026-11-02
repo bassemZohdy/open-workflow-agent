@@ -53,10 +53,12 @@ registry and transport selection then passed **151 cases with zero skips** on
 SQLite and PostgreSQL. Its JUnit report also passed the CI witness gates;
 strict type checking passed on 194 source files. Hosted qualification and the
 remaining stream modes, T50 and full S4-02 remain open.
-Frozen source `2577879` is queued on
+Frozen source `2577879` was submitted on
 `codex/s4-02-debug-stream-qualification-2577879` in
 [workflow run 41420479657](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41420479657).
-The native-stream job has not completed, so no hosted result is claimed.
+Its native-stream job passed **151 cases with zero skips** in 92.63 seconds on
+hosted Linux. The overall workflow is still running, and later custom-stream
+changes and full S4-02 remain separately gated.
 
 ## Root checkpoint source profile — 2026-11-02
 
@@ -83,10 +85,12 @@ passed locally with **124 cases and zero skips** on SQLite and PostgreSQL; the
 separately added no-`state.inspect` permission check passed on both stores.
 Existing owner/state inspection regressions passed six cases. These runs do
 not qualify a hosted image or the broader T50 criteria.
-Frozen source `13aa837` is queued on
+Frozen source `13aa837` was submitted on
 `codex/s4-02-checkpoint-stream-qualification-13aa837` in
 [workflow run 41418377253](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41418377253).
-Its native-stream job has not completed; no hosted result is claimed yet.
+Its native-stream job passed **126 cases with zero skips** in 45.12 seconds on
+hosted Linux. The overall workflow is still running; later debug/custom stream
+changes and full S4-02 remain separately gated.
 
 ## Task lifecycle source profile — 2026-11-02
 
@@ -131,7 +135,12 @@ zero skips**. Hosted results are recorded separately when the frozen run ends.
 The frozen source `568f52d` is being qualified on
 `codex/s4-02-stream-qualification-568f52d` in
 [workflow run 41416534381](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41416534381);
-the dedicated stream job is queued. That run has not yet qualified the profile.
+the dedicated Linux stream job passed **100 cases with zero skips** in 57.94
+seconds. The overall workflow is still running; this does not qualify newer
+checkpoint, debug or custom profiles or complete S4-02.
+Its separate native state-branch job hit the earlier 35-minute timeout at 96%
+(exit 124); its unfinished cases are not counted as passes. Source `f0f29a5`
+contains the subsequently increased bounded allowance and is queued separately.
 
 Status: the private foundation is merged through PR #84 (`73778d6`). The opt-in
 public values/updates profile is qualified at `a597134` below. This record owns the stream work;
