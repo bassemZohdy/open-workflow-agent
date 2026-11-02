@@ -103,8 +103,8 @@ evidence to establish each occurrence's visits.
 Declared native channel values are retained at the selected checkpoint, and later
 channel writes continue from those values. Native Command routing is retained for
 contiguous root-task prefixes and verifiable forward routes through `set`, `call`,
-`switch`, completed non-routing nested `do` or `for` tasks, and non-competing
-fan-outs with non-routing branches
+`switch`, completed nested `do` or `for` tasks with forward child routes, and
+non-competing fan-outs without branch-level transitions
 tasks; routes that may go backward are rejected. Bounded, non-competing native Send
 fan-outs may occur before or after the selected root checkpoint. An attested root
 state update may also be retained: its source control proofs remain dependencies

@@ -33,8 +33,6 @@ from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
 async def test_root_lineage_after_completed_nested_scope_preserves_effects(
     tmp_path, monkeypatch, policy, kind, backend, iterations, forward_route, child_forward
 ):
-    if child_forward and forward_route:
-        pytest.skip("child forward routing is verified without a root route jump")
     for actor in ("alice", "bob"):
         monkeypatch.setenv("OWA_NATIVE_STREAM_TEST_" + actor.upper(), "replay-state-" + actor)
     config = configuration(timeout_seconds=30)

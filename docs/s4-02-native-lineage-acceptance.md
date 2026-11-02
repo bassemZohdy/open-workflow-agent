@@ -956,6 +956,7 @@ this correction.
 Frozen source `07d2472` is running on
 `codex/postgres-operation-timeout-07d2472`:
 [workflow run 41403797373](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41403797373).
+The LangGraph operation-adapter recovery job passed; the full workflow is still running.
 
 ## Forward routes through completed nested scopes — 2026-11-02
 
@@ -975,6 +976,7 @@ profile error before the route extension; hosted qualification is separate.
 Hosted qualification of frozen source `2474614` is running on
 `codex/s4-02-forward-nested-2474614`:
 [workflow run 41401271697](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41401271697).
+The complete workflow passed.
 
 ## Forward routes through completed loops — 2026-11-02
 
@@ -992,6 +994,7 @@ The hosted result is tracked separately as it finishes.
 Hosted qualification of frozen source `1b3228f` is running on
 `codex/s4-02-forward-loops-1b3228f`:
 [workflow run 41402314105](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41402314105).
+The native state-branch job passed; the full workflow is still running.
 
 ## Forward routes through completed Send fan-outs — 2026-11-02
 
@@ -1012,6 +1015,7 @@ skips. Hosted qualification is separate.
 Hosted qualification of frozen source `51b39ee` is running on
 `codex/s4-02-forward-send-51b39ee`:
 [workflow run 41403590132](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41403590132).
+The native Send-lineage job passed; the full workflow is still running.
 
 ## Forward routing in a completed child scope — 2026-11-02
 
@@ -1051,3 +1055,21 @@ passed 27 cases with 19 other-backend skips. Hosted qualification is separate.
 Hosted qualification of frozen source `2cd6328` is running on
 `codex/s4-02-child-repeated-2cd6328`:
 [workflow run 41406017189](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41406017189).
+
+## Forward routes at root and child levels — 2026-11-02
+
+The forward-route profile can combine a root jump with forward routes inside
+completed child scopes, including repeated child occurrences with different
+routes. Child transitions must remain within their own scope and move forward;
+backward choices, workflow termination from a child route and fan-out branch-level
+transitions remain rejected. Existing retained-checkpoint, scope-closure and
+receipt verification still applies; partial scopes remain unsupported.
+
+Eight SQLite and eight PostgreSQL cases passed for one and two child occurrences,
+replay and branch, and both effect policies. The repeated case explicitly checks
+that its two iterations took different paths. These tests include fresh-engine
+recovery, an injected fork interruption and rejection after deleting a retained
+child checkpoint. The prior implementation rejected the combined route before
+target reservation. Twenty-three route tests, four existing SQLite Send cases,
+and 27 shared admission/receipt cases also passed; the latter had 19 other-backend
+skips. Hosted qualification is separate.

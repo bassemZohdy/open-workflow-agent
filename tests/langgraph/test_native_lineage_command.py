@@ -132,7 +132,18 @@ def test_forward_switch_route_requires_possible_visits(damage):
 
 
 @pytest.mark.parametrize(
-    "damage", ["none", "loop", "loop_transition", "nested_transition", "wrong_next", "backward"]
+    "damage",
+    [
+        "none",
+        "loop",
+        "nested_forward",
+        "nested_backward",
+        "nested_switch_end",
+        "loop_transition",
+        "nested_transition",
+        "wrong_next",
+        "backward",
+    ],
 )
 def test_forward_route_through_completed_nested_scope(damage):
     nested = {"do": [{"effect": {"call": "agent:1.0.0@default"}}]}
@@ -146,6 +157,18 @@ def test_forward_route_through_completed_nested_scope(damage):
     ]
     if damage in {"loop", "loop_transition"}:
         nested["for"] = {"each": "turn", "in": [0, 1]}
+    if damage in {"nested_forward", "nested_backward", "nested_switch_end"}:
+        nested["do"] = [
+            {"start": {"set": {"value": 0}, "then": "effect"}},
+            {"never": {"set": {"value": -1}}},
+            {"effect": {"call": "agent:1.0.0@default"}},
+        ]
+        if damage == "nested_backward":
+            nested["do"][2]["effect"]["then"] = "start"
+        if damage == "nested_switch_end":
+            nested["do"][0]["start"] = {
+                "switch": [{"choice": {"when": "${ true }", "then": "end"}}]
+            }
     if damage in {"nested_transition", "loop_transition"}:
         nested["do"][0]["effect"]["then"] = "end"
     if damage == "backward":
@@ -157,7 +180,7 @@ def test_forward_route_through_completed_nested_scope(damage):
         ),
         "next_node": _node_name(plan.scopes[0].tasks[0 if damage == "wrong_next" else 4]),
     }
-    if damage in {"none", "loop"}:
+    if damage in {"none", "loop", "nested_forward"}:
         assert root_lineage_position(plan, native) == 4
     else:
         with pytest.raises(OwaError):

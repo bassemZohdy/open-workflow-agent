@@ -68,9 +68,9 @@ An effect whose outcome is uncertain fails closed rather than being repeated.
 ## Current boundaries
 
 The supported source is a root checkpoint with a contiguous completed-task prefix
-or a verifiable forward route through `set`, `call`, `switch` and completed
-non-routing nested `do` or `for` tasks and non-competing fan-outs with
-non-routing branches, and up to 64 retained
+or a verifiable forward route through `set`, `call`, `switch`, completed
+nested `do` or `for` tasks with forward child routes, and non-competing fan-outs
+without branch-level transitions, and up to 64 retained
 scope snapshots. Routes that may go backward are rejected. Completed nested scope occurrences
 are included when every task has been visited once per occurrence; an
 occurrence can instead follow a verified forward route that skips tasks when

@@ -264,7 +264,7 @@ treated as a deferred task or as additional feature completion.
   Native Command destinations now survive the fork, with retained SDK scheduling
   checked against the attested next node and local jump/tampering evidence.
   Verified forward routes through root `set`/`call`/`switch` and completed
-  non-routing nested `do`/`for` tasks and non-competing fan-outs may skip tasks before a
+  nested `do`/`for` tasks with forward child routes and non-competing fan-outs may skip tasks before a
   selected checkpoint; ambiguous backward attribution fails before reservation.
   The root lineage source profile also permits bounded, non-competing native
   Send fan-outs, preserving earlier branch effects and applying the target's

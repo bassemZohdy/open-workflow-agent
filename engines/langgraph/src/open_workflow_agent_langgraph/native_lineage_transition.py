@@ -27,23 +27,49 @@ from .native_lineage_preflight import NativeLineagePreflight
 
 
 def _forward_nested_scope(definition: dict[str, Any]) -> bool:
-    """Allow nested scopes whose tasks cannot redirect or terminate their parent."""
+    """Allow child routes that stay forward inside their own scope."""
     body = definition.get("do")
     if not isinstance(body, list) or not body:
         return False
-    for entry in body:
+    names = {
+        next(iter(entry)): index
+        for index, entry in enumerate(body)
+        if isinstance(entry, dict) and len(entry) == 1
+    }
+    if len(names) != len(body):
+        return False
+    for index, entry in enumerate(body):
         if not isinstance(entry, dict) or len(entry) != 1:
             return False
         child = next(iter(entry.values()))
-        if not isinstance(child, dict) or child.get("then") is not None:
+        if not isinstance(child, dict):
             return False
+        transitions = [child.get("then")]
+        if "switch" in child:
+            cases = child["switch"]
+            if not isinstance(cases, list):
+                return False
+            for entry in cases:
+                if not isinstance(entry, dict) or len(entry) != 1:
+                    return False
+                case = next(iter(entry.values()))
+                if not isinstance(case, dict):
+                    return False
+                transitions.append(case.get("then"))
+        for transition in transitions:
+            if transition in (None, "continue"):
+                continue
+            if not isinstance(transition, str) or transition not in names:
+                return False
+            if names[transition] <= index:
+                return False
         if "do" in child:
             if not _forward_nested_scope(child):
                 return False
         elif "fork" in child:
             if not _forward_fanout(child):
                 return False
-        elif not any(operation in child for operation in ("set", "call")):
+        elif not any(operation in child for operation in ("set", "call", "switch")):
             return False
     return True
 
@@ -54,11 +80,15 @@ def _forward_fanout(definition: dict[str, Any]) -> bool:
     if not isinstance(fork, dict) or fork.get("compete", False):
         return False
     branches = fork.get("branches")
-    return (
-        isinstance(branches, list)
-        and 1 <= len(branches) <= 64
-        and _forward_nested_scope({"do": branches})
-    )
+    if not isinstance(branches, list) or not 1 <= len(branches) <= 64:
+        return False
+    for entry in branches:
+        if not isinstance(entry, dict) or len(entry) != 1:
+            return False
+        branch = next(iter(entry.values()))
+        if not isinstance(branch, dict) or branch.get("then") is not None or "switch" in branch:
+            return False
+    return _forward_nested_scope({"do": branches})
 
 
 def _verify_child_route(
