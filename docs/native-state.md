@@ -60,7 +60,9 @@ identity/input/state bindings or immutable common receipts fail closed.
 Each projection verifies the archived definition, original input, native state
 digest and immutable receipt bindings. An old initializer may be viewed after
 later actions; the separate initial-execution admission guard still rejects
-replaying that initializer. This read does not verify every child scope or
+using that historical initializer as a fresh original delivery. The opt-in replay
+profile can fork it into a new invocation after verifying its retained proofs.
+This read does not verify every child scope or
 pending wake, so every response explicitly reports `continuation: not_inspected`.
 Inspection never owns execution, dispatches tasks, invokes a model, resumes a
 workflow, writes common action evidence or deletes checkpoints.

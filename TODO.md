@@ -284,6 +284,10 @@ treated as a deferred task or as additional feature completion.
   effects and lineage proofs; lineage cycles and depth overflow fail closed.
   Descendant replay process stops after the fork or during an effect recover
   with the same target and do not repeat uncertain effects on SQLite/PostgreSQL.
+  Root replay also accepts a proof-verified retained initializer, starting a new
+  identity before the first task under the declared effect policy. Local checks
+  cover both storage backends and retry/source limits; hosted qualification and
+  broader time-travel profiles remain open.
   The coordinator now rechecks all required workflow capabilities before a new
   replay or branch reservation and again before recovering a reservation. The
   previously failing unsupported-source rejection test is retained as regression

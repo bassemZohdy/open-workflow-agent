@@ -379,8 +379,49 @@ TIGHT = [NativeStateReplayConfig(max_replays_per_source=1)]
 
 
 @pytest.mark.asyncio
+async def test_replay_from_initial_checkpoint_preserves_new_identity_and_effect_policy(
+    replay_runtime, policy
+):
+    services, _, handle, plan = replay_runtime
+    path = services.engine_database_path("langgraph", create_namespace=False)
+    saver_type = (
+        native.AsyncPostgresSaver if path.startswith("postgres") else native.AsyncSqliteSaver
+    )
+    root = LangGraphScopeExecutor(plan, None, handle.invocation_id).checkpoint_config("/do", 1)
+    async with saver_type.from_conn_string(path) as saver:
+        checkpoints = [item async for item in saver.alist(root)]
+        initial = next(
+            item for item in checkpoints if set(item.checkpoint["channel_values"]) == {"__start__"}
+        )
+    reference = state_reference(handle.invocation_id, plan.fingerprint, initial.checkpoint["id"])
+    endpoint = f"/v1/invocations/{handle.invocation_id}/state-replays"
+    before = len(services.model.calls)
+    async with client_for(replay_runtime) as client:
+        response = await client.post(
+            endpoint,
+            json=request_body(reference, policy),
+            headers={"Idempotency-Key": "replay-initial"},
+        )
+        assert response.status_code == 202, response.text
+        target = response.json()["invocation_id"]
+        assert target != handle.invocation_id
+        finished = await wait_terminal(services, target, timeout=180)
+        assert finished.status == ("faulted" if policy == "read_only" else "completed")
+        assert len(services.model.calls) == before + (2 if policy == "reexecute" else 0)
+        retained = await client.get(f"/v1/invocations/{target}/states")
+        assert retained.status_code == 200, retained.text
+        repeat = await client.post(
+            endpoint,
+            json=request_body(reference, policy),
+            headers={"Idempotency-Key": "replay-initial"},
+        )
+        assert repeat.status_code == 202 and repeat.json()["invocation_id"] == target
+        assert len(services.model.calls) == before + (2 if policy == "reexecute" else 0)
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("replay_config", TIGHT, indirect=True)
-async def test_unsupported_initial_checkpoint_does_not_reserve_a_target(replay_runtime, policy):
+async def test_initial_checkpoint_obeys_per_source_limit_and_exact_retry(replay_runtime, policy):
     services, _, handle, plan = replay_runtime
     path = services.engine_database_path("langgraph", create_namespace=False)
     saver_type = (
@@ -400,27 +441,32 @@ async def test_unsupported_initial_checkpoint_does_not_reserve_a_target(replay_r
     )
     endpoint = f"/v1/invocations/{handle.invocation_id}/state-replays"
     async with client_for(replay_runtime) as client:
-        rejected = await client.post(
-            endpoint,
-            json=request_body(reference, policy),
-            headers={"Idempotency-Key": "retry-after-unsupported"},
-        )
-        assert rejected.status_code == 409, rejected.text
-        assert (
-            tuple(
-                connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
-                for table in ("invocations", "native_replay_reservations_v1")
-            )
-            == before
-        )
-        supported = await first_task_reference(client, handle)
         accepted = await client.post(
             endpoint,
-            json=request_body(supported, policy),
-            headers={"Idempotency-Key": "retry-after-unsupported"},
+            json=request_body(reference, policy),
+            headers={"Idempotency-Key": "initial-source-limit"},
         )
         assert accepted.status_code == 202, accepted.text
-        await wait_terminal(services, accepted.json()["invocation_id"])
+        target = accepted.json()["invocation_id"]
+        await wait_terminal(services, target, timeout=180)
+        after = tuple(
+            connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            for table in ("invocations", "native_replay_reservations_v1")
+        )
+        assert after == tuple(value + 1 for value in before)
+        repeated = await client.post(
+            endpoint,
+            json=request_body(reference, policy),
+            headers={"Idempotency-Key": "initial-source-limit"},
+        )
+        assert repeated.status_code == 202 and repeated.json()["invocation_id"] == target
+        supported = await first_task_reference(client, handle)
+        rejected = await client.post(
+            endpoint,
+            json=request_body(supported, policy),
+            headers={"Idempotency-Key": "second-source-limit"},
+        )
+        assert rejected.status_code == 429, rejected.text
 
 
 @pytest.mark.asyncio
@@ -562,9 +608,13 @@ async def test_configuration_only_app_invokes_and_replays_with_public_requests(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("phase", ["reserved", "admitted", "forked", "bound", "effect"])
+@pytest.mark.parametrize(
+    ("phase", "initial"),
+    [(phase, False) for phase in ("reserved", "admitted", "forked", "bound", "effect")]
+    + [("forked", True), ("effect", True)],
+)
 async def test_a_process_stop_at_each_stage_recovers_through_the_same_request(
-    replay_runtime, policy, phase, tmp_path
+    replay_runtime, policy, phase, initial, tmp_path
 ):
     if policy == "read_only" and phase != "bound":
         pytest.skip("read-only interruption is exercised at the bound boundary")
@@ -573,7 +623,14 @@ async def test_a_process_stop_at_each_stage_recovers_through_the_same_request(
     services, engine, handle, plan = replay_runtime
     postgres = str(services.config.persistence.datasource).startswith("postgres")
     async with client_for(replay_runtime) as client:
-        reference = await first_task_reference(client, handle)
+        if initial:
+            history = await client.get(f"/v1/invocations/{handle.invocation_id}/states")
+            assert history.status_code == 200, history.text
+            reference = next(
+                item["reference"] for item in history.json()["items"] if item["phase"] == "initial"
+            )
+        else:
+            reference = await first_task_reference(client, handle)
     environment = os.environ.copy()
     if not postgres:
         environment.pop("OWA_TEST_POSTGRES_URL", None)
@@ -618,7 +675,7 @@ async def test_a_process_stop_at_each_stage_recovers_through_the_same_request(
     # Let the dead worker's execution lease lapse, then repeat the identical request.
     await asyncio.sleep(13 if phase == "effect" else 3)
     expected = "faulted" if policy == "read_only" or phase == "effect" else "completed"
-    expected_calls = 2 if expected == "faulted" else 3
+    expected_calls = 2 if expected == "faulted" else (4 if initial else 3)
     async with client_for(replay_runtime) as client:
         path = f"/v1/invocations/{handle.invocation_id}/state-replays"
         body = request_body(reference, policy)

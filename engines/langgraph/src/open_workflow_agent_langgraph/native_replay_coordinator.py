@@ -213,10 +213,13 @@ class NativeReplayCoordinator:
                     stage = stage_root_replay if kind == "replay" else stage_root_branch
                     proposal, dependencies = stage(self.services, plan, prepared, target)
                     tasks = plan.scopes[0].tasks
-                    completed = root_lineage_position(
-                        plan, json.loads(proposal.packets[0].native_json)
-                    )
-                    last = tasks[completed - 1]
+                    if prepared.snapshots[0].phase == "initial":
+                        last = None
+                    else:
+                        completed = root_lineage_position(
+                            plan, json.loads(proposal.packets[0].native_json)
+                        )
+                        last = tasks[completed - 1]
 
                     async def write(saver: Any, configs: Any) -> tuple[Any, ...]:
                         driver = LangGraphScopeExecutor(plan, saver, target.invocation_id)
@@ -238,7 +241,11 @@ class NativeReplayCoordinator:
                                 else value
                             )
                             results.append(
-                                await graph.aupdate_state(config, update, as_node=_node_name(node))
+                                await graph.aupdate_state(
+                                    config,
+                                    update,
+                                    as_node="__start__" if node is None else _node_name(node),
+                                )
                             )
                         return tuple(results)
 

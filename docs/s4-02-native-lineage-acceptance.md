@@ -1,5 +1,24 @@
 # S4-02 selected-checkpoint lineage preparation
 
+## Retained initializer replay — 2026-11-02
+
+The opt-in root replay profile can select a retained, proof-verified SDK initializer
+and fork a new invocation before its first task. The original input and authority
+remain bound to the source proof; the target has a distinct identity and applies
+its declared `read_only` or `reexecute` effect policy. This does not enable
+initializer branching, arbitrary time travel, or a fresh original delivery from
+historical state.
+
+Local route tests passed for both effect policies on SQLite and PostgreSQL,
+including exact retry and per-source limits (four cases per backend). Actual
+process-stop recovery after the native fork and during an effect passed on both
+backends (two cases per backend); the latter does not repeat an uncertain effect.
+The SQLite initializer admission guard passed, as did 18 SQLite preflight cases
+(18 PostgreSQL cases skipped without a configured datasource), and two SQLite
+branch regressions (two PostgreSQL cases skipped). The changed Python files passed
+format and lint checks. These are local results; hosted qualification of this
+change and the broader S4-02/T49 criteria remain open.
+
 Updated 2026-10-27. S4-02 and T49 remain open. The preparation component validates
 the basis for a future native replay or branch. A separate private transaction
 unit now writes selected scopes under a pre-reserved target identity. Neither

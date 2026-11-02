@@ -1,6 +1,6 @@
 # Native state replay (opt-in source profile)
 
-The opt-in profile `langgraph.state.replay@1.0.0` replays a completed-task prefix of a
+The opt-in profile `langgraph.state.replay@1.0.0` replays an initializer or a completed-task prefix of a
 workflow's root scope into a **new** invocation with immutable lineage to the source.
 It uses the native checkpoint store, the common execution lease and the common effect
 gate. SQLite is the embedded default; PostgreSQL is optional. This is a source profile,
@@ -53,7 +53,9 @@ Grant the action `state.replay` in the execution authorization policy.
 ## Replay a checkpoint
 
 Pick a checkpoint from the original invocation's history (`GET /v1/invocations/{id}/states`,
-an item whose `root_task_visits` lists the tasks completed so far), then:
+an item whose `root_task_visits` lists the tasks completed so far). The retained initializer
+can also be selected to start the new invocation before the first task; its original input
+and authority must pass the same retained-proof checks. Then:
 
 ```http
 POST /v1/invocations/{invocation_id}/state-replays

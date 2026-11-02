@@ -284,12 +284,12 @@ def _validate_root_basis(
             or policy.effect_policy != request.effect_policy
             or plan.uses_timing
             or not 1 <= len(preflight.snapshots) <= 64
+            or (preflight.snapshots[0].reference, preflight.snapshots[0].occurrence) != ("/do", 1)
+            or preflight.snapshots[0].phase not in {"checkpoint", "initial"}
             or (
-                preflight.snapshots[0].reference,
-                preflight.snapshots[0].occurrence,
-                preflight.snapshots[0].phase,
+                preflight.snapshots[0].phase == "initial"
+                and (kind != "replay" or len(preflight.snapshots) != 1)
             )
-            != ("/do", 1, "checkpoint")
         ):
             raise lineage_error("replay_profile_unsupported")
         native = json.loads(preflight.snapshots[0].native_json)
@@ -344,7 +344,13 @@ def _validate_root_basis(
                 ):
                     raise lineage_error("replay_dependency_unsupported")
         tasks = plan.scopes[0].tasks
-        completed = root_lineage_position(plan, native)
+        if preflight.snapshots[0].phase == "initial":
+            snapshot = json.loads(native["snapshot"])
+            if snapshot["task_visits"] or native["next_node"] != "__end__" or not tasks:
+                raise lineage_error("replay_profile_unsupported")
+            completed = 0
+        else:
+            completed = root_lineage_position(plan, native)
         coordinates = {(item.reference, item.occurrence) for item in preflight.snapshots}
         packets = {
             (item.reference, item.occurrence): json.loads(item.native_json)
@@ -461,6 +467,8 @@ def _stage_root_lineage(
                 )
             snapshot = json.loads(packet["snapshot"])
             snapshot["variables"]["workflow"]["id"] = target.invocation_id
+            if coordinate == ("/do", 1) and preflight.snapshots[0].phase == "initial":
+                packet["next_node"] = _node_name(plan.scopes[0].tasks[0])
             if kind == "branch" and coordinate == ("/do", 1):
                 snapshot["data"] = request.values
             packet["snapshot"] = _json_identity(snapshot)
