@@ -961,3 +961,6 @@ fork interruption and fail-closed inspection after deleting a retained child
 checkpoint. Eight original nested-scope SQLite cases and 14 route-validation
 cases passed. The initial valid forward case returned the expected unsupported
 profile error before the route extension; hosted qualification is separate.
+Hosted qualification of frozen source `2474614` is running on
+`codex/s4-02-forward-nested-2474614`:
+[workflow run 41401271697](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41401271697).
