@@ -1105,3 +1105,6 @@ lineage admission and receipt selection passed 27 with 19 other-backend skips.
 The earlier aggregate-only predicate would accept the complete-looking totals;
 the test that initially imported the new validator failed collection until the
 validator was implemented. Hosted qualification remains separate.
+Hosted qualification of frozen source `8f93f2b` is running on
+`codex/s4-02-child-integrity-8f93f2b`:
+[workflow run 41408807023](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41408807023).
