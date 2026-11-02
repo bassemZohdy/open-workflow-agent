@@ -57,7 +57,7 @@ def _forward_nested_scope(definition: dict[str, Any]) -> bool:
                     return False
                 transitions.append(case.get("then"))
         for transition in transitions:
-            if transition in (None, "continue"):
+            if transition in (None, "continue", "exit"):
                 continue
             if not isinstance(transition, str) or transition not in names:
                 return False

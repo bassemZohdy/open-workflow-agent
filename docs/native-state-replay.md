@@ -99,13 +99,14 @@ another replay or branch must belong to that target invocation.
 Completed nested scope occurrences can accompany a root checkpoint, up to 64
 retained scope snapshots. An occurrence may also follow a verified forward
 route that skips tasks; repeated occurrences require consecutive checkpoint
-evidence to establish each occurrence's visits.
+evidence to establish each occurrence's visits. A child can end its own scope
+with `exit`; a child's workflow-wide `end` remains outside the forward-route profile.
 Declared native channel values are retained at the selected checkpoint, and later
 channel writes continue from those values. Native Command routing is retained for
 contiguous root-task prefixes and verifiable forward routes through `set`, `call`,
 `switch`, completed nested `do` or `for` tasks with forward child routes, and
-non-competing fan-outs without branch-level transitions
-tasks; routes that may go backward are rejected. Bounded, non-competing native Send
+non-competing fan-outs without branch-level transitions; routes that may go
+backward are rejected. Bounded, non-competing native Send
 fan-outs may occur before or after the selected root checkpoint. An attested root
 state update may also be retained: its source control proofs remain dependencies
 of the target, and later source updates do not change the selected data. Pending

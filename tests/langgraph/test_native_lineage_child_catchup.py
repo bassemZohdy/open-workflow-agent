@@ -1,4 +1,4 @@
-"""A later child occurrence cannot hide repeated effects behind total visit counts."""
+"""Child-route admission preserves completion, effects, and scope boundaries."""
 
 import json
 import os
@@ -15,7 +15,7 @@ from open_workflow_agent.config import (
 from open_workflow_agent.execution_authority import authority_scope
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow, generate_default_workflow
-from test_state_replay_api import client_for
+from test_state_replay_api import client_for, wait_terminal
 
 pytest.importorskip("langgraph.graph")
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine
@@ -24,8 +24,8 @@ from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 @pytest.mark.asyncio
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 @pytest.mark.parametrize("kind", ["replay", "branch"])
-@pytest.mark.parametrize("scenario", ["catchup", "reordered"])
-async def test_repeated_child_cannot_catch_up_after_a_skipped_occurrence(
+@pytest.mark.parametrize("scenario", ["catchup", "reordered", "scope_exit", "scope_exit_readonly"])
+async def test_child_route_admission_preserves_scope_boundaries(
     tmp_path, monkeypatch, backend, kind, scenario
 ):
     for actor in ("alice", "bob"):
@@ -81,6 +81,24 @@ async def test_repeated_child_cannot_catch_up_after_a_skipped_occurrence(
                 {"finish": {"call": "agent:1.0.0@default", "then": "middle"}},
             ]
         }
+    scope_exit = scenario.startswith("scope_exit")
+    if scope_exit:
+        source["do"] = [
+            {"start": {"set": {"value": 0}, "then": "nested"}},
+            {"never": {"set": {"value": -1}}},
+            {
+                "nested": {
+                    "do": [
+                        {"effect": {"call": "agent:1.0.0@default", "then": "exit"}},
+                        {"never_child": {"set": {"value": -1}}},
+                    ]
+                }
+            },
+            {"change": {"set": {"value": 1}}},
+            {"after": {"call": "agent:1.0.0@default"}},
+        ]
+    policy = "read_only" if scenario == "scope_exit_readonly" else "reexecute"
+    task_reference = "/do/3/change" if scope_exit else "/do/1/change"
     extensions = [
         {"name": "langgraph.state.read", "version": "1.0.0"},
         {"name": "langgraph.state." + kind, "version": "1.0.0"},
@@ -88,13 +106,13 @@ async def test_repeated_child_cannot_catch_up_after_a_skipped_occurrence(
     data = {
         "langgraph.state." + kind + "@1.0.0": {
             "authorizationPolicyRef": config.execution_authorization.id,
-            kind + "EffectPolicy": "reexecute",
+            kind + "EffectPolicy": policy,
         }
     }
     if kind == "branch":
         extensions.append({"name": "langgraph.state.update", "version": "1.0.0"})
         data["langgraph.state.update@1.0.0"] = {
-            "allowedTaskRefs": ["/do/1"],
+            "allowedTaskRefs": ["/do/3" if scope_exit else "/do/1"],
             "updateSchema": {
                 "type": "object",
                 "properties": {"value": {"type": "integer"}},
@@ -129,11 +147,19 @@ async def test_repeated_child_cannot_catch_up_after_a_skipped_occurrence(
             selected = next(
                 item
                 for item in history.json()["items"]
-                if item["root_task_visits"] == {"/do/0/nested": 1, "/do/1/change": 1}
+                if item["root_task_visits"]
+                == (
+                    {"/do/0/start": 1, "/do/2/nested": 1, "/do/3/change": 1}
+                    if scope_exit
+                    else {"/do/0/nested": 1, "/do/1/change": 1}
+                )
             )
-            body = {"reference": selected["reference"], "acknowledge_reexecution": True}
+            body = {
+                "reference": selected["reference"],
+                "acknowledge_reexecution": policy == "reexecute",
+            }
             if kind == "branch":
-                body.update({"task_reference": "/do/1/change", "values": {"value": 7}})
+                body.update({"task_reference": task_reference, "values": {"value": 7}})
             from open_workflow_agent_langgraph.native_lineage_preflight import (
                 prepare_native_lineage,
             )
@@ -146,23 +172,26 @@ async def test_repeated_child_cannot_catch_up_after_a_skipped_occurrence(
                 target_invocation_id=str(uuid4()),
                 request_id=uuid4().hex * 2,
                 source_reference=selected["reference"],
-                acknowledge_reexecution=True,
-                task_reference="/do/1/change" if kind == "branch" else None,
+                acknowledge_reexecution=policy == "reexecute",
+                task_reference=task_reference if kind == "branch" else None,
                 values={"value": 7} if kind == "branch" else None,
             )
             visits = {
                 item.occurrence: json.loads(json.loads(item.native_json)["snapshot"])["task_visits"]
                 for item in evidence.snapshots
-                if item.reference == "/do/0/nested/do"
+                if item.reference == ("/do/2/nested/do" if scope_exit else "/do/0/nested/do")
             }
             if scenario == "catchup":
                 for task in ("repeat", "again"):
                     reference = f"/do/0/nested/do/{1 if task == 'repeat' else 2}/{task}"
                     assert visits[1].get(reference, 0) == 0
                     assert visits[2].get(reference, 0) == 2
-            else:
+            elif scenario == "reordered":
                 for index, task in enumerate(("first", "middle", "finish")):
                     assert visits[1].get(f"/do/0/nested/do/{index}/{task}") == 1
+            else:
+                assert visits[1].get("/do/2/nested/do/0/effect") == 1
+                assert visits[1].get("/do/2/nested/do/1/never_child", 0) == 0
             route = "state-replays" if kind == "replay" else "state-branches"
             before = services.invocations.connection.execute(
                 "SELECT COUNT(*) FROM invocations"
@@ -172,6 +201,22 @@ async def test_repeated_child_cannot_catch_up_after_a_skipped_occurrence(
                 json=body,
                 headers={"Idempotency-Key": "catch-up"},
             )
+            if scope_exit:
+                assert response.status_code == 202, response.text
+                target = await wait_terminal(
+                    services, response.json()["invocation_id"], timeout=180
+                )
+                assert target.status == ("faulted" if policy == "read_only" else "completed")
+                assert len(services.model.calls) == expected_calls + (policy == "reexecute")
+                repeated = await client.post(
+                    f"/v1/invocations/{handle.invocation_id}/{route}",
+                    json=body,
+                    headers={"Idempotency-Key": "catch-up"},
+                )
+                assert repeated.status_code == 202
+                assert repeated.json()["invocation_id"] == target.invocation_id
+                assert len(services.model.calls) == expected_calls + (policy == "reexecute")
+                return
             assert response.status_code == 409, response.text
             assert (
                 services.invocations.connection.execute(

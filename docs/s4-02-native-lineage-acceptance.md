@@ -1076,6 +1076,7 @@ skips. Hosted qualification is separate.
 Hosted qualification of frozen source `7e6e016` is running on
 `codex/s4-02-combined-routes-7e6e016`:
 [workflow run 41407027218](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41407027218).
+The PostgreSQL native state-branch job passed; the full workflow is still running.
 
 ## Routed child scopes inside a forward Send fan-out — 2026-11-02
 
@@ -1130,3 +1131,19 @@ damage; broader profile and hosted qualification remain separate.
 Hosted qualification of frozen source `e24bf63` is running on
 `codex/s4-02-child-order-e24bf63`:
 [workflow run 41409654472](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41409654472).
+
+## Child scope exit on a forward route — 2026-11-02
+
+A completed nested child can use `exit` to leave its own scope on a forward
+root route. The retained scope checkpoint and receipts still verify; child
+workflow-wide `end`, backward transitions and fan-out branch-level transitions
+remain outside this forward profile. This does not implement partial-scope
+selection or complete S4-02.
+
+Four replay/branch cases passed on each of SQLite and PostgreSQL under both effect
+policies. They verify
+the child action is retained, the skipped child task stays skipped, the parent
+continues, and an exact retry returns the same target. Nineteen route/counter
+checks and four unsafe-child admission regressions on each store also passed; the shared
+lineage selection passed 27 with 19 other-backend skips. The earlier static guard
+rejected the valid scope exit. Hosted evidence is tracked separately.
