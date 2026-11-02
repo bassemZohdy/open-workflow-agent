@@ -891,9 +891,9 @@ reuses a proof only within its synchronous inspection phase; independent request
 still recheck ancestry. Two concurrent updated-target tests detected a runtime
 profile change when the source was edited during their run and must be rerun on
 stable source. Both updated-target PostgreSQL cases subsequently passed on stable
-source. The PostgreSQL replay/replay three-generation case also passed, including
-depth overflow, exact retry and ancestor-proof corruption; the other combinations
-and hosted results are tracked separately as they finish. The stable-source
+source. All four replay/branch combinations passed the PostgreSQL three-generation
+case, including exact retries and ancestor-proof corruption; replay/replay also
+verified depth overflow. Hosted results are tracked separately as they finish. The stable-source
 receipt, preflight and admission selection passed 27 cases with 19 other-backend
 skips; workflow selection passed 63 cases. This bounded profile does not complete
 S4-02 or qualify broader time travel.
