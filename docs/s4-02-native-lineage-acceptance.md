@@ -999,3 +999,6 @@ including competing and branch-transition rejection. The initial forward fan-out
 case returned the unsupported-profile error before this implementation; the
 existing shared admission and receipt suite passed 27 cases with 19 other-backend
 skips. Hosted qualification is separate.
+Hosted qualification of frozen source `51b39ee` is running on
+`codex/s4-02-forward-send-51b39ee`:
+[workflow run 41403590132](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41403590132).
