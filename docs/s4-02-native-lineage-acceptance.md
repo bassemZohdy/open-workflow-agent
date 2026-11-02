@@ -771,3 +771,6 @@ same target in a faulted state without repeating the uncertain effect. Repeated
 requests returned the same target. The existing SQLite public branch stop test
 also passed with the shared worker's original arguments. These tests do not
 qualify process stops for other Send positions or nested fan-outs.
+Hosted qualification of this subsequent source is running for frozen commit
+`59e0c98` on `codex/s4-02-send-crash-qualification-59e0c98`:
+[workflow run 41387276357](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41387276357).
