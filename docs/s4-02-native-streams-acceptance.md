@@ -18,7 +18,11 @@ for a simple child graph. Eight cases passed with zero skips on SQLite and
 PostgreSQL, including a fresh saver reopening the child checkpoint, a
 pending-write round trip and one SDK interrupt/resume without repeating a
 deterministic callback. This is feasibility evidence, not runtime code or a
-supported stream profile. The prototype does not qualify `alist`, OWA's native
+supported stream profile. A later focused check also passed a basic `alist`
+history and `before` pagination round trip on both stores. Its first attempt
+incorrectly listed with a selected checkpoint ID and returned one item; the
+corrected check lists by thread and namespace before applying pagination.
+This does not qualify every `alist` filter or limit, OWA's native
 interrupt/recovery contract, real process failure or effect receipts,
 concurrent/repeated scopes, branch routing, lineage verification or safe public
 namespace projection. A runtime implementation must preserve those identities

@@ -55,6 +55,25 @@ class _PrototypeSaver(BaseCheckpointSaver):
     ) -> None:
         await self.inner.aput_writes(_namespace(config, ""), writes, task_id, task_path)
 
+    async def alist(
+        self, config: Any, *, filter: Any = None, before: Any = None, limit: Any = None
+    ) -> Any:
+        if config is None:
+            raise ValueError("prototype requires an explicit child identity")
+        logical = config["configurable"]["checkpoint_ns"]
+        async for result in self.inner.alist(
+            _namespace(config, ""),
+            filter=filter,
+            before=_namespace(before, "") if before is not None else None,
+            limit=limit,
+        ):
+            yield result._replace(
+                config=_namespace(result.config, logical),
+                parent_config=_namespace(result.parent_config, logical)
+                if result.parent_config
+                else None,
+            )
+
     def get_next_version(self, current: Any, channel: Any) -> Any:
         return self.inner.get_next_version(current, channel)
 
@@ -153,6 +172,18 @@ async def test_sdk_nested_streaming_and_checkpoint_namespace_are_independent(
             assert logical is not None
             assert logical.config["configurable"]["checkpoint_ns"] == nested[0][0]
             assert (marker, "probe", {"value": 3}) in logical.pending_writes
+            list_config = {
+                "configurable": {"thread_id": child_thread, "checkpoint_ns": nested[0][0]}
+            }
+            listed = [item async for item in prototype.alist(list_config)]
+            assert len(listed) >= 2
+            assert all(
+                item.config["configurable"]["checkpoint_ns"] == nested[0][0] for item in listed
+            )
+            older = [item async for item in prototype.alist(list_config, before=listed[0].config)]
+            assert [item.config["configurable"]["checkpoint_id"] for item in older] == [
+                item.config["configurable"]["checkpoint_id"] for item in listed[1:]
+            ]
             durable_config = child_config
     async with _saver(backend, tmp_path) as reopened:
         persisted = await reopened.aget_tuple(durable_config)
