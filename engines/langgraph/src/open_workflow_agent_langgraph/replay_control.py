@@ -20,6 +20,7 @@ from open_workflow_agent.errors import (
 from open_workflow_agent.execution_authority import ExecutionAuthority
 from open_workflow_agent.native_state import NativeStateCapacity
 from open_workflow_agent.persistence import ExecutionHandle
+from open_workflow_agent.state_lineage import lineage_error
 from open_workflow_agent.storage import is_postgresql_datasource
 
 from .native_replay_coordinator import NativeReplayCoordinator
@@ -37,6 +38,9 @@ class _Flight:
     task: asyncio.Task[Any]
     bound: asyncio.Future[str]
     target: dict[str, str]
+    source_id: str
+    reference: str
+    acknowledge_reexecution: bool
 
 
 class LangGraphReplayController:
@@ -128,6 +132,12 @@ class LangGraphReplayController:
             "state": "accepted",
         }
         flight = self._inflight.get(request_id)
+        if flight is not None and (
+            flight.source_id != handle.invocation_id
+            or flight.reference != reference
+            or flight.acknowledge_reexecution != acknowledge_reexecution
+        ):
+            raise lineage_error("reservation_request_invalid")
         if flight is None:
             if self._active() >= self.config.max_active_replays:
                 raise NativeStateCapacity("native state replay capacity is exhausted")
@@ -169,7 +179,9 @@ class LangGraphReplayController:
                 _phase=phase,
             )
         )
-        flight = _Flight(task, bound, target)
+        flight = _Flight(
+            task, bound, target, handle.invocation_id, reference, acknowledge_reexecution
+        )
         self._inflight[request_id] = flight
         task.add_done_callback(_consume)
         task.add_done_callback(lambda _: self._forget(request_id))

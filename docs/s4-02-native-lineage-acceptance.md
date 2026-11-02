@@ -385,3 +385,23 @@ failure but was interrupted before its traceback was retained; it is not green
 evidence. The focused PostgreSQL rerun passed both cases. The existing hosted
 PostgreSQL job already selects this test; hosted results for the expanded cases
 are not yet recorded. This does not qualify broader replay or complete S4-02.
+
+## Concurrent replay request binding — 2026-11-02
+
+The public controller now checks the source, selected reference and effect
+acknowledgement before a request joins an in-flight request with the same key.
+A different reference fails with the existing reservation conflict rather
+than receiving the first request's target, both before and after binding.
+Identical requests retain their existing shared-flight behavior. This check
+does not change the durable reservation or the supported replay profile.
+
+An HTTP regression reproduced the previous 202 response for a conflicting
+in-flight reference. The corrected focused regression passes eight cases on
+Windows with SQLite and PostgreSQL 16: both effect policies and both binding
+phases. An expanded selection initially had 19 passes and one failure because
+the new test's preliminary PostgreSQL history read timed out; the revised test
+uses distinct well-formed references with the coordinator held, removing that
+unnecessary read. The original failure is not counted green. The separate
+authorization/checkpoint contract selection had eight passes and 16 skips for
+unavailable backend/engine cells. This is local evidence, not hosted or full
+S4-02 qualification.

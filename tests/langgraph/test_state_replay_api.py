@@ -249,6 +249,56 @@ async def test_concurrent_requests_with_one_key_resolve_to_one_target_without_du
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("bound_first", [False, True])
+async def test_inflight_key_rejects_a_different_checkpoint(replay_runtime, policy, bound_first):
+    services, _, handle, _ = replay_runtime
+    controller = services.native_replay_controller
+    entered, release = asyncio.Event(), asyncio.Event()
+    real = controller.coordinator.run
+    target = "00000000-0000-4000-8000-000000000000"
+
+    async def held(*args, **kwargs):
+        if bound_first:
+            kwargs["_phase"]("bound", target)
+        entered.set()
+        await release.wait()
+        if not bound_first:
+            kwargs["_phase"]("bound", target)
+
+    controller.coordinator.run = held
+    first = None
+    path = f"/v1/invocations/{handle.invocation_id}/state-replays"
+    try:
+        async with client_for(replay_runtime) as client:
+            reference = "1" * 64
+            first = asyncio.create_task(
+                client.post(
+                    path,
+                    json=request_body(reference, policy),
+                    headers={"Idempotency-Key": "inflight-conflict"},
+                )
+            )
+            await asyncio.wait_for(entered.wait(), timeout=10)
+            changed = await asyncio.wait_for(
+                client.post(
+                    path,
+                    json=request_body("0" * 64, policy),
+                    headers={"Idempotency-Key": "inflight-conflict"},
+                ),
+                timeout=5,
+            )
+            assert changed.status_code == 409, changed.text
+            assert target not in changed.text
+            release.set()
+            assert (await first).status_code == 202
+    finally:
+        release.set()
+        if first is not None:
+            await asyncio.gather(first, return_exceptions=True)
+        controller.coordinator.run = real
+
+
+@pytest.mark.asyncio
 async def test_active_replay_budget_rejects_the_next_distinct_request(replay_runtime, policy):
     services, engine, handle, plan = replay_runtime
     controller = services.native_replay_controller
