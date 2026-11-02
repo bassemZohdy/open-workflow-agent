@@ -759,3 +759,8 @@ contract selection passed 24 cases with 13 other-backend/engine skips. The
 initial pre-fan-out replay returned 409 under the former Send restriction; it is
 retained as pre-change failure evidence. The new profile has not been
 hosted-qualified or qualified with an actual process kill.
+Hosted SQLite/PostgreSQL qualification is queued for frozen source
+`0f11940714d4918932b942c3111bb28d9eace188` on
+`codex/s4-02-send-qualification-0f11940`:
+[workflow run 41386329048](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41386329048).
+No result is claimed for that run yet.
