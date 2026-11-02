@@ -18,7 +18,7 @@ from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.state_lineage import StateLineageRequest, lineage_error
 
 from .graph import LangGraphScopeExecutor, _json_identity
-from .native_lineage_fork import TABLE
+from .native_lineage_fork import TABLE, verify_fork_schedule
 from .native_lineage_preflight import NativeLineagePreflight
 from .native_state_controls import _proof_connection
 from .native_state_mutations import _checkpoint
@@ -200,6 +200,7 @@ def inspect_native_lineage(
                     or type(item.metadata.get("step")) is not int
                 ):
                     raise lineage_error("fork_proof_changed")
+                verify_fork_schedule(item.checkpoint)
                 packets.append(
                     [
                         reference,

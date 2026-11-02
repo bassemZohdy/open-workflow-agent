@@ -614,8 +614,9 @@ Hosted PostgreSQL qualification was dispatched for frozen source
 `bc8549f9195cff83b28c325d8303b48fbc7b57ed` on
 `codex/s4-02-nested-qualification-bc8549f`:
 [workflow run 41379193128](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41379193128).
-The dedicated PostgreSQL branch job passed; the overall workflow was still
-running when checked, so no full-workflow result is claimed yet.
+The entire hosted workflow completed successfully, including the dedicated
+PostgreSQL branch job and both persistence acceptance jobs. This result applies
+to that frozen source, not later changes.
 
 Development attempts retained here include the original unsupported-profile 409,
 an invalid branch fixture that attributed to a nested task rather than a root set
@@ -635,11 +636,12 @@ is removed. The SQLite and PostgreSQL branch cases also pass a fresh-engine read
 and an injected post-fork interruption with idempotent recovery. The initial loop replay returned
 409 under the previous single-visit restriction; it is retained as the expected
 pre-change failure. This expanded profile has not been hosted-qualified.
-The hosted PostgreSQL workflow is queued against frozen source
+The hosted PostgreSQL workflow was dispatched against frozen source
 `1eca9a547aeed386fcb864ff1ce60249736a98f8` on
 `codex/s4-02-repeated-qualification-1eca9a5`:
 [workflow run 41380271623](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41380271623).
-No result is claimed for that run yet.
+The dedicated PostgreSQL branch job passed. The overall workflow was still
+running when checked, so no full-workflow result is claimed yet.
 
 ## Declared native channels in root lineage — 2026-11-02
 
@@ -667,3 +669,26 @@ The hosted PostgreSQL workflow is queued against frozen source
 `codex/s4-02-channel-qualification-d5d0dd9`:
 [workflow run 41381235523](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41381235523).
 No result is claimed for that run yet.
+
+## Native Command routing in root lineage — 2026-11-02
+
+Root lineage now preserves a declared native Command destination by staging the
+retained projection and destination together through the native SDK. The existing
+contiguous root-prefix and completed-child scope boundaries still apply. The fork
+proof checks that the SDK's retained scheduled destination and its version match
+the attested next node; missing, redirected, consumed, zero-version and unexpected
+task scheduling evidence fails closed. Native Send and timing remain excluded.
+
+Separate local SQLite and PostgreSQL selections each passed eight cases across
+both operations, effect policies and checkpoints before/after a jump. SQLite and
+PostgreSQL also passed five scheduling-tamper cases each and a separate end-to-end
+branch case in which a changed schedule after the fork prevents any downstream
+effect. Command with declared channels, with and without a completed nested scope,
+passed two cases on each backend. Existing atomic-fork, rollback, damaged-proof
+and ownership regressions passed 13 cases on each backend; the applicable
+lineage, fencing and action-authorization contracts passed 16 with 16 skips.
+The initial test returned 409 under the previous
+admission restriction; removing that restriction alone produced an incorrectly
+completed target, and an initial schedule check missed a zero-version corruption.
+Those failed attempts are retained as non-green development evidence. These are
+local source checks, not real process-kill or hosted qualification.

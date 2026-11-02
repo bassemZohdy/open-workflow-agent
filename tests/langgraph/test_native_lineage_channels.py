@@ -25,9 +25,12 @@ from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 @pytest.mark.parametrize("kind", ["replay", "branch"])
 @pytest.mark.parametrize("policy", ["read_only", "reexecute"])
 @pytest.mark.parametrize("nested", [False, True])
+@pytest.mark.parametrize("command", [False, True])
 async def test_channel_values_survive_lineage_and_continue_reducing(
-    tmp_path, monkeypatch, backend, kind, policy, nested
+    tmp_path, monkeypatch, backend, kind, policy, nested, command
 ):
+    if command and (kind != "branch" or policy != "reexecute"):
+        pytest.skip("command/channel combinations use the reexecuting branch case")
     if nested and policy == "read_only":
         pytest.skip("nested channel combinations use the reexecution case")
     for actor in ("alice", "bob"):
@@ -110,6 +113,8 @@ async def test_channel_values_survive_lineage_and_continue_reducing(
             },
             "authorizationPolicyRef": config.execution_authorization.id,
         }
+    if command:
+        owa["nativeExtensions"].append({"name": "langgraph.command", "version": "1.0.0"})
     source["document"]["metadata"] = {"owa": owa}
     plan = compile_workflow(source)
     await engine.compile(plan)

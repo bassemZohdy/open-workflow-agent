@@ -12,6 +12,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
+from langgraph.types import Command
 from open_workflow_agent.config import NativeStateConfig
 from open_workflow_agent.effects import EffectIdentity
 from open_workflow_agent.execution_authority import ExecutionAuthority, authority_scope
@@ -237,10 +238,14 @@ class NativeReplayCoordinator:
                                 scope, self.engine.executor, ExecutionState(data=None)
                             )
                             node = last if packet.reference == "/do" else scope.tasks[-1]
+                            value = json.loads(packet.native_json)
+                            update = (
+                                Command(update=value, goto=value["next_node"])
+                                if driver.native_commands
+                                else value
+                            )
                             results.append(
-                                await graph.aupdate_state(
-                                    config, json.loads(packet.native_json), as_node=_node_name(node)
-                                )
+                                await graph.aupdate_state(config, update, as_node=_node_name(node))
                             )
                         return tuple(results)
 

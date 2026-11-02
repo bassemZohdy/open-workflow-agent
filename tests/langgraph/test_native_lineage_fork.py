@@ -198,6 +198,77 @@ async def test_atomic_scope_closure_is_new_and_repeat_never_redispatches(fork):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
+    "damage", ["consumed", "missing", "redirected", "pending_tasks", "zero_version"]
+)
+async def test_fork_rejects_changed_sdk_schedule_without_dispatch(fork, damage):
+    from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+    from open_workflow_agent_langgraph.native_lineage_inspection import inspect_native_lineage
+
+    services, _, _, target, plan, database, _, proposal, *_ = fork
+    proof = await apply(fork)
+    root = proof.checkpoints[0]
+    assert root.reference == "/do"
+    thread = LangGraphScopeExecutor.scope_thread_id(
+        target.invocation_id, plan.fingerprint, root.reference, root.occurrence
+    )
+    destination = json.loads(proposal.packets[0].native_json)["next_node"]
+    trigger = "branch:to:" + destination
+    connection = open_storage(database, "owa_langgraph")
+    try:
+        row = connection.execute(
+            "SELECT checkpoint"
+            + ("" if connection.is_postgresql else ",type")
+            + " FROM checkpoints WHERE thread_id=? AND checkpoint_id=?",
+            (thread, root.checkpoint_id),
+        ).fetchone()
+        if connection.is_postgresql:
+            checkpoint = row[0]
+        else:
+            serde = JsonPlusSerializer()
+            checkpoint = serde.loads_typed((row[1], row[0]))
+        versions = checkpoint["channel_versions"]
+        assert trigger in versions
+        if damage == "consumed":
+            checkpoint["versions_seen"].setdefault(destination, {})[trigger] = versions[trigger]
+        elif damage == "missing":
+            del versions[trigger]
+        elif damage == "redirected":
+            versions["branch:to:untrusted"] = versions.pop(trigger)
+        elif damage == "pending_tasks":
+            versions["__pregel_tasks"] = versions[trigger]
+        else:
+            versions[trigger] = type(versions[trigger])()
+            checkpoint["versions_seen"].setdefault(destination, {})
+        if connection.is_postgresql:
+            from psycopg.types.json import Jsonb
+
+            value = Jsonb(checkpoint)
+            connection.execute(
+                "UPDATE checkpoints SET checkpoint=? WHERE thread_id=? AND checkpoint_id=?",
+                (value, thread, root.checkpoint_id),
+            )
+        else:
+            kind, value = serde.dumps_typed(checkpoint)
+            connection.execute(
+                "UPDATE checkpoints SET checkpoint=?,type=? WHERE thread_id=? AND checkpoint_id=?",
+                (value, kind, thread, root.checkpoint_id),
+            )
+        connection.commit()
+    finally:
+        connection.close()
+
+    async def forbidden(*_args):
+        raise AssertionError("changed schedule dispatched")
+
+    with pytest.raises(OwaError):
+        await apply(fork, callback=forbidden)
+    with pytest.raises(OwaError):
+        inspect_native_lineage(database, proposal.preflight.request, NativeStateConfig())
+    assert services.model.calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
     "damage", ["after_first", "after_all", "wrong_scope", "missing_result", "wrong_values"]
 )
 async def test_partial_scope_and_invalid_result_roll_back_all_native_evidence(fork, damage):

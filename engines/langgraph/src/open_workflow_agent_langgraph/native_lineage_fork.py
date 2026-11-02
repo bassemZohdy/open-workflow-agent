@@ -40,6 +40,47 @@ _PROOF_BYTES = 65_536
 _MAX_SCOPES = 64
 
 
+def verify_fork_schedule(checkpoint: dict[str, Any]) -> None:
+    """Bind the fresh SDK checkpoint's scheduled node to its attested projection."""
+    try:
+        values = checkpoint["channel_values"]
+        versions = checkpoint["channel_versions"]
+        seen = checkpoint["versions_seen"]
+        if (
+            not isinstance(values, dict)
+            or not isinstance(versions, dict)
+            or not isinstance(seen, dict)
+        ):
+            raise ValueError("invalid native scheduling fields")
+        destination = values["next_node"]
+        if not isinstance(destination, str):
+            raise ValueError("invalid native destination")
+        expected = set() if destination == "__end__" else {"branch:to:" + destination}
+        if (
+            {key for key in values if key.startswith("branch:to:")} != expected
+            or {key for key in versions if key.startswith("branch:to:")} != expected
+            or "__pregel_tasks" in values
+            or "__pregel_tasks" in versions
+            or any(
+                not isinstance(value, dict) or any(key in value for key in expected)
+                for value in seen.values()
+            )
+        ):
+            raise ValueError("native scheduled destination changed")
+        if expected:
+            trigger = next(iter(expected))
+            version = versions[trigger]
+            if (
+                type(version) not in {str, int}
+                or version <= type(version)()
+                or versions.get("next_node") != version
+                or any(type(value) is not type(version) for value in versions.values())
+            ):
+                raise ValueError("native scheduled version changed")
+    except Exception:
+        raise lineage_error("fork_schedule_changed") from None
+
+
 async def prepare_lineage_storage(saver: Any, *, postgresql: bool) -> None:
     """Deployment setup only, after native saver setup; never on dispatch."""
     if postgresql:
@@ -246,6 +287,7 @@ async def _verify_proof(
             or _json_identity(projection(item.checkpoint["channel_values"])) != packet.native_json
         ):
             raise lineage_error("fork_proof_changed")
+        verify_fork_schedule(item.checkpoint)
         result.append(NativeForkCheckpoint(packet.reference, packet.occurrence, key))
     return NativeForkProof(
         request.identity.key, request.request_digest, proposal.packet_digest, tuple(result)
