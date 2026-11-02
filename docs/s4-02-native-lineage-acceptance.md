@@ -978,3 +978,6 @@ after deleting the second iteration's child checkpoint. Sixteen route-validation
 cases passed, including rejection of a transition inside a loop. Before this
 change, the selected forward-loop replay returned the unsupported-profile 409.
 The hosted result is tracked separately as it finishes.
+Hosted qualification of frozen source `1b3228f` is running on
+`codex/s4-02-forward-loops-1b3228f`:
+[workflow run 41402314105](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41402314105).
