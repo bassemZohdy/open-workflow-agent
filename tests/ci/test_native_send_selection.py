@@ -94,3 +94,7 @@ def test_lineage_generations_have_a_bounded_cross_backend_job():
         "tests/langgraph/test_native_lineage_generations.py"
         in workflow["on"]["pull_request"]["paths"]
     )
+    assert (
+        "tests/langgraph/native_lineage_generation_worker.py"
+        in workflow["on"]["pull_request"]["paths"]
+    )

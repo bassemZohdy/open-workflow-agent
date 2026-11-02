@@ -272,6 +272,8 @@ treated as a deferred task or as additional feature completion.
   while retaining both source lineage and ordered target-control proofs.
   Bounded replay and branch generations retain and reverify their ancestor
   effects and lineage proofs; lineage cycles and depth overflow fail closed.
+  Descendant replay process stops after the fork or during an effect recover
+  with the same target and do not repeat uncertain effects on SQLite/PostgreSQL.
   The coordinator now rechecks all required workflow capabilities before a new
   replay or branch reservation and again before recovering a reservation. The
   previously failing unsupported-source rejection test is retained as regression

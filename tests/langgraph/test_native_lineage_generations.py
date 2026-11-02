@@ -1,7 +1,11 @@
 """Public lineage generations preserve effects and proofs from every ancestor."""
 
+import asyncio
 import json
 import os
+import subprocess
+import sys
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -232,6 +236,62 @@ async def test_lineage_generation_retains_ancestor_effects(
                 connection.commit()
                 restored = await client.get(f"/v1/invocations/{descendant}/states")
                 assert restored.status_code == 200, restored.text
+            if first_kind == "replay" and second_kind == "replay":
+                environment = os.environ.copy()
+                if backend == "sqlite":
+                    environment.pop("OWA_TEST_POSTGRES_URL", None)
+                for phase in ("forked", "effect"):
+                    key = "generation-stop-" + phase
+                    process = subprocess.Popen(
+                        [
+                            sys.executable,
+                            str(Path(__file__).with_name("native_lineage_generation_worker.py")),
+                            str(tmp_path),
+                            child,
+                            key,
+                            third_ref,
+                            phase,
+                        ],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        env=environment,
+                    )
+                    output = []
+                    try:
+
+                        async def read_phase(active_process=process, lines=output):
+                            while True:
+                                line = await asyncio.to_thread(active_process.stdout.readline)
+                                if not line:
+                                    raise AssertionError(
+                                        "worker exited before stop: " + "".join(lines)
+                                    )
+                                lines.append(line)
+                                if line.startswith("GENERATION_PHASE "):
+                                    return line.strip().split()
+
+                        marker = await asyncio.wait_for(read_phase(), timeout=300)
+                        assert marker[1] == phase
+                    finally:
+                        if process.poll() is None:
+                            process.kill()
+                            await asyncio.to_thread(process.wait, timeout=10)
+                        process.stdout.close()
+                    await asyncio.sleep(61)
+                    before = len(services.model.calls)
+                    path = f"/v1/invocations/{child}/state-replays"
+                    body = {"reference": third_ref, "acknowledge_reexecution": True}
+                    resumed = await client.post(path, json=body, headers={"Idempotency-Key": key})
+                    assert resumed.status_code == 202, resumed.text
+                    assert resumed.json()["invocation_id"] == marker[2]
+                    recovered = await wait_terminal(services, marker[2], timeout=300)
+                    assert recovered.status == ("faulted" if phase == "effect" else "completed")
+                    assert len(services.model.calls) == before + (phase == "forked")
+                    repeated = await client.post(path, json=body, headers={"Idempotency-Key": key})
+                    assert repeated.status_code == 202, repeated.text
+                    assert repeated.json()["invocation_id"] == marker[2]
+                    assert len(services.model.calls) == before + (phase == "forked")
     finally:
         await engine.shutdown()
         services.close()

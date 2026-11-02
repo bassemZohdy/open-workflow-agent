@@ -865,8 +865,7 @@ This is a bounded source profile, not full S4-02 qualification.
 Hosted qualification of frozen source `c767b59` is running on
 `codex/s4-02-target-controls-qualification-c767b59`:
 [workflow run 41394273676](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41394273676).
-Its dedicated PostgreSQL lineage state-controls job passed; the full workflow is
-still running.
+The full workflow passed, including its PostgreSQL lineage state-controls job.
 
 ## Bounded lineage generations — 2026-11-02
 
@@ -901,3 +900,22 @@ S4-02 or qualify broader time travel.
 Hosted qualification of frozen source `b448825` is running on
 `codex/s4-02-generations-qualification-b448825`:
 [workflow run 41396591915](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41396591915).
+The full workflow passed, including its dedicated PostgreSQL lineage-generations
+job.
+
+### Process interruption of a descendant replay
+
+On SQLite and PostgreSQL, a separate runtime replays a second-generation source
+and is killed after the native fork or during a re-executed effect. Retrying the
+same public request recovers the same target after its ownership lease expires.
+The fork interruption completes with one downstream call; the in-flight effect
+interruption faults without repeating the uncertain call. A second retry returns
+the same target without additional calls. These cases are included in the bounded
+lineage-generations job; branch interruption and broader full S4-02 acceptance
+remain separate gates.
+
+The initial PostgreSQL worker used a two-second lease and lost ownership during
+the longer ancestry inspection before reaching the intended stop point. The
+worker now reports a rejected admission immediately and uses a 60-second lease;
+the tests wait for it to expire after the real process stop. The corrected
+SQLite and PostgreSQL selections both passed, in 244 and 734 seconds respectively.

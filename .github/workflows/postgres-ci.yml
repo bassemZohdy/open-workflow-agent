@@ -216,6 +216,7 @@ on:
       - "tests/langgraph/test_native_lineage_send.py"
       - "tests/langgraph/test_native_lineage_state_updates.py"
       - "tests/langgraph/test_native_lineage_generations.py"
+      - "tests/langgraph/native_lineage_generation_worker.py"
       - "tests/langgraph/lineage_target_update_worker.py"
       - "tests/langgraph/test_native_lineage_preflight.py"
       - "tests/langgraph/test_native_lineage_fork.py"
