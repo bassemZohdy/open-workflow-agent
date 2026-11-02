@@ -98,3 +98,17 @@ def test_lineage_generations_have_a_bounded_cross_backend_job():
         "tests/langgraph/native_lineage_generation_worker.py"
         in workflow["on"]["pull_request"]["paths"]
     )
+
+
+def test_forward_switch_lineage_is_covered_by_the_postgres_branch_job():
+    workflow = yaml.load(
+        (ROOT / ".github/workflows/postgres-ci.yml").read_text(), Loader=yaml.BaseLoader
+    )
+    job = workflow["jobs"]["postgres-native-branch"]
+    commands = "\n".join(step.get("run", "") for step in job["steps"])
+    assert "../../tests/langgraph/test_native_lineage_switch.py" in commands
+    assert (
+        "tests/langgraph/test_native_lineage_switch.py" in workflow["on"]["pull_request"]["paths"]
+    )
+    assert job["services"]["postgres"]["image"] == "postgres:16"
+    assert "--extra postgres" in commands and "--extra sqlite" in commands

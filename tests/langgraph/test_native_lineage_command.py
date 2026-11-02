@@ -93,6 +93,40 @@ def test_contiguous_switch_scope_must_not_allow_backward_routing(backward):
         assert root_lineage_position(plan, native) == 3
 
 
+@pytest.mark.parametrize("damage", ["none", "wrong_next", "impossible_visit", "backward"])
+def test_forward_switch_route_requires_possible_visits(damage):
+    source = generate_default_workflow()
+    source["do"] = [
+        {"first": {"set": {"value": 1}}},
+        {
+            "route": {
+                "switch": [
+                    {"choice": {"when": "${ true }", "then": "finish"}},
+                    {"default": {"then": "finish"}},
+                ]
+            }
+        },
+        {"never": {"set": {"value": 2}}},
+        {"finish": {"set": {"value": 3}}},
+        {"after": {"set": {"value": 4}}},
+    ]
+    if damage == "backward":
+        source["do"][1]["route"]["switch"][0]["choice"]["then"] = "first"
+    plan = compile_workflow(source)
+    visits = {"/do/0/first": 1, "/do/1/route": 1, "/do/3/finish": 1}
+    if damage == "impossible_visit":
+        visits["/do/2/never"] = 1
+    native = {
+        "snapshot": json.dumps({"task_visits": visits}),
+        "next_node": _node_name(plan.scopes[0].tasks[0 if damage == "wrong_next" else 4]),
+    }
+    if damage == "none":
+        assert root_lineage_position(plan, native) == 4
+    else:
+        with pytest.raises(OwaError):
+            root_lineage_position(plan, native)
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 async def test_reordered_contiguous_visits_do_not_authorize_wrong_attribution(

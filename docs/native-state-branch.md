@@ -68,7 +68,7 @@ An effect whose outcome is uncertain fails closed rather than being repeated.
 ## Current boundaries
 
 The supported source is a root checkpoint with a contiguous completed-task prefix
-or a verifiable forward route through `set` and `call` tasks, and up to 64 retained
+or a verifiable forward route through `set`, `call` and `switch` tasks, and up to 64 retained
 scope snapshots. Routes that may go backward are rejected. Completed nested scope occurrences
 are included when every task has been visited once per occurrence. Declared native
 channel values are retained at the selected checkpoint; replacing task data does

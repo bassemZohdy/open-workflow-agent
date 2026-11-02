@@ -261,7 +261,7 @@ treated as a deferred task or as additional feature completion.
   including a completed nested scope, with local reducer/restart evidence.
   Native Command destinations now survive the fork, with retained SDK scheduling
   checked against the attested next node and local jump/tampering evidence.
-  Verified forward routes through root `set`/`call` tasks may skip tasks before a
+  Verified forward routes through root `set`/`call`/`switch` tasks may skip tasks before a
   selected checkpoint; ambiguous backward attribution fails before reservation.
   The root lineage source profile also permits bounded, non-competing native
   Send fan-outs, preserving earlier branch effects and applying the target's

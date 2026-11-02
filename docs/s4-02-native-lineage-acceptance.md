@@ -922,3 +922,21 @@ SQLite and PostgreSQL selections both passed, in 244 and 734 seconds respectivel
 Hosted qualification of frozen source `4e7f261` is running on
 `codex/s4-02-generation-recovery-4e7f261`:
 [workflow run 41399457378](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41399457378).
+
+## Forward switch routes — 2026-11-02
+
+Root replay and branch can select checkpoints after a forward `switch` route
+that skips root tasks. The retained visits must form an ordered path through
+declared `set`, `call` and `switch` transitions, and the selected next node must
+be a possible successor. Repeated visits, impossible paths and backward choices
+are rejected. This admits a bounded forward profile, not arbitrary routing or
+time travel; branch attribution still requires the last visited allowed set task.
+
+Four public SQLite cases and four public PostgreSQL cases passed across replay,
+branch and both effect policies, including wrong attribution, retained history,
+effect counts and exact retry. Twelve route-validation cases passed, including
+impossible and backward routes, and the existing SQLite routing selection passed
+15 with ten intentional skips. The first branch fixture selected an undeclared
+wrong task and received an allowlist error; allowing a non-set task then failed
+workflow admission. The corrected fixture uses a skipped declared set task and
+tests the intended attribution boundary. Hosted qualification is separate.

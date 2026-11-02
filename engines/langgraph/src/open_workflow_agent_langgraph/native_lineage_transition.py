@@ -38,7 +38,7 @@ def root_lineage_position(plan: WorkflowPlan, native: dict[str, Any]) -> int:
     if (
         0 < completed <= len(tasks)
         and root_visits == {ref: 1 for ref in references[:completed]}
-        and any(task.kind not in {"set", "call"} for task in tasks[:completed])
+        and any(task.kind not in {"set", "call", "switch"} for task in tasks[:completed])
     ):
         for index, task in enumerate(tasks[:completed]):
             definition = task.definition
@@ -71,28 +71,56 @@ def root_lineage_position(plan: WorkflowPlan, native: dict[str, Any]) -> int:
     while cursor < len(tasks):
         task = tasks[cursor]
         ref = references[cursor]
-        if ref not in root_visits or ref in reached or task.kind not in {"set", "call"}:
+        if ref not in root_visits or ref in reached or task.kind not in {"set", "call", "switch"}:
             raise lineage_error("replay_profile_unsupported")
         reached.add(ref)
-        transition = task.definition.get("then")
-        if transition is None or transition == "continue":
-            following = cursor + 1 if cursor + 1 < len(tasks) else None
-        elif transition in {"end", "exit"}:
-            following = None
-        elif isinstance(transition, str) and transition in names:
-            following = names[transition]
-            if following <= cursor:
+        transitions = [task.definition.get("then")]
+        if task.kind == "switch":
+            cases = task.definition.get("switch")
+            if not isinstance(cases, list):
                 raise lineage_error("replay_profile_unsupported")
-        else:
-            raise lineage_error("replay_profile_unsupported")
+            transitions = []
+            has_default = False
+            for entry in cases:
+                if not isinstance(entry, dict) or len(entry) != 1:
+                    raise lineage_error("replay_profile_unsupported")
+                case = next(iter(entry.values()))
+                if not isinstance(case, dict):
+                    raise lineage_error("replay_profile_unsupported")
+                has_default |= "when" not in case
+                transitions.append(
+                    case.get("then")
+                    if case.get("then") is not None
+                    else task.definition.get("then")
+                )
+            if not has_default:
+                transitions.append(task.definition.get("then"))
+        following = set()
+        for transition in transitions:
+            if transition is None or transition == "continue":
+                destination = cursor + 1 if cursor + 1 < len(tasks) else None
+            elif transition in {"end", "exit"}:
+                destination = None
+            elif isinstance(transition, str) and transition in names:
+                destination = names[transition]
+                if destination <= cursor:
+                    raise lineage_error("replay_profile_unsupported")
+            else:
+                raise lineage_error("replay_profile_unsupported")
+            following.add(destination)
         if reached == set(root_visits):
-            expected = "__end__" if following is None else _node_name(tasks[following])
-            if native["next_node"] != expected:
+            expected = {
+                "__end__" if item is None else _node_name(tasks[item]) for item in following
+            }
+            if native["next_node"] not in expected:
                 raise lineage_error("replay_profile_unsupported")
             return cursor + 1
-        if following is None:
+        remaining = [
+            index for index in range(cursor + 1, len(tasks)) if references[index] in root_visits
+        ]
+        if not remaining or remaining[0] not in following:
             raise lineage_error("replay_profile_unsupported")
-        cursor = following
+        cursor = remaining[0]
     raise lineage_error("replay_profile_unsupported")
 
 
