@@ -14,14 +14,15 @@ existing recovery contract.
 The test-only prototype in
 [`test_native_subgraph_sdk_boundary.py`](../tests/langgraph/test_native_subgraph_sdk_boundary.py)
 translates the logical SDK namespace to the existing physical empty namespace
-for a simple completed child graph. Six cases passed with zero skips on SQLite
-and PostgreSQL, including a fresh saver reopening the child checkpoint and a
-pending-write round trip. This is feasibility evidence, not runtime code or a
-supported stream profile. The prototype does not qualify `alist`, native
-interrupt/resume, real process failure, concurrent/repeated scopes, branch
-routing, lineage verification or safe public namespace projection. A runtime
-implementation must preserve those identities and gates before advertising the
-subgraph capability; S4-02 and T50 remain open.
+for a simple child graph. Eight cases passed with zero skips on SQLite and
+PostgreSQL, including a fresh saver reopening the child checkpoint, a
+pending-write round trip and one SDK interrupt/resume without repeating a
+deterministic callback. This is feasibility evidence, not runtime code or a
+supported stream profile. The prototype does not qualify `alist`, OWA's native
+interrupt/recovery contract, real process failure or effect receipts,
+concurrent/repeated scopes, branch routing, lineage verification or safe public
+namespace projection. A runtime implementation must preserve those identities
+and gates before advertising the subgraph capability; S4-02 and T50 remain open.
 
 ## Declared custom diagnostic source profile — 2026-11-02
 
@@ -51,7 +52,7 @@ Frozen source `f0f29a5` was submitted on
 `codex/s4-02-custom-stream-qualification-f0f29a5` in
 [workflow run 41423898222](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41423898222).
 Its native-stream job passed **189 cases with zero skips** in 90.88 seconds on
-hosted Linux. Its separate branch job is queued and the full workflow is not
+hosted Linux. Its separate branch job is running and the full workflow is not
 yet complete; broader T50 and S4-02 qualification remain open.
 
 ## Timestamped debug source profile — 2026-11-02

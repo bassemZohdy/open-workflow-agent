@@ -564,6 +564,7 @@ jobs:
               "test_custom_stream_replays_after_resume_without_repeating_effect",
               "test_custom_projection_rejects_native_events_without_declared_binding",
               "test_sdk_nested_streaming_and_checkpoint_namespace_are_independent",
+              "test_prototype_resume_after_reopening_preserves_child_checkpoint_and_work",
               "test_actual_process_exit_loses_observation_replay_but_not_native_resume",
           } <= names
           PY

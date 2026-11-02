@@ -16,6 +16,7 @@ pytest.importorskip("langgraph.graph")
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.config import get_config
 from langgraph.graph import END, START, StateGraph
+from langgraph.types import Command, interrupt
 
 
 class _State(TypedDict):
@@ -159,3 +160,93 @@ async def test_sdk_nested_streaming_and_checkpoint_namespace_are_independent(
         assert persisted.checkpoint["channel_values"]["value"] == 2
         if mode == "prototype":
             assert (marker, "probe", {"value": 3}) in persisted.pending_writes
+
+
+def _interruptible_graph(saver: Any, child_thread: str, calls: list[str]) -> Any:
+    prototype = _PrototypeSaver(saver)
+    child_builder = StateGraph(_State)
+
+    def first(state: _State) -> _State:
+        calls.append("completed")
+        return {"value": state["value"] + 1}
+
+    def wait(state: _State) -> _State:
+        value = interrupt({"request": "continue"})
+        return {"value": state["value"] + value}
+
+    child_builder.add_node("first", first)
+    child_builder.add_node("wait", wait)
+    child_builder.add_edge(START, "first")
+    child_builder.add_edge("first", "wait")
+    child_builder.add_edge("wait", END)
+    child = child_builder.compile(checkpointer=prototype)
+
+    async def outer(state: _State) -> Any:
+        parent = get_config()
+        config = {**parent, "configurable": dict(parent["configurable"])}
+        config["configurable"]["thread_id"] = child_thread
+        config["configurable"]["__pregel_checkpointer"] = prototype
+        config["configurable"].pop("checkpoint_id", None)
+        saved = await child.aget_state(config)
+        native_input = (
+            Command(resume=interrupt({"request": "continue"})) if saved.interrupts else state
+        )
+        result = None
+        async for stream_mode, payload in child.astream(
+            native_input, config, stream_mode=["values", "updates"], durability="sync"
+        ):
+            if stream_mode == "values":
+                result = payload
+            elif "__interrupt__" in payload:
+                interrupt({"request": "continue"})
+        return result
+
+    builder = StateGraph(_State)
+    builder.add_node("outer", outer)
+    builder.add_edge(START, "outer")
+    builder.add_edge("outer", END)
+    return builder.compile(checkpointer=saver)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+async def test_prototype_resume_after_reopening_preserves_child_checkpoint_and_work(
+    tmp_path: Any, backend: str
+) -> None:
+    suffix = uuid4().hex
+    root_thread, child_thread = "interrupt-root-" + suffix, "interrupt-child-" + suffix
+    config = {"configurable": {"thread_id": root_thread}}
+    calls: list[str] = []
+    async with _saver(backend, tmp_path) as saver:
+        root = _interruptible_graph(saver, child_thread, calls)
+        events = [
+            event
+            async for event in root.astream(
+                {"value": 1},
+                config,
+                stream_mode=["values", "updates"],
+                subgraphs=True,
+                durability="sync",
+            )
+        ]
+        assert any(namespace for namespace, _, _ in events)
+        assert (await root.aget_state(config)).interrupts
+        physical = await saver.aget_tuple(
+            {"configurable": {"thread_id": child_thread, "checkpoint_ns": ""}}
+        )
+        assert physical is not None and physical.checkpoint["channel_values"]["value"] == 2
+    async with _saver(backend, tmp_path) as reopened:
+        root = _interruptible_graph(reopened, child_thread, calls)
+        events = [
+            event
+            async for event in root.astream(
+                Command(resume=3),
+                config,
+                stream_mode=["values", "updates"],
+                subgraphs=True,
+                durability="sync",
+            )
+        ]
+        assert any(namespace for namespace, _, _ in events)
+        assert (await root.aget_state(config)).values == {"value": 5}
+        assert calls == ["completed"]
