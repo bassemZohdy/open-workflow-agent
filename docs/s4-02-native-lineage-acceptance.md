@@ -609,6 +609,11 @@ hosted job includes the new tests but has not yet qualified this source.
 The applicable local lineage-admission, state-consistency and checkpoint-recovery
 contract selection passed 110 cases with 106 other-engine/backend skips. Separate
 authority and checkpoint-fencing contracts passed eight with 16 skips.
+Hosted PostgreSQL qualification is queued for frozen source
+`bc8549f9195cff83b28c325d8303b48fbc7b57ed` on
+`codex/s4-02-nested-qualification-bc8549f`:
+[workflow run 41379193128](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41379193128).
+No result is claimed for that run yet.
 
 Development attempts retained here include the original unsupported-profile 409,
 an invalid branch fixture that attributed to a nested task rather than a root set
