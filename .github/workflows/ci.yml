@@ -688,6 +688,7 @@ jobs:
             --ignore=../../tests/langgraph/test_native_lineage_nested.py \
             --ignore=../../tests/langgraph/test_native_lineage_channels.py \
             --ignore=../../tests/langgraph/test_native_lineage_command.py \
+            --ignore=../../tests/langgraph/test_native_lineage_send.py \
             --ignore=../../tests/langgraph/test_native_lineage_branch_projection.py \
             --ignore=../../tests/langgraph/test_native_lineage_replay_integration.py \
             --ignore=../../tests/langgraph/test_native_replay_later_checkpoint.py

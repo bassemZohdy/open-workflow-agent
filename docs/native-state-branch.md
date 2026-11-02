@@ -69,7 +69,9 @@ scope snapshots. Routes that may go backward are rejected. Completed nested scop
 are included when every task has been visited once per occurrence. Declared native
 channel values are retained at the selected checkpoint; replacing task data does
 not rewrite those channel values. Native Command routing is retained for these
-supported checkpoints. Timing, Send routing and prior
+supported checkpoints. Bounded, non-competing native Send fan-outs can occur
+before or after the selected root checkpoint; retained prior effects are not
+repeated, and later effects follow the declared policy. Timing and prior
 state-control bindings remain excluded. The branch changes only root task data.
 Arbitrary attribution, partially completed
 nested scopes, branch-of-branch, time travel, independent

@@ -213,6 +213,7 @@ on:
       - "tests/langgraph/test_native_lineage_nested.py"
       - "tests/langgraph/test_native_lineage_channels.py"
       - "tests/langgraph/test_native_lineage_command.py"
+      - "tests/langgraph/test_native_lineage_send.py"
       - "tests/langgraph/test_native_lineage_fork.py"
       - "examples/native-state-branch.yaml"
       - "examples/native-state-branch-workflow.yaml"
@@ -571,6 +572,47 @@ jobs:
             --with pytest --with pytest-asyncio --with httpx pytest \
             ../../tests/langgraph/test_native_lineage_fork.py \
             -k fork_rejects_changed_sdk_schedule -vv --durations=20
+
+  postgres-native-send-lineage:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
+    name: PostgreSQL native Send lineage
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: owa
+          POSTGRES_PASSWORD: owa
+          POSTGRES_DB: owa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U owa -d owa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.3.2
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "$PYTHON_VERSION"
+      - name: Verify Send lineage on SQLite and PostgreSQL
+        env:
+          OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
+          PYTHONUNBUFFERED: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 30m \
+            uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres --extra sqlite \
+            --with pytest --with pytest-asyncio --with httpx pytest \
+            ../../tests/langgraph/test_native_lineage_send.py -vv --durations=20
 
   postgres-adk:
     if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'

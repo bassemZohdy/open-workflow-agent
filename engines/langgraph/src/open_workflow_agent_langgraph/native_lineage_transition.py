@@ -99,7 +99,7 @@ def _validate_root_basis(
 ) -> tuple[dict[str, Any], tuple[ReceiptDependency, ...], int]:
     """Check the supported source profile without creating a target invocation.
 
-    Timing, state controls and native Send remain excluded.
+    Timing and state controls remain excluded.
     """
     try:
         request = preflight.request
@@ -112,9 +112,6 @@ def _validate_root_basis(
             or policy.digest != request.policy_digest
             or policy.effect_policy != request.effect_policy
             or plan.uses_timing
-            or any(
-                item.capability_id.startswith("langgraph.send@") for item in plan.native_extensions
-            )
             or not 1 <= len(preflight.snapshots) <= 64
             or (
                 preflight.snapshots[0].reference,

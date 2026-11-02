@@ -668,8 +668,8 @@ The hosted PostgreSQL workflow was dispatched against frozen source
 `d5d0dd9017a6483549f9bee4f7509823fb0418bc` on
 `codex/s4-02-channel-qualification-d5d0dd9`:
 [workflow run 41381235523](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41381235523).
-The dedicated PostgreSQL branch job passed; the overall workflow was still
-running when checked, so no full-workflow result is claimed yet.
+The entire hosted workflow completed successfully, including its PostgreSQL
+branch job. This result applies to that frozen source only.
 
 ## Native Command routing in root lineage — 2026-11-02
 
@@ -678,7 +678,8 @@ retained projection and destination together through the native SDK. At this sta
 the contiguous root-prefix and completed-child scope boundaries still applied. The fork
 proof checks that the SDK's retained scheduled destination and its version match
 the attested next node; missing, redirected, consumed, zero-version and unexpected
-task scheduling evidence fails closed. Native Send and timing remain excluded.
+task scheduling evidence fails closed. Native Send and timing were excluded at
+this stage.
 
 Separate local SQLite and PostgreSQL selections each passed eight cases across
 both operations, effect policies and checkpoints before/after a jump. SQLite and
@@ -697,8 +698,8 @@ Hosted PostgreSQL qualification was dispatched for frozen source
 `396f6440b644530f048e035d873a0835e1f63f2f` on
 `codex/s4-02-command-qualification-396f644`:
 [workflow run 41382784138](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41382784138).
-The dedicated PostgreSQL branch job passed; the overall workflow was still
-running when checked, so no full-workflow result is claimed yet.
+The entire hosted workflow completed successfully, including its dedicated
+PostgreSQL branch job. This result applies to that frozen source only.
 
 ## Verified forward root routes — 2026-11-02
 
@@ -711,7 +712,7 @@ permit backward routing, and the retained next node must be later or terminal.
 Ambiguous backward routes fail before target reservation; this tightens the old
 task-count shortcut, which could mistake a reordered contiguous set of visits
 for the execution order. Timing, native Send and other documented boundaries
-remain unchanged.
+remained unchanged at this stage.
 
 The local Windows SQLite selection passed 20 cases with seven intentional skips,
 covering forward routing, incorrect next-node evidence, backward/repeated paths,
@@ -729,9 +730,32 @@ downstream effect. This is not a process-kill qualification.
 The initial forward replay returned 409 under the former contiguous-only rule;
 a synthetic reordered-contiguous case exposed the old attribution shortcut before
 the guard was tightened. Those expected development failures are not green runs.
-This expanded source profile has not been hosted-qualified.
+Hosted evidence for the frozen source follows.
 Hosted PostgreSQL qualification is queued for frozen source
 `8dfd40e6e2bf76572352ba016194792a8c50b0e6` on
 `codex/s4-02-forward-qualification-8dfd40e`:
 [workflow run 41384290398](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41384290398).
-No result is claimed for that run yet.
+The dedicated PostgreSQL branch job passed; the overall workflow was still
+running when checked, so no full-workflow result is claimed yet.
+
+## Non-competing native Send in root lineage — 2026-11-02
+
+Root replay and branch now accept the already-admitted bounded, non-competing
+native Send profile. A checkpoint before a fan-out continues it under the target's
+declared effect policy. A checkpoint after a completed fan-out retains its source
+effect receipts and does not repeat those effects. Existing root-route, scope,
+ownership, proof and admission boundaries remain in force; timing and deeper
+lineage are still excluded.
+
+Separate local Windows SQLite and PostgreSQL selections each passed eight cases
+covering both operations, both effect policies and checkpoints before and after
+a two-branch fan-out. Two further cases per backend, with one intentional skip,
+covered direct and nested fan-out branches, fresh-engine inspection, injected
+post-fork recovery and rejection before reservation after a retained branch
+receipt was removed. Two further cases per backend combined Send and Command,
+covering a fan-out ahead of the checkpoint and a completed nested fan-out. The
+existing native Send, lineage-admission and checkpoint
+contract selection passed 24 cases with 13 other-backend/engine skips. The
+initial pre-fan-out replay returned 409 under the former Send restriction; it is
+retained as pre-change failure evidence. The new profile has not been
+hosted-qualified or qualified with an actual process kill.

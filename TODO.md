@@ -263,6 +263,9 @@ treated as a deferred task or as additional feature completion.
   checked against the attested next node and local jump/tampering evidence.
   Verified forward routes through root `set`/`call` tasks may skip tasks before a
   selected checkpoint; ambiguous backward attribution fails before reservation.
+  The root lineage source profile also permits bounded, non-competing native
+  Send fan-outs, preserving earlier branch effects and applying the target's
+  effect policy to later ones.
   Broader nested scope and real process-stop qualification remain open.
   The frozen public branch PostgreSQL job passed;
   broader profiles and full hosted qualification remain open; see the
