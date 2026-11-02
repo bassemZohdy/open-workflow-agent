@@ -14,7 +14,7 @@ from open_workflow_agent.native_lineage_policy import LineageKind
 from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.state_lineage import lineage_error
-from open_workflow_agent.workflow import WorkflowPlan
+from open_workflow_agent.workflow import ScopePlan, WorkflowPlan
 
 from .graph import LangGraphScopeExecutor, _json_identity, _node_name
 from .native_lineage_fork import NativeForkPacket, NativeForkProposal
@@ -63,7 +63,14 @@ def _forward_fanout(definition: dict[str, Any]) -> bool:
 
 def root_lineage_position(plan: WorkflowPlan, native: dict[str, Any]) -> int:
     """Identify the last root task in a prefix or a verifiable forward route."""
-    tasks = plan.scopes[0].tasks
+    return _scope_lineage_position(plan.scopes[0], native, allow_complex_prefix=True)
+
+
+def _scope_lineage_position(
+    scope: ScopePlan, native: dict[str, Any], *, allow_complex_prefix: bool
+) -> int:
+    """Verify the ordered route using only task visits and declared transitions."""
+    tasks = scope.tasks
     visits = json.loads(native["snapshot"])["task_visits"]
     references = [task.execution_reference or task.reference for task in tasks]
     root_references = set(references)
@@ -71,7 +78,8 @@ def root_lineage_position(plan: WorkflowPlan, native: dict[str, Any]) -> int:
     completed = len(root_visits)
     names = {task.name: index for index, task in enumerate(tasks)}
     if (
-        0 < completed <= len(tasks)
+        allow_complex_prefix
+        and 0 < completed <= len(tasks)
         and root_visits == {ref: 1 for ref in references[:completed]}
         and any(task.kind not in {"set", "call", "switch"} for task in tasks[:completed])
     ):
@@ -256,14 +264,21 @@ def _validate_root_basis(
             packet = json.loads(item.native_json)
             child_bindings = json.loads(packet["receipt_bindings"])
             child_visits = json.loads(packet["snapshot"])["task_visits"]
+            all_visited = all(
+                child_visits.get(task.execution_reference or task.reference) == item.occurrence
+                for task in scope.tasks
+            )
             if (
                 item.phase != "checkpoint"
                 or packet["next_node"] != "__end__"
                 or child_bindings.get("version") not in {2, 4}
                 or not scope.tasks
-                or any(
-                    child_visits.get(task.execution_reference or task.reference) != item.occurrence
-                    for task in scope.tasks
+                or (
+                    not all_visited
+                    and (
+                        item.occurrence != 1
+                        or _scope_lineage_position(scope, packet, allow_complex_prefix=False) < 1
+                    )
                 )
                 or any(
                     (entry["reference"], entry["occurrence"]) not in coordinates

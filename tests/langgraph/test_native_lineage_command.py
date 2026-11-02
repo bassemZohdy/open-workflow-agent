@@ -22,7 +22,10 @@ from test_state_replay_api import client_for, wait_terminal
 pytest.importorskip("langgraph.graph")
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor, _node_name
-from open_workflow_agent_langgraph.native_lineage_transition import root_lineage_position
+from open_workflow_agent_langgraph.native_lineage_transition import (
+    _scope_lineage_position,
+    root_lineage_position,
+)
 
 
 @pytest.mark.parametrize(
@@ -192,6 +195,39 @@ def test_forward_route_through_completed_fanout(damage):
     else:
         with pytest.raises(OwaError):
             root_lineage_position(plan, native)
+
+
+@pytest.mark.parametrize("damage", ["none", "impossible_visit", "wrong_next", "backward"])
+def test_completed_child_scope_requires_a_verified_forward_path(damage):
+    source = generate_default_workflow()
+    source["do"] = [
+        {
+            "nested": {
+                "do": [
+                    {"start": {"set": {"value": 1}, "then": "finish"}},
+                    {"never": {"set": {"value": 2}}},
+                    {"finish": {"set": {"value": 3}}},
+                ]
+            }
+        }
+    ]
+    if damage == "backward":
+        source["do"][0]["nested"]["do"][2]["finish"]["then"] = "start"
+    plan = compile_workflow(source)
+    scope = next(item for item in plan.scopes if item.reference.endswith("/nested/do"))
+    refs = [task.execution_reference or task.reference for task in scope.tasks]
+    visits = {refs[0]: 1, refs[2]: 1}
+    if damage == "impossible_visit":
+        visits[refs[1]] = 1
+    native = {
+        "snapshot": json.dumps({"task_visits": visits}),
+        "next_node": _node_name(scope.tasks[0]) if damage == "wrong_next" else "__end__",
+    }
+    if damage == "none":
+        assert _scope_lineage_position(scope, native, allow_complex_prefix=False) == 3
+    else:
+        with pytest.raises(OwaError):
+            _scope_lineage_position(scope, native, allow_complex_prefix=False)
 
 
 @pytest.mark.asyncio

@@ -28,9 +28,12 @@ from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 @pytest.mark.parametrize("iterations", [1, 2])
 @pytest.mark.parametrize("forward_route", [False, True])
+@pytest.mark.parametrize("child_forward", [False, True])
 async def test_root_lineage_after_completed_nested_scope_preserves_effects(
-    tmp_path, monkeypatch, policy, kind, backend, iterations, forward_route
+    tmp_path, monkeypatch, policy, kind, backend, iterations, forward_route, child_forward
 ):
+    if child_forward and (iterations != 1 or forward_route):
+        pytest.skip("child forward routing is verified for a single completed occurrence")
     for actor in ("alice", "bob"):
         monkeypatch.setenv("OWA_NATIVE_STREAM_TEST_" + actor.upper(), "replay-state-" + actor)
     config = configuration(timeout_seconds=30)
@@ -81,6 +84,12 @@ async def test_root_lineage_after_completed_nested_scope_preserves_effects(
             "authorizationPolicyRef": config.execution_authorization.id,
         }
     nested = {"do": [{"inner": {"do": [{"effect": {"call": "agent:1.0.0@default"}}]}}]}
+    if child_forward:
+        nested["do"] = [
+            {"start": {"set": {"value": 0}, "then": "inner"}},
+            {"never": {"set": {"value": -1}}},
+            *nested["do"],
+        ]
     if iterations > 1:
         nested["for"] = {"each": "turn", "in": list(range(iterations))}
     source["do"] = [

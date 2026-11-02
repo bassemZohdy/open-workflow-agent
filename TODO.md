@@ -257,6 +257,8 @@ treated as a deferred task or as additional feature completion.
   closure of completed nested scopes whose tasks were visited once per occurrence; local
   SQLite/PostgreSQL evidence covers two nested levels, effect policies, proof
   damage, fresh-engine inspection and injected interruption after the fork.
+  A completed first child occurrence can also retain a verified forward route
+  that skipped child tasks; repeated occurrences retain the existing stricter gate.
   Declared append and last-value channel snapshots also survive root lineage,
   including a completed nested scope, with local reducer/restart evidence.
   Native Command destinations now survive the fork, with retained SDK scheduling

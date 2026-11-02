@@ -1012,3 +1012,20 @@ skips. Hosted qualification is separate.
 Hosted qualification of frozen source `51b39ee` is running on
 `codex/s4-02-forward-send-51b39ee`:
 [workflow run 41403590132](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41403590132).
+
+## Forward routing in a completed child scope — 2026-11-02
+
+A completed first child-scope occurrence may take a verified forward route that
+skips child tasks. The retained child checkpoint must be terminal, its visits
+must agree with declared forward transitions, and its transitive scope closure,
+receipts and authority remain verified. Repeated occurrences retain the prior
+requirement that each task is visited in every occurrence. Partial child scopes,
+backward routes and non-root checkpoint selection remain outside this profile.
+
+Four replay/branch and effect-policy cases passed on each of SQLite and
+PostgreSQL, including fresh-engine recovery, an injected fork interruption and
+rejection after deleting a retained nested checkpoint. Twenty-four route tests
+passed, including impossible and backward child routes. The existing repeated
+scope selection passed eight SQLite cases with four intentional skips; the common
+lineage admission and receipt selection passed 27 cases with 19 other-backend
+skips. This does not complete S4-02 or qualify broad time travel.
