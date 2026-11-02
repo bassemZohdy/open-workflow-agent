@@ -1,6 +1,7 @@
 """Private root replay from a later historical checkpoint retains earlier receipts."""
 
 import json
+import os
 from uuid import uuid4
 
 import pytest
@@ -23,13 +24,21 @@ TASKS = ("first", "second", "third")
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("completed", [1, 2])
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 async def test_replay_from_later_root_checkpoint_reexecutes_only_remaining_tasks(
-    tmp_path, completed
+    tmp_path, completed, backend
 ):
     config = configuration()
     config.observability.native_streams = None
     config.execution_authorization.policy.rules[0].actions.append("state.replay")
-    services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
+    if backend == "postgresql":
+        datasource = os.getenv("OWA_TEST_POSTGRES_URL")
+        if not datasource:
+            pytest.skip("PostgreSQL datasource required")
+        config.persistence.datasource = datasource
+    services = RuntimeServices(
+        config, model=FakeModel(), database_root=None if backend == "postgresql" else tmp_path
+    )
     engine = LangGraphWorkflowEngine()
     await engine.initialize(services)
     await engine._timer_dispatcher.stop()
@@ -81,8 +90,9 @@ async def test_replay_from_later_root_checkpoint_reexecutes_only_remaining_tasks
     database = services.engine_database_path("langgraph", create_namespace=False)
     root = LangGraphScopeExecutor(plan, None, parent.invocation_id).checkpoint_config("/do", 1)
     wanted = {f"/do/{index}/{name}": 1 for index, name in enumerate(TASKS[:completed])}
-    async with native.AsyncSqliteSaver.from_conn_string(database) as saver:
-        await prepare_lineage_storage(saver, postgresql=False)
+    saver_type = native.AsyncPostgresSaver if backend == "postgresql" else native.AsyncSqliteSaver
+    async with saver_type.from_conn_string(database) as saver:
+        await prepare_lineage_storage(saver, postgresql=backend == "postgresql")
         checkpoints = [item async for item in saver.alist(root)]
     selected = next(
         item

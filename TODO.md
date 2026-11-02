@@ -241,7 +241,7 @@ treated as a deferred task or as additional feature completion.
   A separate SQLite/PostgreSQL process-kill test during a model call fails closed
   without repeating the uncertain effect.
   The private root coordinator also replays from a later completed-task prefix
-  (SQLite-verified; PostgreSQL for that profile is not yet run). Public admission, broader
+  (locally verified on SQLite and PostgreSQL for one- and two-task prefixes). Public admission, broader
   checkpoint/scope remapping, full
   lifecycle gate installation, branch attribution and public
   replay/branch admission remain open. Storage atomicity alone does not make a

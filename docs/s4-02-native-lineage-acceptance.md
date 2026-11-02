@@ -371,3 +371,17 @@ backends). Revoking authority during a running replay fails the target closed
 qualification of S4-02: the replay profile's hosted Linux qualification is recorded
 [separately](validation-history/s4-02-public-replay-hosted-qualification.md), and S4-02 remains
 open.
+
+## Later root checkpoint database coverage — 2026-11-02
+
+The private three-task root replay test now runs against SQLite and PostgreSQL,
+including selection after either the first or second completed task, remaining
+model calls and idempotent repeated coordination. On Windows, both SQLite cases
+passed and a separate selector-event-loop run passed both PostgreSQL cases against
+an isolated PostgreSQL 16 container (103.92 seconds). An initial default-loop
+run failed both PostgreSQL cases before replay because the driver requires a
+selector loop. A subsequent combined selector-loop run recorded a PostgreSQL
+failure but was interrupted before its traceback was retained; it is not green
+evidence. The focused PostgreSQL rerun passed both cases. The existing hosted
+PostgreSQL job already selects this test; hosted results for the expanded cases
+are not yet recorded. This does not qualify broader replay or complete S4-02.
