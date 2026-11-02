@@ -1127,3 +1127,6 @@ Valid one- and two-occurrence nested replay/branch regressions passed on SQLite
 and PostgreSQL, as did the two-occurrence combined root/child forward-route
 regressions on both stores. These tests cover re-execution and retained proof
 damage; broader profile and hosted qualification remain separate.
+Hosted qualification of frozen source `e24bf63` is running on
+`codex/s4-02-child-order-e24bf63`:
+[workflow run 41409654472](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41409654472).
