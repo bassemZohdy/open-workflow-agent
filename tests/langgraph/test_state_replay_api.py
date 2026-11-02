@@ -15,7 +15,7 @@ import yaml
 from native_state_test_support import authority, configuration
 from open_workflow_agent.api import create_app
 from open_workflow_agent.catalog import FakeModel
-from open_workflow_agent.config import NativeStateReplayConfig, RuntimeConfig
+from open_workflow_agent.config import NativeStateConfig, NativeStateReplayConfig, RuntimeConfig
 from open_workflow_agent.execution_authority import authority_scope
 from open_workflow_agent.native_extensions import LANGGRAPH_STATE_REPLAY
 from open_workflow_agent.services import RuntimeServices
@@ -376,6 +376,57 @@ async def test_a_different_request_under_a_used_key_is_rejected(replay_runtime, 
 
 
 TIGHT = [NativeStateReplayConfig(max_replays_per_source=1)]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("state_view_timeout", [30], indirect=True)
+@pytest.mark.parametrize(
+    "replay_config",
+    [
+        NativeStateReplayConfig(
+            bounds=NativeStateConfig(max_native_bytes=4_194_304, timeout_seconds=30)
+        )
+    ],
+    indirect=True,
+)
+async def test_replay_from_initializer_can_become_a_lineage_source(replay_runtime, policy):
+    if policy != "reexecute":
+        pytest.skip("a completed replay source requires effect reexecution")
+    services, _, handle, _ = replay_runtime
+    async with client_for(replay_runtime) as client:
+        history = await client.get(f"/v1/invocations/{handle.invocation_id}/states")
+        assert history.status_code == 200, history.text
+        initial = next(
+            item["reference"] for item in history.json()["items"] if item["phase"] == "initial"
+        )
+        endpoint = f"/v1/invocations/{handle.invocation_id}/state-replays"
+        first = await client.post(
+            endpoint,
+            json=request_body(initial, policy),
+            headers={"Idempotency-Key": "initial-parent"},
+        )
+        assert first.status_code == 202, first.text
+        parent = first.json()["invocation_id"]
+        assert (await wait_terminal(services, parent, timeout=180)).status == "completed"
+        parent_history = await client.get(f"/v1/invocations/{parent}/states")
+        assert parent_history.status_code == 200, parent_history.text
+        selected = next(
+            item["reference"]
+            for item in parent_history.json()["items"]
+            if item["root_task_visits"] == {"/do/0/first": 1}
+        )
+        second = await client.post(
+            f"/v1/invocations/{parent}/state-replays",
+            json=request_body(selected, policy),
+            headers={"Idempotency-Key": "initial-child"},
+        )
+        assert second.status_code == 202, second.text
+        child = second.json()["invocation_id"]
+        assert len({handle.invocation_id, parent, child}) == 3
+        assert (await wait_terminal(services, child, timeout=180)).status == "completed"
+        assert len(services.model.calls) == 5
+        child_history = await client.get(f"/v1/invocations/{child}/states")
+        assert child_history.status_code == 200, child_history.text
 
 
 @pytest.mark.asyncio

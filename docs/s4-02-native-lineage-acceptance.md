@@ -19,6 +19,15 @@ branch regressions (two PostgreSQL cases skipped). The changed Python files pass
 format and lint checks. These are local results; hosted qualification of this
 change and the broader S4-02/T49 criteria remain open.
 
+A follow-on local test also replays a completed checkpoint of an initializer-based
+replay target, producing a third distinct invocation and verifying its retained
+history. It passed once on each backend with 30-second inspection/replay bounds.
+An earlier PostgreSQL attempt with the fixture's five-second bound returned 409
+when reading the descendant history; its response body was not captured, so the
+cause was not independently established. A subsequent test setup exceeded the
+combined decoding budget; using the existing lineage test's 4 MiB native bound
+resolved that setup error. These runs do not establish hosted qualification.
+
 Updated 2026-10-27. S4-02 and T49 remain open. The preparation component validates
 the basis for a future native replay or branch. A separate private transaction
 unit now writes selected scopes under a pre-reserved target identity. Neither
