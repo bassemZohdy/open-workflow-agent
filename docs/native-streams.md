@@ -6,6 +6,11 @@ build containing this source; it is not yet in a published runtime image.
 Default installations advertise no native-stream capability. The existing
 sanitized lifecycle and A2A streams keep their separate contracts.
 
+The additional `langgraph.streams.tasks@1.0.0` profile opts into native task
+lifecycle observations. It requires the base stream profile above and the same
+installation, ownership and authorization controls. Without its required
+declaration, task events are not collected.
+
 Mount [the configuration](../examples/native-stream.yaml) and [workflow](../examples/native-stream-workflow.yaml)
 at the configured paths, provide `OWA_NATIVE_STREAM_TOKEN` through deployment
 secrets, and retain the normal SQLite `/data` volume. PostgreSQL is optional.
@@ -42,6 +47,17 @@ document:
           required: true
 ```
 
+To observe native task lifecycle events as well, require both profiles:
+
+```yaml
+document:
+  metadata:
+    owa:
+      nativeExtensions:
+        - {name: langgraph.streams, version: '1.0.0', required: true}
+        - {name: langgraph.streams.tasks, version: '1.0.0', required: true}
+```
+
 The official OWS schema is unchanged. Optional/absent declarations produce no
 native data observations. Unsupported required versions are rejected before
 invocation admission; adding deployment settings does not reinterpret existing
@@ -67,14 +83,19 @@ Responses keep their slot until closed, including after their log is evicted.
 
 ## Stream and replay behavior
 
-`mode` selects `values`, `updates` or `all` (default). Other modes are rejected.
+`mode` selects `values`, `updates`, `tasks` or `all` (default). Other modes are rejected.
 Each `native.observation` SSE event contains an immutable JSON envelope with
 schema `owa/native-observation/v1`, event ID, invocation ID, mode, public OWS
 scope/task reference and task `data`. The adapter excludes its native snapshot,
 routing, receipts, counters, variables, context, graph IDs and checkpoints.
 Task data can contain sensitive application values; this stream has a different
-permission boundary from sanitized lifecycle diagnostics. Messages, debug,
-checkpoint, task, custom and JavaScript tool stream modes remain unsupported.
+permission boundary from sanitized lifecycle diagnostics. A task event contains
+only its public scope and task reference and `data: {"status": ...}`. Status is
+`started`, `completed`, `faulted` or `interrupted`; SDK task identifiers, input,
+output, exceptions, triggers and interrupt payloads are not exposed. These are
+observations, not a durable execution journal, and retries or resumed tasks can
+produce additional events. Messages, debug, checkpoint, custom and JavaScript
+tool stream modes remain unsupported.
 
 Events follow native emission order and are observations, not proof that a
 checkpoint or business effect committed. The single SDK stream drives normal

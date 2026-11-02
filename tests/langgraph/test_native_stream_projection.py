@@ -18,6 +18,40 @@ from open_workflow_agent_langgraph import LangGraphWorkflowEngine  # noqa: E402
 pytestmark = pytest.mark.asyncio
 
 
+async def test_task_projection_drops_sdk_data_and_fails_closed_on_unknown_shapes():
+    from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor, _node_name
+
+    plan = compile_workflow(generate_default_workflow())
+    log = NativeStreamLog("invocation-a")
+    executor = LangGraphScopeExecutor(plan, None, "invocation-a", stream_observer=log)
+    scope = plan.scopes[0]
+    name = _node_name(scope.tasks[0])
+    executor._observe_scope_event(
+        "tasks",
+        {"id": "private-id", "name": name, "input": {"secret": "value"}, "triggers": ["private"]},
+        scope,
+    )
+    executor._observe_scope_event(
+        "tasks",
+        {
+            "id": "private-id",
+            "name": name,
+            "result": {"secret": "value"},
+            "error": None,
+            "interrupts": [],
+        },
+        scope,
+    )
+    frames, subscriber = log.subscribe()
+    events = [json.loads(frame.payload) for frame in frames]
+    assert [event["data"] for event in events] == [{"status": "started"}, {"status": "completed"}]
+    assert "private" not in str(events) and "secret" not in str(events)
+    subscriber.close()
+    executor._observe_scope_event("tasks", {"name": name, "input": {}, "result": {}}, scope)
+    with pytest.raises(BufferError):
+        log.subscribe()
+
+
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 @pytest.mark.parametrize("observation", ["normal", "closed", "oversized"])
 async def test_native_stream_driver_preserves_effects_and_hides_private_state(

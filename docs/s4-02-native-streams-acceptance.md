@@ -1,5 +1,30 @@
 # S4-02 native stream observations
 
+## Task lifecycle source profile — 2026-11-02
+
+The separate required `langgraph.streams.tasks@1.0.0` declaration extends the
+configured base stream with bounded native task lifecycle observations. It
+requires `langgraph.streams@1.0.0`; optional or absent task declarations emit
+no task events. Projection exposes only a public scope/task reference and a
+started/completed/faulted/interrupted status. It does not expose SDK task IDs,
+input, results, exceptions, triggers or interrupt payloads. Invalid native
+shapes fail the observation closed without taking over workflow execution.
+See the [operator guide](native-streams.md) for authorization and retention.
+
+Local SQLite/PostgreSQL checks cover required versus optional declarations,
+original-owner access, normal/faulted/interrupted and nested tasks, resumed
+cursor continuity without repeating the model effect, and rejection without the
+required base profile. The combined existing stream/projection/registry/transport
+regression passed 94 cases on the two stores; a separate three-case resumed-task
+and malformed-projection selection passed on both stores. Four actual-process
+exit/restart cases passed across the two stores with and without the task profile:
+old cursors become unavailable, native resume completes, and the prior model
+effect is not repeated. Actual ADK rejects
+the new required capability before native mutation. The repository-wide strict
+type check passes after three existing lineage typing issues were corrected.
+These are local development results; hosted qualification, other stream modes,
+T50 and full S4-02 remain open.
+
 Status: the private foundation is merged through PR #84 (`73778d6`). The opt-in
 public values/updates profile is qualified at `a597134` below. This record owns the stream work;
 [memory qualification](s4-02-native-memory-acceptance.md) and [channels/Send](s4-02-native-channels-acceptance.md)

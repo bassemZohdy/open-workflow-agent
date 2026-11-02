@@ -221,6 +221,11 @@ treated as a deferred task or as additional feature completion.
   merged in PR #92 (`6ec11f1`), including bounded HTTP work, cancellation draining,
   restart-safe proof inspection, configuration-only examples and continuation;
   see the [profile guide](docs/native-state-updates.md).
+  A separate opt-in task-stream source profile projects native task lifecycle
+  statuses without native identifiers or payloads. Local SQLite/PostgreSQL,
+  owner isolation, failure/suspension/resume and ADK rejection evidence is
+  recorded in [stream acceptance](docs/s4-02-native-streams-acceptance.md);
+  hosted qualification and remaining T50 modes remain open.
   PR #93 (`b363f10`) adds immutable replay/branch policies, explicit effect
   acknowledgement and selected-checkpoint preflight with historical root/scope
   closure and original/current authority. The private SDK writer now commits

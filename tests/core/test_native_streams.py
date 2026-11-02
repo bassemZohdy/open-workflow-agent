@@ -182,3 +182,13 @@ def test_invalid_or_inconsistent_resource_bounds_are_rejected(settings):
 def test_unpublished_modes_and_nonpublic_references_are_rejected(mode, scope, reference):
     with pytest.raises(ValueError):
         NativeStreamLog("invocation-a").append(mode, {}, scope=scope, task_reference=reference)
+
+
+@pytest.mark.parametrize(
+    "data", [{}, {"status": "completed", "input": "secret"}, {"status": []}, {"status": "unknown"}]
+)
+def test_task_stream_rejects_non_status_payloads(data):
+    with pytest.raises(ValueError):
+        NativeStreamLog("invocation-a").append(
+            "tasks", data, scope="/do", task_reference="/do/0/task"
+        )

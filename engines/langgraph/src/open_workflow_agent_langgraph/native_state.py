@@ -158,8 +158,9 @@ class LangGraphStateReader:
                 lineage = lineage_registry_for_target(
                     self.services, handle, bounds, available_bytes=budget
                 )
-                if lineage is not None:
-                    lineage = _VerifiedLineageView(lineage, handle)
+                verified_lineage = (
+                    _VerifiedLineageView(lineage, handle) if lineage is not None else None
+                )
                 items = [
                     self._project(
                         handle,
@@ -170,7 +171,7 @@ class LangGraphStateReader:
                         key,
                         parent,
                         expected_input,
-                        lineage,
+                        verified_lineage,
                     )
                     for checkpoint, key, parent in checkpoints
                 ]

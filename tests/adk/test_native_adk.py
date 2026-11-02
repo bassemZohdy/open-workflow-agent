@@ -80,7 +80,10 @@ async def test_native_adk_dynamic_plan_invocation(tmp_path):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("extension", ["langgraph.channels", "langgraph.command", "langgraph.send"])
+@pytest.mark.parametrize(
+    "extension",
+    ["langgraph.channels", "langgraph.command", "langgraph.send", "langgraph.streams.tasks"],
+)
 async def test_adk_rejects_required_langgraph_channel_extension_before_native_mutation(
     tmp_path, extension
 ):
@@ -116,7 +119,7 @@ async def test_adk_rejects_required_langgraph_channel_extension_before_native_mu
         {"write_phase": {"set": "ready"}},
         {"read_phase": {"set": "${ $owa_native_channels.phase }"}},
     ]
-    if extension in {"langgraph.command", "langgraph.send"}:
+    if extension != "langgraph.channels":
         workflow["document"]["metadata"]["owa"] = {
             "nativeExtensions": [{"name": extension, "version": "1.0.0"}]
         }

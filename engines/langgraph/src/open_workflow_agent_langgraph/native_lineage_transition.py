@@ -140,7 +140,7 @@ def _validate_completed_child_visits(
     references = [task.execution_reference or task.reference for task in scope.tasks]
     complete = (
         occurrence >= 1
-        and references
+        and bool(references)
         and all(type(visits.get(ref)) is int and visits[ref] == occurrence for ref in references)
         and (
             occurrence == 1
@@ -308,7 +308,7 @@ def _validate_root_basis(
             services, source_handle, configured.bounds if configured else NativeStateConfig()
         )
         inherited = None
-        parent = ()
+        parent: tuple[ReceiptDependency, ...] = ()
         if lineage is not None:
             lineage.verify_source_for_new_target(source_handle, request.target_invocation_id)
             _, mappings, _ = lineage.read(source_handle)

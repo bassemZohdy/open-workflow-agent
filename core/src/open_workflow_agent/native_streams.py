@@ -15,7 +15,7 @@ from uuid import uuid4
 
 from .expressions import validate_expression_data
 
-NativeStreamMode = Literal["values", "updates"]
+NativeStreamMode = Literal["values", "updates", "tasks"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,7 +140,7 @@ class NativeStreamLog:
     ) -> NativeStreamFrame:
         if self._closed or self._finished_reason is not None:
             raise RuntimeError("native observation log is closed")
-        if not isinstance(mode, str) or mode not in {"values", "updates"}:
+        if not isinstance(mode, str) or mode not in {"values", "updates", "tasks"}:
             raise ValueError("native observation mode is unsupported")
         for reference in (scope, task_reference):
             if reference is not None and (
@@ -149,8 +149,15 @@ class NativeStreamLog:
                 or len(reference.encode("utf-8")) > 4096
             ):
                 raise ValueError("native observation task reference is invalid")
-        if scope is None or (mode == "updates" and task_reference is None):
+        if scope is None or (mode in {"updates", "tasks"} and task_reference is None):
             raise ValueError("native observation requires its public scope/task reference")
+        if mode == "tasks" and (
+            not isinstance(data, dict)
+            or set(data) != {"status"}
+            or not isinstance(data["status"], str)
+            or data["status"] not in {"started", "completed", "faulted", "interrupted"}
+        ):
+            raise ValueError("native task observation must contain only a supported status")
         validate_expression_data(data)
         sequence = self._sequence + 1
         event_id = f"{self._epoch}:{sequence}"

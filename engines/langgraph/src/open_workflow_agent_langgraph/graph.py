@@ -30,6 +30,7 @@ from open_workflow_agent.expressions import (
 from open_workflow_agent.native_extensions import (
     LANGGRAPH_COMMAND,
     LANGGRAPH_SEND,
+    LANGGRAPH_STREAM_TASKS,
     MAX_CHANNEL_VALUE_BYTES,
     MAX_CHANNEL_VALUE_TOTAL_BYTES,
     NATIVE_CHANNEL_VARIABLE,
@@ -328,6 +329,10 @@ class LangGraphScopeExecutor:
         )
         self.native_send = any(
             item.required and item.capability_id == LANGGRAPH_SEND
+            for item in plan.native_extensions
+        )
+        self.native_stream_tasks = any(
+            item.required and item.capability_id == LANGGRAPH_STREAM_TASKS
             for item in plan.native_extensions
         )
         self._channels_by_id = (
@@ -1543,7 +1548,9 @@ class LangGraphScopeExecutor:
             native_input,
             config=config,
             durability="sync",
-            stream_mode=["values", "updates"],
+            stream_mode=["values", "updates", "tasks"]
+            if self.native_stream_tasks
+            else ["values", "updates"],
             version="v1",
         ):
             if mode == "values":
@@ -1570,6 +1577,31 @@ class LangGraphScopeExecutor:
                     raise ValueError("unsupported native node projection")
                 data = _decode_snapshot(native["snapshot"])["data"]
                 reference = task.reference
+            elif mode == "tasks":
+                if not isinstance(payload, dict) or not isinstance(payload.get("name"), str):
+                    raise ValueError("unsupported native task projection")
+                task = next(
+                    (task for task in scope.tasks if _node_name(task) == payload["name"]), None
+                )
+                if task is None:
+                    raise ValueError("unsupported native task node")
+                reference = task.reference
+                if "input" in payload and "result" not in payload:
+                    status = "started"
+                elif "result" in payload and "input" not in payload:
+                    interrupts = payload.get("interrupts")
+                    if not isinstance(interrupts, (list, tuple)) or "error" not in payload:
+                        raise ValueError("unsupported native task result")
+                    status = (
+                        "faulted"
+                        if payload["error"] is not None
+                        else "interrupted"
+                        if interrupts
+                        else "completed"
+                    )
+                else:
+                    raise ValueError("ambiguous native task event")
+                data = {"status": status}
             else:
                 raise ValueError("unsupported native stream mode")
         except (KeyError, TypeError, ValueError, OwaError):
