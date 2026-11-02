@@ -25,6 +25,11 @@ type check passes after three existing lineage typing issues were corrected.
 These are local development results; hosted qualification, other stream modes,
 T50 and full S4-02 remain open.
 
+A follow-on SQLite/PostgreSQL integration check replays a retained checkpoint
+after an effect and verifies that the new invocation emits task statuses only
+for its continued task. The source effect is not repeated, and the new target
+remains independently observable by its owner.
+
 Status: the private foundation is merged through PR #84 (`73778d6`). The opt-in
 public values/updates profile is qualified at `a597134` below. This record owns the stream work;
 [memory qualification](s4-02-native-memory-acceptance.md) and [channels/Send](s4-02-native-channels-acceptance.md)

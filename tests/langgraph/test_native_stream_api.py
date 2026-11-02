@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import json
 import os
 import subprocess
@@ -15,7 +16,7 @@ from open_workflow_agent.execution_authority import authority_scope
 from open_workflow_agent.services import RuntimeServices
 
 pytest.importorskip("langgraph.graph")
-from native_stream_test_support import authority, configuration, workflow
+from native_stream_test_support import authority, configuration, enable_lineage, workflow
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 
 
@@ -24,7 +25,14 @@ async def stream_runtime(request, tmp_path, monkeypatch):
     for actor in ("alice", "bob"):
         monkeypatch.setenv("OWA_NATIVE_STREAM_TEST_" + actor.upper(), "controlled-stream-" + actor)
     backend, options = request.param if isinstance(request.param, tuple) else (request.param, {})
+    options = dict(options)
+    lineage = options.pop("lineage", False)
     config = configuration(**{"max_events": 4, **options})
+    if lineage:
+        enable_lineage(config)
+        config.execution_authorization.policy.rules[0].actions.extend(
+            ["state.inspect", "state.replay"]
+        )
     root = tmp_path
     if backend == "postgresql":
         datasource = os.getenv("OWA_TEST_POSTGRES_URL")
@@ -266,6 +274,69 @@ async def test_task_stream_resume_keeps_cursor_and_does_not_repeat_effect(stream
         )
         assert all(item["id"].partition(":")[0] == cursor.partition(":")[0] for item in events)
     assert len(services.model.calls) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stream_runtime",
+    [
+        ("sqlite", {"max_events": 32, "lineage": True}),
+        ("postgresql", {"max_events": 32, "lineage": True}),
+    ],
+    indirect=True,
+)
+async def test_task_stream_observes_replay_target_without_repeating_retained_effects(
+    stream_runtime,
+):
+    from open_workflow_agent.workflow import compile_workflow
+
+    services, _ = stream_runtime
+    source = copy.deepcopy(workflow(task_stream=True).source)
+    metadata = source["document"]["metadata"]["owa"]
+    metadata["nativeExtensions"].extend(
+        [
+            {"name": "langgraph.state.read", "version": "1.0.0"},
+            {"name": "langgraph.state.replay", "version": "1.0.0"},
+        ]
+    )
+    metadata["nativeExtensionData"] = {
+        "langgraph.state.replay@1.0.0": {
+            "authorizationPolicyRef": services.config.execution_authorization.id,
+            "replayEffectPolicy": "reexecute",
+        }
+    }
+    owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
+    async with client_for(stream_runtime) as client:
+        history = await client.get(f"/v1/invocations/{owner.invocation_id}/states")
+        assert history.status_code == 200, history.text
+        reference = next(
+            item["reference"]
+            for item in history.json()["items"]
+            if item["root_task_visits"] == {"/do/0/first": 1, "/do/1/answer": 1}
+        )
+        response = await client.post(
+            f"/v1/invocations/{owner.invocation_id}/state-replays",
+            headers={"Idempotency-Key": "streamed-replay"},
+            json={"reference": reference, "acknowledge_reexecution": True},
+        )
+        assert response.status_code == 202, response.text
+        target = response.json()["invocation_id"]
+        async with asyncio.timeout(180):
+            while services.invocations.get(target).status not in {
+                "completed",
+                "faulted",
+                "cancelled",
+            }:
+                await asyncio.sleep(0.1)
+        assert services.invocations.get(target).status == "completed"
+        observed = await client.get(f"/v1/invocations/{target}/stream", params={"mode": "tasks"})
+        assert observed.status_code == 200, observed.text
+        events = frames(observed)
+        assert [(item["task_reference"], item["data"]["status"]) for item in events] == [
+            ("/do/2/last", "started"),
+            ("/do/2/last", "completed"),
+        ]
+        assert len(services.model.calls) == 1
 
 
 @pytest.mark.asyncio
