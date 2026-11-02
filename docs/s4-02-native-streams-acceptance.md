@@ -25,6 +25,10 @@ passed locally with **124 cases and zero skips** on SQLite and PostgreSQL; the
 separately added no-`state.inspect` permission check passed on both stores.
 Existing owner/state inspection regressions passed six cases. These runs do
 not qualify a hosted image or the broader T50 criteria.
+Frozen source `13aa837` is queued on
+`codex/s4-02-checkpoint-stream-qualification-13aa837` in
+[workflow run 41418377253](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41418377253).
+Its native-stream job has not completed; no hosted result is claimed yet.
 
 ## Task lifecycle source profile — 2026-11-02
 
