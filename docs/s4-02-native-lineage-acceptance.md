@@ -803,3 +803,6 @@ manually admitted unsupported nested workflow before reservation, also fails on
 unchanged `4ac1e21`; its capability-gate question remains open in `TODO.md`.
 These results do not qualify process stops or full S4-02 acceptance for this
 profile.
+Hosted qualification of frozen source `ab43bef` is running on
+`codex/s4-02-updated-lineage-qualification-ab43bef`:
+[workflow run 41389345302](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41389345302).
