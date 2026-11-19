@@ -85,6 +85,33 @@ def phase(coordinator, request):
     ).fetchone()[0]
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "damage", [None, "identity", "request_digest", "phase", "request_json", "oversize"]
+)
+async def test_common_control_listing_checks_retained_metadata_without_reapplying(controls, damage):
+    coordinator, handle, request, evidence, authority, _ = controls
+    assert coordinator.requests(handle) == []
+    await coordinator.update(handle, request, authority)
+    assert coordinator.requests(handle) == [(request, "completed")]
+    if damage is not None:
+        column = "request_json" if damage == "oversize" else damage
+        value = {
+            "identity": "0" * 64,
+            "request_digest": "0" * 64,
+            "phase": "unrecognized",
+            "request_json": "{}",
+            "oversize": "x" * 131_073,
+        }[damage]
+        coordinator.connection.execute(
+            f"UPDATE {TABLE} SET {column}=? WHERE identity=?", (value, request.identity.key)
+        )
+        coordinator.connection.commit()
+        with pytest.raises((InvocationStateError, ValueError, KeyError)):
+            coordinator.requests(handle)
+    assert evidence.calls == [request.identity.key]
+
+
 @pytest.mark.parametrize("values", [{"x": float("nan")}, {"x": b"bytes"}, {"x": "x" * 65536}])
 def test_values_are_finite_and_bounded(values):
     with pytest.raises(OwaError):

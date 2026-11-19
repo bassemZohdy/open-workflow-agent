@@ -68,7 +68,7 @@ jobs:
 
   windows-expressions:
     if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
-    name: Windows jq expression and admission tests
+    name: Windows jq expression and common service tests
     runs-on: windows-latest
     # Independent jobs keep both selections required without making one
     # consume the other's bounded time for process-stop/recovery acceptance.
@@ -85,9 +85,9 @@ jobs:
         run: uv python install "${{ env.PYTHON_VERSION }}"
       - name: Sync locked expression environment
         run: uv sync --locked
-      - name: Verify native jq cleanup, data semantics and shared admission
+      - name: Verify native jq cleanup and common services
         run: >-
-          uv run --locked pytest -q
+          uv run --locked pytest -vv --durations=20
           tests/core/test_expressions.py
           tests/core/test_workflow.py
           tests/core/test_sandbox_validation.py
@@ -99,6 +99,29 @@ jobs:
           tests/core/test_provider_model_spi.py
           tests/core/test_provider_service_composition.py
           tests/core/test_event_transport.py
+
+  windows-admission:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
+    name: Windows shared workflow admission and semantics
+    runs-on: windows-latest
+    # Keep every shared witness required in a separate bounded job; source
+    # verification and contract execution no longer consume the jq lane's budget.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.3.2
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+      - name: Sync locked expression environment
+        run: uv sync --locked
+      - name: Verify shared admission and data semantics
+        run: >-
+          uv run --locked pytest -vv --durations=20
           tests/contract/test_jq_portability.py
           tests/contract/test_data_pipeline.py
           tests/contract/test_scoped_flow.py

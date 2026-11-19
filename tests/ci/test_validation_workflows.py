@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import yaml
@@ -264,6 +265,42 @@ def test_optional_framework_is_checked_when_common_semantics_or_fixtures_change(
     assert "--kill-after=30s 40m" in commands
     assert "--locked" in commands and "--extra native" in commands
     assert "../../tests/agent_framework" in commands and "../../tests/contract" in commands
+
+
+def test_windows_core_and_admission_shards_preserve_every_required_selection():
+    jobs = _workflow("ci.yml")["jobs"]
+    expected = {
+        "windows-expressions": {
+            "test_expressions.py",
+            "test_workflow.py",
+            "test_sandbox_validation.py",
+            "test_execution_ownership_fences.py",
+            "test_action_progress_ownership.py",
+            "test_native_write_fence_storage.py",
+            "test_native_sqlite_inspection.py",
+            "test_bounded_memory.py",
+            "test_provider_model_spi.py",
+            "test_provider_service_composition.py",
+            "test_event_transport.py",
+        },
+        "windows-admission": {
+            "test_jq_portability.py",
+            "test_data_pipeline.py",
+            "test_scoped_flow.py",
+            "test_reusable_definitions.py",
+            "test_catalog_bindings.py",
+            "test_schema_reference_closure.py",
+            "test_schema_resources.py",
+            "test_definition_admission.py",
+        },
+    }
+    for name, filenames in expected.items():
+        job = jobs[name]
+        assert job["runs-on"] == "windows-latest" and job["timeout-minutes"] == "20"
+        command = _runs(job)
+        assert set(re.findall(r"tests/(?:core|contract)/(test_\w+\.py)", command)) == filenames
+        assert "pytest -vv --durations=20" in command
+        assert "continue-on-error" not in job
 
 
 def test_stale_pr_cancellation_does_not_cancel_main_acceptance():

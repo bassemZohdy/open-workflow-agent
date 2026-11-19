@@ -46,6 +46,17 @@ Repository-wide lint and formatting now pass. Strict typing over 194 source
 files passes. No broader S4-02, T50, repository/release or hosted acceptance is
 claimed for this candidate; exact-source hosted qualification remains pending.
 
+The corrected frozen source `8d791dc9d8aa189d77ad06a5b346ee0809086b4a`
+passes [all 19 hosted PostgreSQL jobs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/44540503978).
+Its native-stream job passes **439 cases with zero skips** in **1630.96 seconds**,
+including all 62 required witnesses. Security, external sandbox, optional
+Framework and docs also pass. Full repository qualification remains open:
+root coverage is 89.20% against the unchanged 90% gate, and the Windows
+expression/admission job reached its aggregate limit. The
+[status audit](validation-history/project-status-2026-11-19.md) retains both
+frozen attempts and the common-boundary/Windows follow-up. This qualifies the
+finite PostgreSQL stream profile, not full T50/S4-02 or release readiness.
+
 ## Bounded loops inside try/catch candidate — 2026-11-03
 
 An admission-bypass probe with targeted interruption resume passed four

@@ -256,8 +256,11 @@ treated as a deferred task or as additional feature completion.
   bounded loops inside try/catch passed the `e553f80` hosted PostgreSQL workflow
   (407 stream cases, zero skips; all 19 jobs passed). Broader shapes remain open.
   A two-direct-loop candidate passes 100 focused Windows cases and 600 frozen
-  Linux stream/recovery cases with zero skips; hosted qualification remains
-  pending. Its existing loop/nesting limits and rejection gates are preserved.
+  Linux stream/recovery cases with zero skips. Corrected source `8d791dc` passes
+  all 19 hosted PostgreSQL jobs (439 stream cases, zero skips), but full CI
+  remains unqualified at 89.20% core coverage and a Windows aggregate timeout.
+  Common boundary coverage and independent Windows shards are in progress.
+  Its existing loop/nesting limits and rejection gates are preserved.
   The first full qualification exposed CI setup, dependency-audit and aggregate
   stream-job allowance gaps; corrections and retained failures are recorded in
   the [2026-11-19 audit](docs/validation-history/project-status-2026-11-19.md).

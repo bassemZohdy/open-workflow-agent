@@ -64452,7 +64452,7 @@
         "direction": "LangGraph to OWS",
         "stage": 4,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Partial: three nested loops, try/catch in loops and bounded loops inside try/catch passed hosted workflows (e553f80: 407 stream cases, zero skips, all 19 jobs passed). Two-direct-loop candidate passes 100 Windows and 600 Linux stream/recovery cases with zero skips; hosted qualification and full criteria pending",
+        "python_delivery_status": "Partial: two-direct-loop protected bodies pass 100 Windows and 600 Linux stream/recovery cases with zero skips; corrected source 8d791dc passes all 19 hosted PostgreSQL jobs, including 439 stream cases with zero skips. Full CI remains unqualified at 89.20% core coverage and a Windows aggregate timeout; common boundary coverage and independent Windows shards are in progress. Native model messages and full criteria remain pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T50",
         "effort": "M",

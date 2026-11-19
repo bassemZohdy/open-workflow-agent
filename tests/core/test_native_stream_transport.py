@@ -8,7 +8,37 @@ from open_workflow_agent.config import NativeStreamsConfig
 from open_workflow_agent.native_extensions import NativeExtensionRequirement
 from open_workflow_agent.native_stream_api import _NativeStreamResponse, _stream
 from open_workflow_agent.native_stream_registry import NativeStreamRegistry
+from open_workflow_agent.native_streams import NativeStreamLimits, NativeStreamLog
 from open_workflow_agent.streaming import StreamLimits
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stop", ["event_limit", "byte_limit", "timeout", "expired", "observation_unavailable"]
+)
+async def test_observation_limits_and_queue_failure_close_only_the_subscription(stop, monkeypatch):
+    log = NativeStreamLog("limits", NativeStreamLimits(queue_size=1))
+    limits = StreamLimits(
+        max_events=1, max_bytes=256 if stop == "byte_limit" else 4096, timeout_seconds=0.01
+    )
+    if stop in {"event_limit", "byte_limit"}:
+        log.append("values", "x" * (700 if stop == "byte_limit" else 1), scope="/do")
+    backlog, subscription = log.subscribe()
+    if stop == "observation_unavailable":
+        log.append("values", "first", scope="/do")
+        log.append("values", "overflow", scope="/do")
+    elif stop == "expired":
+        ticks = iter((0, 10))
+        monkeypatch.setattr("open_workflow_agent.native_stream_api.monotonic", lambda: next(ticks))
+    parts = [part async for part in _stream(backlog, subscription, limits, "all")]
+    expected = "timeout" if stop == "expired" else stop
+    assert expected.encode() in parts[-1]
+    assert sum(map(len, parts)) <= limits.max_bytes
+    assert len(parts) == (2 if stop == "event_limit" else 1)
+    assert not log._subscribers
+    # Observation termination never closes the business producer.
+    log.append("values", {"still_running": True}, scope="/do")
+    log.close()
 
 
 @pytest.mark.asyncio
