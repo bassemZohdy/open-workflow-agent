@@ -7,7 +7,7 @@ never re-resolved after execution, persisted, or inherited as ambient state.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -28,6 +28,9 @@ _ACTIVE: ContextVar[tuple[LiteralCredentialGuard, ...]] = ContextVar(
 class LiteralCredentialGuard:
     _values: set[str] = field(default_factory=set)
     _bytes: int = 0
+    _revision: int = 0
+    _closed: bool = False
+    _stream_closers: list[Callable[[], None]] = field(default_factory=list, repr=False)
 
     def __repr__(self) -> str:
         return "LiteralCredentialGuard(<private values redacted>)"
@@ -50,6 +53,15 @@ class LiteralCredentialGuard:
                 raise ToolError("credential projection binding exceeds finite limits")
             self._values.add(value)
             self._bytes += size
+            self._revision += 1
+
+    def _close(self) -> None:
+        self._closed = True
+        closers, self._stream_closers = self._stream_closers, []
+        for close in closers:
+            close()
+        self._values.clear()
+        self._bytes = 0
 
     def text(self, value: str) -> str:
         replacement = "" if any(secret in _REPLACEMENT for secret in self._values) else _REPLACEMENT
@@ -114,8 +126,7 @@ def credential_scope() -> Iterator[LiteralCredentialGuard]:
         yield guard
     finally:
         _ACTIVE.reset(token)
-        guard._values.clear()
-        guard._bytes = 0
+        guard._close()
 
 
 def capture_credentials(*values: str) -> None:
