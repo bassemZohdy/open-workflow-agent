@@ -51,12 +51,16 @@ async def run() -> None:
     engine = LangGraphWorkflowEngine()
     await engine.initialize(services)
     await engine._timer_dispatcher.stop()
-    plan = subgraph_waiting_workflow() if request.get("subgraph_stream") else workflow(
-        waiting=True,
-        task_stream=True if request.get("task_stream") else None,
-        checkpoint_stream=True if request.get("checkpoint_stream") else None,
-        debug_stream=True if request.get("debug_stream") else None,
-        custom_stream=bool(request.get("custom_stream")),
+    plan = (
+        subgraph_waiting_workflow()
+        if request.get("subgraph_stream")
+        else workflow(
+            waiting=True,
+            task_stream=True if request.get("task_stream") else None,
+            checkpoint_stream=True if request.get("checkpoint_stream") else None,
+            debug_stream=True if request.get("debug_stream") else None,
+            custom_stream=bool(request.get("custom_stream")),
+        )
     )
     if request.get("repeated_subgraph_stream"):
         plan = repeated_subgraph_waiting_workflow()
@@ -67,7 +71,10 @@ async def run() -> None:
     elif request.get("three_nested_loop_subgraph_stream"):
         plan = three_nested_loop_subgraph_waiting_workflow()
     elif request.get("loop_in_protected_stream"):
-        plan = loop_in_protected_waiting_workflow(shape=request["loop_in_protected_stream"])
+        plan = loop_in_protected_waiting_workflow(
+            shape=request["loop_in_protected_stream"],
+            siblings=request.get("protected_sibling_loops", False),
+        )
     elif request.get("try_loop_subgraph_stream"):
         plan = try_loop_subgraph_waiting_workflow(
             fault=request.get("catch_loop_subgraph_stream", False)
@@ -86,14 +93,27 @@ async def run() -> None:
     with authority_scope(authority(services, "alice")):
         result = await engine.invoke(plan, handle, {"value": "worker"})
     assert result.status == "waiting", result.error
-    resumes = 3 if (request.get("nested_loop_subgraph_stream") or
-                    request.get("three_nested_loop_subgraph_stream") or
-                    request.get("catch_loop_subgraph_stream")) else (
-        2 if request.get("loop_in_protected_stream") == "try_caught" else
-        1 if request.get("repeated_subgraph_stream") or request.get("loop_subgraph_stream")
-        or request.get("catch_subgraph_stream") or request.get("try_loop_subgraph_stream")
-        or request.get("loop_in_protected_stream") else 0
+    resumes = (
+        3
+        if (
+            request.get("nested_loop_subgraph_stream")
+            or request.get("three_nested_loop_subgraph_stream")
+            or request.get("catch_loop_subgraph_stream")
+        )
+        else (
+            2
+            if request.get("loop_in_protected_stream") == "try_caught"
+            else 1
+            if request.get("repeated_subgraph_stream")
+            or request.get("loop_subgraph_stream")
+            or request.get("catch_subgraph_stream")
+            or request.get("try_loop_subgraph_stream")
+            or request.get("loop_in_protected_stream")
+            else 0
+        )
     )
+    if request.get("protected_sibling_loops"):
+        resumes += 2
     for _ in range(resumes):
         with authority_scope(authority(services, "alice")):
             result = await engine.resume(handle, {}, plan)

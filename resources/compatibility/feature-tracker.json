@@ -64452,7 +64452,7 @@
         "direction": "LangGraph to OWS",
         "stage": 4,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Partial: three nested loops and try/catch in loops passed hosted workflows; loops inside try/catch under test; full criteria pending",
+        "python_delivery_status": "Partial: three nested loops, try/catch in loops and bounded loops inside try/catch passed hosted workflows (e553f80: 407 stream cases, zero skips, all 19 jobs passed). Two-direct-loop candidate passes 100 Windows and 600 Linux stream/recovery cases with zero skips; hosted qualification and full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T50",
         "effort": "M",

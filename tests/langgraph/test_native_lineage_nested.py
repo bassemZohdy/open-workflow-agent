@@ -31,7 +31,14 @@ from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
 @pytest.mark.parametrize("forward_route", [False, True])
 @pytest.mark.parametrize("child_forward", [False, True])
 async def test_root_lineage_after_completed_nested_scope_preserves_effects(
-    tmp_path, monkeypatch, policy, kind, backend, iterations, forward_route, child_forward,
+    tmp_path,
+    monkeypatch,
+    policy,
+    kind,
+    backend,
+    iterations,
+    forward_route,
+    child_forward,
     subgraph_stream=False,
 ):
     for actor in ("alice", "bob"):
@@ -75,10 +82,12 @@ async def test_root_lineage_after_completed_nested_scope_preserves_effects(
         }
     }
     if subgraph_stream:
-        source["document"]["metadata"]["owa"]["nativeExtensions"].extend([
-            {"name": "langgraph.streams", "version": "1.0.0"},
-            {"name": "langgraph.streams.subgraphs", "version": "1.0.0"},
-        ])
+        source["document"]["metadata"]["owa"]["nativeExtensions"].extend(
+            [
+                {"name": "langgraph.streams", "version": "1.0.0"},
+                {"name": "langgraph.streams.subgraphs", "version": "1.0.0"},
+            ]
+        )
     if kind == "branch":
         owa = source["document"]["metadata"]["owa"]
         owa["nativeExtensions"].append({"name": "langgraph.state.update", "version": "1.0.0"})
@@ -289,6 +298,13 @@ async def test_root_lineage_after_completed_nested_scope_preserves_effects(
 @pytest.mark.parametrize("kind", ["replay", "branch"])
 async def test_subgraph_stream_preserves_nested_lineage(tmp_path, monkeypatch, backend, kind):
     await test_root_lineage_after_completed_nested_scope_preserves_effects(
-        tmp_path, monkeypatch, "reexecute", kind, backend, 1, False, False,
+        tmp_path,
+        monkeypatch,
+        "reexecute",
+        kind,
+        backend,
+        1,
+        False,
+        False,
         subgraph_stream=True,
     )

@@ -62,10 +62,14 @@ async def test_loop_subgraph_projection_rejects_invalid_occurrence_namespace(suf
     source["document"]["metadata"]["owa"]["nativeExtensions"].append(
         {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
     )
-    source["do"] = [{"loop": {
-        "for": {"each": "turn", "in": [0, 1]},
-        "do": [{"item": {"set": {"turn": "${ $turn }"}}}],
-    }}]
+    source["do"] = [
+        {
+            "loop": {
+                "for": {"each": "turn", "in": [0, 1]},
+                "do": [{"item": {"set": {"turn": "${ $turn }"}}}],
+            }
+        }
+    ]
     plan = compile_workflow(source)
     log = NativeStreamLog("invocation-a")
     executor = LangGraphScopeExecutor(plan, None, "invocation-a", stream_observer=log)
@@ -89,9 +93,19 @@ async def test_try_subgraph_projection_rejects_wrong_occurrence(scope_suffix, su
     scope = next(item for item in plan.scopes if item.reference.endswith("/" + scope_suffix))
     namespace = (_node_name(parent) + ":" + str(uuid4()), suffix)
     snapshot = {
-        "data": {"value": 1}, "outputs": {}, "variables": {}, "context": {}, "jump_to": None,
-        "stop": False, "scope_exit": False, "transition_selected": False, "ended": False,
-        "end_output": None, "end_context": None, "task_visits": {}, "execution_path": [],
+        "data": {"value": 1},
+        "outputs": {},
+        "variables": {},
+        "context": {},
+        "jump_to": None,
+        "stop": False,
+        "scope_exit": False,
+        "transition_selected": False,
+        "ended": False,
+        "end_output": None,
+        "end_context": None,
+        "task_visits": {},
+        "execution_path": [],
     }
     executor._observe_subgraph_update(
         namespace, {_node_name(scope.tasks[0]): {"snapshot": json.dumps(snapshot)}}

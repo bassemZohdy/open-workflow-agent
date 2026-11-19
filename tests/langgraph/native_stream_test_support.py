@@ -143,11 +143,15 @@ def subgraph_waiting_workflow():
         {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
     )
     source["do"] = [
-        {"outer": {"do": [
-            {"call": {"call": "llm:1.0.0@default"}},
-            {"pause": {"wait": {"seconds": 300}}},
-            {"childlast": {"set": {"child": True}}},
-        ]}},
+        {
+            "outer": {
+                "do": [
+                    {"call": {"call": "llm:1.0.0@default"}},
+                    {"pause": {"wait": {"seconds": 300}}},
+                    {"childlast": {"set": {"child": True}}},
+                ]
+            }
+        },
         {"last": {"set": {"done": True}}},
     ]
     return compile_workflow(source)
@@ -162,11 +166,15 @@ def repeated_subgraph_waiting_workflow():
     )
     source["do"] = [
         {"first": {"set": {"count": 0}}},
-        {"outer": {"do": [
-            {"call": {"call": "llm:1.0.0@default"}},
-            {"pause": {"wait": {"seconds": 300}}},
-            {"increment": {"set": {"count": "${ .response.count + 1 }"}}},
-        ]}},
+        {
+            "outer": {
+                "do": [
+                    {"call": {"call": "llm:1.0.0@default"}},
+                    {"pause": {"wait": {"seconds": 300}}},
+                    {"increment": {"set": {"count": "${ .response.count + 1 }"}}},
+                ]
+            }
+        },
         {"route": {"switch": [{"again": {"when": "${ .count < 2 }", "then": "outer"}}]}},
         {"last": {"set": {"done": True}}},
     ]
@@ -181,11 +189,16 @@ def loop_subgraph_waiting_workflow():
         {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
     )
     source["do"] = [
-        {"loop": {"for": {"each": "turn", "in": [0, 1]}, "do": [
-            {"call": {"call": "llm:1.0.0@default", "with": {"prompt": "${ $turn }"}}},
-            {"pause": {"wait": {"seconds": 300}}},
-            {"last": {"set": {"turn": "${ $turn }"}}},
-        ]}},
+        {
+            "loop": {
+                "for": {"each": "turn", "in": [0, 1]},
+                "do": [
+                    {"call": {"call": "llm:1.0.0@default", "with": {"prompt": "${ $turn }"}}},
+                    {"pause": {"wait": {"seconds": 300}}},
+                    {"last": {"set": {"turn": "${ $turn }"}}},
+                ],
+            }
+        },
         {"done": {"set": {"done": True}}},
     ]
     return compile_workflow(source)
@@ -199,13 +212,28 @@ def nested_loop_subgraph_waiting_workflow():
         {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
     )
     source["do"] = [
-        {"outer": {"for": {"each": "a", "in": [0, 1]}, "do": [
-            {"inner": {"for": {"each": "b", "in": [0, 1]}, "do": [
-                {"call": {"call": "llm:1.0.0@default", "with": {"prompt": "${ [$a, $b] }"}}},
-                {"pause": {"wait": {"seconds": 300}}},
-                {"last": {"set": {"a": "${ $a }", "b": "${ $b }"}}},
-            ]}},
-        ]}},
+        {
+            "outer": {
+                "for": {"each": "a", "in": [0, 1]},
+                "do": [
+                    {
+                        "inner": {
+                            "for": {"each": "b", "in": [0, 1]},
+                            "do": [
+                                {
+                                    "call": {
+                                        "call": "llm:1.0.0@default",
+                                        "with": {"prompt": "${ [$a, $b] }"},
+                                    }
+                                },
+                                {"pause": {"wait": {"seconds": 300}}},
+                                {"last": {"set": {"a": "${ $a }", "b": "${ $b }"}}},
+                            ],
+                        }
+                    },
+                ],
+            }
+        },
         {"done": {"set": {"done": True}}},
     ]
     return compile_workflow(source)
@@ -227,16 +255,39 @@ def try_subgraph_waiting_workflow(*, fault=False):
     source["document"]["metadata"]["owa"]["nativeExtensions"].append(
         {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
     )
-    action = {"raise": {"error": {
-        "type": "urn:test:controlled", "status": 503, "title": "Controlled", "detail": "failure",
-    }}} if fault else {"set": {"attempt": True}}
-    source["do"] = [{"protect": {
-        "try": [{"first": {"call": "llm:1.0.0@default"}},
-                {"pause": {"wait": {"seconds": 300}}}, {"action": action}],
-        "catch": {"do": [{"recover": {"call": "llm:1.0.0@default"}},
-                         {"catchpause": {"wait": {"seconds": 300}}},
-                         {"after": {"set": {"recovered": True}}}]},
-    }}, {"done": {"set": {"done": True}}}]
+    action = (
+        {
+            "raise": {
+                "error": {
+                    "type": "urn:test:controlled",
+                    "status": 503,
+                    "title": "Controlled",
+                    "detail": "failure",
+                }
+            }
+        }
+        if fault
+        else {"set": {"attempt": True}}
+    )
+    source["do"] = [
+        {
+            "protect": {
+                "try": [
+                    {"first": {"call": "llm:1.0.0@default"}},
+                    {"pause": {"wait": {"seconds": 300}}},
+                    {"action": action},
+                ],
+                "catch": {
+                    "do": [
+                        {"recover": {"call": "llm:1.0.0@default"}},
+                        {"catchpause": {"wait": {"seconds": 300}}},
+                        {"after": {"set": {"recovered": True}}},
+                    ]
+                },
+            }
+        },
+        {"done": {"set": {"done": True}}},
+    ]
     return compile_workflow(source)
 
 
@@ -252,31 +303,57 @@ def try_loop_subgraph_waiting_workflow(*, fault=False, levels=1):
     return compile_workflow(source)
 
 
-def loop_in_protected_waiting_workflow(*, shape="try"):
+def loop_in_protected_waiting_workflow(*, shape="try", siblings=False):
     import copy
 
     source = copy.deepcopy(workflow().source)
     source["document"]["metadata"]["owa"]["nativeExtensions"].append(
         {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
     )
-    loop = {"loop": {"for": {"each": "item", "in": [0, 1]}, "do": [
-        {"call": {"call": "llm:1.0.0@default"}},
-        {"pause": {"wait": {"seconds": 300}}},
-        {"last": {"set": {"last": True}}},
-    ]}}
-    error = {"raise": {"error": {
-        "type": "urn:test:controlled", "status": 503, "title": "Controlled", "detail": "failure",
-    }}}
+    loop = {
+        "loop": {
+            "for": {"each": "item", "in": [0, 1]},
+            "do": [
+                {"call": {"call": "llm:1.0.0@default"}},
+                {"pause": {"wait": {"seconds": 300}}},
+                {"last": {"set": {"last": True}}},
+            ],
+        }
+    }
+    error = {
+        "raise": {
+            "error": {
+                "type": "urn:test:controlled",
+                "status": 503,
+                "title": "Controlled",
+                "detail": "failure",
+            }
+        }
+    }
     if shape == "catch":
-        protected = {"try": [{"action": error}], "catch": {"do": [
-            loop, {"after": {"set": {"recovered": True}}},
-        ]}}
+        protected = {
+            "try": [{"action": error}],
+            "catch": {
+                "do": [
+                    loop,
+                    {"after": {"set": {"recovered": True}}},
+                ]
+            },
+        }
     else:
         action = error if shape == "try_caught" else {"set": {"ok": True}}
-        protected = {"try": [loop, {"action": action}], "catch": {"do": [
-            {"recover": {"call": "llm:1.0.0@default"}},
-            {"catchpause": {"wait": {"seconds": 300}}},
-            {"after": {"set": {"recovered": True}}},
-        ]}}
+        protected = {
+            "try": [loop, {"action": action}],
+            "catch": {
+                "do": [
+                    {"recover": {"call": "llm:1.0.0@default"}},
+                    {"catchpause": {"wait": {"seconds": 300}}},
+                    {"after": {"set": {"recovered": True}}},
+                ]
+            },
+        }
+    if siblings:
+        body = protected["catch"]["do"] if shape == "catch" else protected["try"]
+        body.insert(1, {"second": copy.deepcopy(loop["loop"])})
     source["do"] = [{"protect": protected}, {"done": {"set": {"done": True}}}]
     return compile_workflow(source)

@@ -317,13 +317,16 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 )
             allowed = {
                 task.reference + "/do"
-                for scope in plan.scopes for task in scope.tasks
+                for scope in plan.scopes
+                for task in scope.tasks
                 if "do" in task.definition and "for" not in task.definition
             }
             loop_counts = {
                 task.reference + "/do": len(task.definition["for"]["in"])
-                for scope in plan.scopes for task in scope.tasks
-                if "do" in task.definition and "for" in task.definition
+                for scope in plan.scopes
+                for task in scope.tasks
+                if "do" in task.definition
+                and "for" in task.definition
                 and isinstance(task.definition["for"], dict)
                 and isinstance(task.definition["for"].get("in"), list)
                 and len(task.definition["for"]["in"]) <= 32
@@ -346,15 +349,18 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             allowed |= protected_scopes
             protected_loops = {
                 task.reference + "/do"
-                for scope in plan.scopes if scope.reference in protected_scopes
-                for task in scope.tasks if task.reference + "/do" in loop_scopes
+                for scope in plan.scopes
+                if scope.reference in protected_scopes
+                for task in scope.tasks
+                if task.reference + "/do" in loop_scopes
             }
             if any(
-                sum(task.reference + "/do" in protected_loops for task in scope.tasks) > 1
-                for scope in plan.scopes if scope.reference in protected_scopes
+                sum(task.reference + "/do" in protected_loops for task in scope.tasks) > 2
+                for scope in plan.scopes
+                if scope.reference in protected_scopes
             ):
                 raise UnsupportedWorkflowFeature(
-                    "native subgraph observations allow one direct loop per protected body"
+                    "native subgraph observations allow at most two direct loops per protected body"
                 )
             if any(
                 scope.reference != "/do" and scope.reference not in allowed for scope in plan.scopes
@@ -373,7 +379,8 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                         "inside try or catch"
                     )
                 parents = [
-                    ancestor for ancestor in ancestor_references(scope.reference)
+                    ancestor
+                    for ancestor in ancestor_references(scope.reference)
                     if ancestor in loop_scopes
                 ]
                 if parents and scope.reference in protected_loops:
@@ -412,7 +419,9 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 not any(operation in task.definition for operation in ("set", "call", "wait"))
                 and task.reference + "/do" not in loop_scopes
                 and task.reference + "/try" not in protected_scopes
-                for scope in plan.scopes if scope.reference in loop_scopes for task in scope.tasks
+                for scope in plan.scopes
+                if scope.reference in loop_scopes
+                for task in scope.tasks
             ):
                 raise UnsupportedWorkflowFeature(
                     "native subgraph loop observations require set, call, wait or protected tasks"
@@ -422,7 +431,8 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                     operation in task.definition for operation in ("set", "call", "wait", "raise")
                 )
                 and task.reference + "/do" not in protected_loops
-                for scope in plan.scopes if scope.reference in protected_scopes
+                for scope in plan.scopes
+                if scope.reference in protected_scopes
                 for task in scope.tasks
             ):
                 raise UnsupportedWorkflowFeature(

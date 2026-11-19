@@ -19,7 +19,7 @@ and [automation controls](docs/development.md#fast-development-and-optional-auto
 
 ## Current backlog delivery mode
 
-Updated 2026-10-29. **31 of 37 tasks are verified; 6 remain open. None is deferred.**
+Audited 2026-11-19. **31 of 37 tasks are verified; 6 remain open. None is deferred.**
 Eleven of the original 17 open tasks are verified. The user kept S4-09/S4-10/S4-11
 conditional. The three ready tasks are S4-02, S4-03 and S4-04.
 
@@ -51,10 +51,18 @@ Current S4-02 component evidence is organized by feature rather than by candidat
 | --- | --- |
 | Channels/routing | Bounded native channels/reducers, Command/Send; [acceptance](docs/s4-02-native-channels-acceptance.md) retains hosted repair gaps. |
 | Native memory | Configured filtered/semantic memory, owned recovery, expiry/capacity and lifecycle; [acceptance](docs/s4-02-native-memory-acceptance.md) retains broader T51/T68 gates. |
-| Streams | Public original-owner values/updates observation and separately opted-in native task lifecycle, opaque root-checkpoint, timestamped debug, workflow-declared custom diagnostics and direct-nested-do child-update source profiles. Three-level bounded loops, direct try/catch and try/catch inside loops passed hosted PostgreSQL workflows; bounded loops inside try/catch are under test. [Acceptance](docs/s4-02-native-streams-acceptance.md) retains broader modes/T50. |
+| Streams | Public original-owner values/updates observation and separately opted-in native task lifecycle, opaque root-checkpoint, timestamped debug, workflow-declared custom diagnostics and direct-nested-do child-update source profiles. Three-level bounded loops, direct try/catch, try/catch inside loops and bounded loops inside try/catch passed hosted PostgreSQL workflows. The latest `e553f80` workflow passed all 19 jobs, including 407 stream cases with zero skips; the 2026-11-19 local recovery follow-up passed 161 cases with zero skips. [Acceptance](docs/s4-02-native-streams-acceptance.md) retains earlier failures and broader modes/T50. |
 | State/history | Bounded original-owner projected views and opaque references, including proof-verified branch/replay targets; [guide](docs/native-state.md) and [lineage evidence](docs/s4-02-native-lineage-acceptance.md). |
 | State controls | Configured public root updates, attestation and recovery merged in PR #92 (`6ec11f1`); [profile guide](docs/native-state-updates.md) covers API/restart/cancellation and continuation. |
 | Lineage | Root replay can also start from a verified retained initializer; root replay/branch can retain bounded completed child scopes, channel values, verified routing and attested prior state updates, including forward routes through switch, nested scopes, completed loops and non-competing Send fan-outs. Waiting targets can receive authorized updates while retaining both proof chains. Lineage targets can be replayed or branched through bounded generations, with ancestor proofs rechecked. SQLite/PostgreSQL process stops also verify descendant replay recovery and uncertain-effect handling. Required capabilities are rechecked before reservation and recovery; [lineage evidence](docs/s4-02-native-lineage-acceptance.md) records coverage and remaining qualification. |
+
+A follow-up candidate admits at most two direct loops per protected body,
+retaining the existing per-loop and nesting limits. It passes 100 focused
+Windows cases, 600 frozen-image Linux stream/recovery cases and two actual ADK
+admission cases, all with zero skips. All 769 Linux source inputs remain
+unchanged. The later repository-wide formatting correction preserves parsed
+syntax. Exact-source hosted qualification and full S4-02 remain open; see the
+[stream record](docs/s4-02-native-streams-acceptance.md).
 
 Latest public state-control source `db437d8` passes 420 combined cases and 22
 separate ADK cases on each of Windows and frozen Docker/Linux, plus 841 SDK-free

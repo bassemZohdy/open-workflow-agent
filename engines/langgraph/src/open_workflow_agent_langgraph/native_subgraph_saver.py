@@ -13,16 +13,24 @@ class ScopedSubgraphSaver(BaseCheckpointSaver[Any]):  # type: ignore[misc]
     """Keep child storage identity stable while the SDK carries a logical namespace."""
 
     def __init__(
-        self, inner: Any, thread_id: str, logical_namespace: str, *, allow_occurrence: bool = False,
+        self,
+        inner: Any,
+        thread_id: str,
+        logical_namespace: str,
+        *,
+        allow_occurrence: bool = False,
         max_occurrence: int = 31,
     ) -> None:
         super().__init__(serde=inner.serde)
         if (
-            not isinstance(thread_id, str) or not thread_id
-            or not isinstance(logical_namespace, str) or not logical_namespace
+            not isinstance(thread_id, str)
+            or not thread_id
+            or not isinstance(logical_namespace, str)
+            or not logical_namespace
             or len(logical_namespace.encode("utf-8")) > 4096
             or type(allow_occurrence) is not bool
-            or type(max_occurrence) is not int or not 1 <= max_occurrence <= 31
+            or type(max_occurrence) is not int
+            or not 1 <= max_occurrence <= 31
             or (allow_occurrence and len(logical_namespace.encode("utf-8")) > 4093)
         ):
             raise InvocationStateError("native subgraph checkpoint binding is invalid")
@@ -43,7 +51,7 @@ class ScopedSubgraphSaver(BaseCheckpointSaver[Any]):  # type: ignore[misc]
             return namespace
         prefix = self._logical_namespace + "|"
         if self._allow_occurrence and namespace.startswith(prefix):
-            suffix = namespace[len(prefix):]
+            suffix = namespace[len(prefix) :]
             if 1 <= len(suffix) <= 2 and suffix.isascii() and suffix.isdigit():
                 if str(int(suffix)) != suffix:
                     raise InvocationStateError(
@@ -66,9 +74,9 @@ class ScopedSubgraphSaver(BaseCheckpointSaver[Any]):  # type: ignore[misc]
             if value.get("thread_id") != self._thread_id or value.get("checkpoint_ns") != "":
                 raise InvocationStateError("native subgraph checkpoint identity is inconsistent")
             target = namespace if namespace is not None else self._logical_namespace
-            self._namespace({
-                "configurable": {"thread_id": self._thread_id, "checkpoint_ns": target}
-            })
+            self._namespace(
+                {"configurable": {"thread_id": self._thread_id, "checkpoint_ns": target}}
+            )
         value = config["configurable"]
         return {**config, "configurable": {**value, "checkpoint_ns": target}}
 
@@ -78,7 +86,8 @@ class ScopedSubgraphSaver(BaseCheckpointSaver[Any]):  # type: ignore[misc]
         return value._replace(
             config=self._config(value.config, physical=False, namespace=namespace),
             parent_config=self._config(value.parent_config, physical=False, namespace=namespace)
-            if value.parent_config is not None else None,
+            if value.parent_config is not None
+            else None,
         )
 
     async def aget_tuple(self, config: Any) -> Any:

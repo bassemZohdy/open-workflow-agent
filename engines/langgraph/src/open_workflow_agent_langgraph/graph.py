@@ -355,16 +355,26 @@ class LangGraphScopeExecutor:
             item.required and item.capability_id == LANGGRAPH_STREAM_SUBGRAPHS
             for item in plan.native_extensions
         )
-        self._subgraph_tasks = {
-            _node_name(task): (scope, task)
-            for scope in plan.scopes if scope.reference != "/do"
-            for task in scope.tasks
-        } if self.native_stream_subgraphs else {}
-        self._subgraph_parents = {
-            task.reference + "/do": (scope, task)
-            for scope in plan.scopes for task in scope.tasks
-            if "do" in task.definition
-        } if self.native_stream_subgraphs else {}
+        self._subgraph_tasks = (
+            {
+                _node_name(task): (scope, task)
+                for scope in plan.scopes
+                if scope.reference != "/do"
+                for task in scope.tasks
+            }
+            if self.native_stream_subgraphs
+            else {}
+        )
+        self._subgraph_parents = (
+            {
+                task.reference + "/do": (scope, task)
+                for scope in plan.scopes
+                for task in scope.tasks
+                if "do" in task.definition
+            }
+            if self.native_stream_subgraphs
+            else {}
+        )
         if self.native_stream_subgraphs:
             for scope in plan.scopes:
                 for task in scope.tasks:
@@ -374,21 +384,28 @@ class LangGraphScopeExecutor:
                         if isinstance(catch, dict) and isinstance(catch.get("do"), list):
                             self._subgraph_parents[task.reference + "/catch/do"] = (scope, task)
         loop_scopes = {
-            reference for reference, (_, task) in self._subgraph_parents.items()
+            reference
+            for reference, (_, task) in self._subgraph_parents.items()
             if "for" in task.definition
         }
-        self.native_nested_loop_stream = any(
-            ancestor in loop_scopes
-            for inner in loop_scopes for ancestor in ancestor_references(inner)
-        ) or any(
-            ancestor in loop_scopes
-            for reference, (_, parent_task) in self._subgraph_parents.items()
-            if "try" in parent_task.definition
-            for ancestor in ancestor_references(reference)
-        ) or any(
-            ancestor in self._subgraph_parents
-            and "try" in self._subgraph_parents[ancestor][1].definition
-            for reference in loop_scopes for ancestor in ancestor_references(reference)
+        self.native_nested_loop_stream = (
+            any(
+                ancestor in loop_scopes
+                for inner in loop_scopes
+                for ancestor in ancestor_references(inner)
+            )
+            or any(
+                ancestor in loop_scopes
+                for reference, (_, parent_task) in self._subgraph_parents.items()
+                if "try" in parent_task.definition
+                for ancestor in ancestor_references(reference)
+            )
+            or any(
+                ancestor in self._subgraph_parents
+                and "try" in self._subgraph_parents[ancestor][1].definition
+                for reference in loop_scopes
+                for ancestor in ancestor_references(reference)
+            )
         )
         self.native_custom_events = (
             plan.native_custom_stream.events if plan.native_custom_stream is not None else ()
@@ -1320,8 +1337,12 @@ class LangGraphScopeExecutor:
         self.completed_scopes[key] = digest
 
     def compile_scope(
-        self, scope: ScopePlan, executor: WorkflowExecutor, prototype: ExecutionState,
-        *, checkpointer: Any = None,
+        self,
+        scope: ScopePlan,
+        executor: WorkflowExecutor,
+        prototype: ExecutionState,
+        *,
+        checkpointer: Any = None,
     ) -> Any:
         state_schema = (
             _GraphStateWithNativeChannels if self.native_channels is not None else _GraphState
@@ -1566,7 +1587,9 @@ class LangGraphScopeExecutor:
                 _, parent_task = self._subgraph_parents[prefix]
                 is_catch = prefix == parent_task.reference + "/catch/do"
                 checkpointer = ScopedSubgraphSaver(
-                    self.saver, thread_id, namespace,
+                    self.saver,
+                    thread_id,
+                    namespace,
                     allow_occurrence="for" in parent_task.definition or is_catch,
                     max_occurrence=1 if is_catch else 31,
                 )
@@ -1574,7 +1597,9 @@ class LangGraphScopeExecutor:
                 inherited[CONFIG_KEY_CHECKPOINTER] = checkpointer
                 inherited.pop("checkpoint_id", None)
                 config = {
-                    **parent, "configurable": inherited, "recursion_limit": NATIVE_SCOPE_STEP_LIMIT
+                    **parent,
+                    "configurable": inherited,
+                    "recursion_limit": NATIVE_SCOPE_STEP_LIMIT,
                 }
             except Exception:
                 self.stream_observer.fail("projection_failure")
@@ -1746,8 +1771,10 @@ class LangGraphScopeExecutor:
                     raise ValueError("native subgraph namespace segment is invalid")
                 name, separator, identifier = segment.rpartition(":")
                 if (
-                    separator != ":" or name != _node_name(parent_task)
-                    or len(identifier) != 36 or str(UUID(identifier)) != identifier
+                    separator != ":"
+                    or name != _node_name(parent_task)
+                    or len(identifier) != 36
+                    or str(UUID(identifier)) != identifier
                 ):
                     raise ValueError("native subgraph namespace identity is inconsistent")
                 if position < len(namespace):
@@ -1756,7 +1783,8 @@ class LangGraphScopeExecutor:
                         is_catch = child_scope == parent_task.reference + "/catch/do"
                         if (
                             ("for" not in parent_task.definition and not is_catch)
-                            or len(suffix) > 2 or str(int(suffix)) != suffix
+                            or len(suffix) > 2
+                            or str(int(suffix)) != suffix
                             or not 1 <= int(suffix) <= (1 if is_catch else 31)
                         ):
                             raise ValueError("native subgraph occurrence namespace is invalid")
@@ -1765,8 +1793,10 @@ class LangGraphScopeExecutor:
                 raise ValueError("native subgraph namespace depth is inconsistent")
             data = _decode_snapshot(native["snapshot"])["data"]
             observer.append(
-                "subgraphs", {"mode": "updates", "data": data},
-                scope=scope.reference, task_reference=task.reference,
+                "subgraphs",
+                {"mode": "updates", "data": data},
+                scope=scope.reference,
+                task_reference=task.reference,
             )
         except (KeyError, TypeError, ValueError, OwaError):
             observer.fail("projection_failure")

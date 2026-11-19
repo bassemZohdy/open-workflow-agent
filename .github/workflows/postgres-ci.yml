@@ -587,6 +587,7 @@ jobs:
               "test_loop_try_subgraph_preserves_waits_and_effects",
               "test_loop_try_profile_resumes_unrelated_wait",
               "test_protected_loop_stream_preserves_waits_and_effects",
+              "test_subgraph_stream_accepts_two_protected_loops",
               "test_protected_loop_profile_resumes_unrelated_wait",
               "test_protected_loop_stream_preserves_replay_evidence",
               "test_subgraph_stream_repeated_try_scope_preserves_occurrences",

@@ -36,7 +36,8 @@ Loop bodies may contain `set`, `call`, `wait`, permitted inner `for` tasks and
 the protected tasks described below; other child scopes inside loops are rejected.
 Direct `try` and `catch` bodies, including inside the supported loops, may
 contain `set`, `call`, `wait` and `raise` tasks. A body outside loops may also
-contain one direct supported literal loop. Retries, deeper child scopes and
+contain at most two direct supported literal loops, each retaining its 32-item
+limit (at most 64 direct loop occurrences per body). Retries, deeper child scopes and
 alternating loop/protected nesting are not admitted.
 Dynamic or larger loops, unsupported child scopes and fork child scopes are
 rejected at admission. Each event identifies the public child scope and task,

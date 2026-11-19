@@ -119,7 +119,8 @@ def frames(response):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
     indirect=True,
 )
 @pytest.mark.parametrize("deep", [False, True])
@@ -144,10 +145,14 @@ async def test_subgraph_stream_projects_native_child_updates(stream_runtime, dee
         events = frames(observed)
         assert [(item["scope"], item["task_reference"]) for item in events] == (
             [("/do/0/outer/do", "/do/0/outer/do/0/child")]
-            + ([
-                ("/do/0/outer/do/1/nested/do", "/do/0/outer/do/1/nested/do/0/grand"),
-                ("/do/0/outer/do", "/do/0/outer/do/1/nested"),
-            ] if deep else [])
+            + (
+                [
+                    ("/do/0/outer/do/1/nested/do", "/do/0/outer/do/1/nested/do/0/grand"),
+                    ("/do/0/outer/do", "/do/0/outer/do/1/nested"),
+                ]
+                if deep
+                else []
+            )
         )
         assert all(
             item["data"] == {"mode": "updates", "data": {"value": "alice"}} for item in events
@@ -155,14 +160,17 @@ async def test_subgraph_stream_projects_native_child_updates(stream_runtime, dee
         assert re.search(r"task_[0-9a-f]{64}", observed.text) is None
         assert "owa-scope" not in observed.text
         replay = await client.get(
-            f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "subgraphs"},
+            f"/v1/invocations/{owner.invocation_id}/stream",
+            params={"mode": "subgraphs"},
             headers={"Last-Event-ID": events[0]["id"]},
         )
         assert [item["id"] for item in frames(replay)] == [item["id"] for item in events[1:]]
         async with client_for(stream_runtime, "bob") as other:
-            assert (await other.get(
-                f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "subgraphs"}
-            )).status_code == 404
+            assert (
+                await other.get(
+                    f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "subgraphs"}
+                )
+            ).status_code == 404
         assert services.invocations.get(owner.invocation_id).output == {"done": True}
         assert len(services.model.calls) == 1
     from open_workflow_agent_langgraph import native
@@ -182,7 +190,8 @@ async def test_subgraph_stream_projects_native_child_updates(stream_runtime, dee
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
     indirect=True,
 )
 @pytest.mark.parametrize("deep", [False, True])
@@ -195,9 +204,9 @@ async def test_subgraph_stream_resume_preserves_child_checkpoint_and_effect(stre
         {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
     )
     tasks = [
-            {"call": {"call": "llm:1.0.0@default"}},
-            {"pause": {"wait": {"seconds": 300}}},
-            {"childlast": {"set": {"child": True}}},
+        {"call": {"call": "llm:1.0.0@default"}},
+        {"pause": {"wait": {"seconds": 300}}},
+        {"childlast": {"set": {"child": True}}},
     ]
     source["do"] = [
         {"outer": {"do": [{"inner": {"do": tasks}}] if deep else tasks}},
@@ -220,21 +229,38 @@ async def test_subgraph_stream_resume_preserves_child_checkpoint_and_effect(stre
         )
         assert resumed.status_code == 200, resumed.text
         assert [item["task_reference"] for item in frames(resumed)] == [
-            scope + "/1/pause", scope + "/2/childlast"
+            scope + "/1/pause",
+            scope + "/2/childlast",
         ] + (["/do/0/outer/do/0/inner"] if deep else [])
     assert len(services.model.calls) == 1
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "kind", [
-        "missing_base", "dynamic_loop", "large_loop", "deep_loop", "large_nested",
-        "wide_nested", "large_three_level", "empty_deep_overflow", "nested_scope",
-        "while_loop", "retry_scope", "try_loop_retry", "try_nested_scope", "catch_nested_scope",
-        "protected_loop_nested", "alternating_protected_loops", "protected_loop_siblings_try",
-        "protected_loop_siblings_catch",
-        "try_run_body", "run_body", "fork",
-    ]
+    "kind",
+    [
+        "missing_base",
+        "dynamic_loop",
+        "large_loop",
+        "deep_loop",
+        "large_nested",
+        "wide_nested",
+        "large_three_level",
+        "empty_deep_overflow",
+        "nested_scope",
+        "while_loop",
+        "retry_scope",
+        "try_loop_retry",
+        "try_nested_scope",
+        "catch_nested_scope",
+        "protected_loop_nested",
+        "alternating_protected_loops",
+        "protected_loop_siblings_overflow_try",
+        "protected_loop_siblings_overflow_catch",
+        "try_run_body",
+        "run_body",
+        "fork",
+    ],
 )
 async def test_subgraph_stream_rejects_unsupported_scope_before_execution(stream_runtime, kind):
     from open_workflow_agent.errors import UnsupportedWorkflowFeature
@@ -247,105 +273,238 @@ async def test_subgraph_stream_rejects_unsupported_scope_before_execution(stream
         extensions.clear()
     extensions.append({"name": "langgraph.streams.subgraphs", "version": "1.0.0"})
     if kind in {
-        "dynamic_loop", "large_loop", "deep_loop", "large_nested", "wide_nested",
-        "large_three_level", "empty_deep_overflow", "nested_scope", "while_loop",
-        "retry_scope", "run_body"
+        "dynamic_loop",
+        "large_loop",
+        "deep_loop",
+        "large_nested",
+        "wide_nested",
+        "large_three_level",
+        "empty_deep_overflow",
+        "nested_scope",
+        "while_loop",
+        "retry_scope",
+        "run_body",
     }:
-        values = "${ [1, 2] }" if kind == "dynamic_loop" else list(
-            range(33 if kind == "large_loop" else 9 if kind in {
-                "large_nested", "empty_deep_overflow"
-            } else
-                  16 if kind == "wide_nested" else 2)
+        values = (
+            "${ [1, 2] }"
+            if kind == "dynamic_loop"
+            else list(
+                range(
+                    33
+                    if kind == "large_loop"
+                    else 9
+                    if kind in {"large_nested", "empty_deep_overflow"}
+                    else 16
+                    if kind == "wide_nested"
+                    else 2
+                )
+            )
         )
         body = [{"child": {"set": {"value": 1}}}]
-        if kind in {"deep_loop", "large_nested", "wide_nested", "large_three_level",
-                    "empty_deep_overflow"}:
+        if kind in {
+            "deep_loop",
+            "large_nested",
+            "wide_nested",
+            "large_three_level",
+            "empty_deep_overflow",
+        }:
             if kind == "deep_loop":
                 body = [{"fourth": {"for": {"each": "fourth", "in": [1, 2]}, "do": body}}]
             if kind in {"deep_loop", "large_three_level", "empty_deep_overflow"}:
-                deep_values = [] if kind == "empty_deep_overflow" else list(
-                    range(5 if kind == "large_three_level" else 2)
+                deep_values = (
+                    []
+                    if kind == "empty_deep_overflow"
+                    else list(range(5 if kind == "large_three_level" else 2))
                 )
                 body = [{"deep": {"for": {"each": "third", "in": deep_values}, "do": body}}]
             inner_values = list(
-                range(8 if kind in {"large_nested", "large_three_level", "empty_deep_overflow"}
-                      else 3 if kind == "wide_nested" else 2)
+                range(
+                    8
+                    if kind in {"large_nested", "large_three_level", "empty_deep_overflow"}
+                    else 3
+                    if kind == "wide_nested"
+                    else 2
+                )
             )
             body = [{"inner": {"for": {"each": "other", "in": inner_values}, "do": body}}]
             if kind == "wide_nested":
-                body.append({"second": {"for": {"each": "other", "in": inner_values},
-                                        "do": [{"child": {"set": {"value": 1}}}]}})
+                body.append(
+                    {
+                        "second": {
+                            "for": {"each": "other", "in": inner_values},
+                            "do": [{"child": {"set": {"value": 1}}}],
+                        }
+                    }
+                )
         elif kind == "nested_scope":
             body = [{"inner": {"do": body}}]
         elif kind == "run_body":
-            body = [{"child": {"run": {"workflow": {
-                "namespace": "tests", "name": "child", "version": "1.0.0",
-            }}}}]
-        source["do"] = [{"outer": {
-            "for": {"each": "item", "in": values},
-            "do": body,
-        }}]
+            body = [
+                {
+                    "child": {
+                        "run": {
+                            "workflow": {
+                                "namespace": "tests",
+                                "name": "child",
+                                "version": "1.0.0",
+                            }
+                        }
+                    }
+                }
+            ]
+        source["do"] = [
+            {
+                "outer": {
+                    "for": {"each": "item", "in": values},
+                    "do": body,
+                }
+            }
+        ]
         if kind == "while_loop":
             source["do"][0]["outer"]["while"] = "${ true }"
         elif kind == "retry_scope":
-            source["do"] = [{"protect": {
-                "try": source["do"], "catch": {"retry": {"limit": {"attempt": {"count": 1}}}},
-            }}]
-    elif kind in {"protected_loop_nested", "alternating_protected_loops",
-                  "protected_loop_siblings_try", "protected_loop_siblings_catch"}:
-        source = copy.deepcopy(loop_in_protected_waiting_workflow(
-            shape="catch" if kind == "protected_loop_siblings_catch" else "try"
-        ).source)
+            source["do"] = [
+                {
+                    "protect": {
+                        "try": source["do"],
+                        "catch": {"retry": {"limit": {"attempt": {"count": 1}}}},
+                    }
+                }
+            ]
+    elif kind in {
+        "protected_loop_nested",
+        "alternating_protected_loops",
+        "protected_loop_siblings_overflow_try",
+        "protected_loop_siblings_overflow_catch",
+    }:
+        source = copy.deepcopy(
+            loop_in_protected_waiting_workflow(
+                shape="catch" if kind == "protected_loop_siblings_overflow_catch" else "try"
+            ).source
+        )
         if kind == "protected_loop_nested":
             loop = source["do"][0]["protect"]["try"][0]["loop"]
-            loop["do"] = [{"inner": {"for": {"each": "other", "in": [0]}, "do": [
-                {"item": {"set": {"value": 1}}},
-            ]}}]
+            loop["do"] = [
+                {
+                    "inner": {
+                        "for": {"each": "other", "in": [0]},
+                        "do": [
+                            {"item": {"set": {"value": 1}}},
+                        ],
+                    }
+                }
+            ]
         elif kind == "alternating_protected_loops":
-            source["do"] = [{"outer": {"for": {"each": "outer_item", "in": [0]},
-                                        "do": [source["do"][0]]}}, source["do"][1]]
+            source["do"] = [
+                {"outer": {"for": {"each": "outer_item", "in": [0]}, "do": [source["do"][0]]}},
+                source["do"][1],
+            ]
         else:
             protect = source["do"][0]["protect"]
             body = protect["catch"]["do"] if kind.endswith("catch") else protect["try"]
             second = copy.deepcopy(body[0]["loop"])
             body.insert(1, {"second": second})
+            body.insert(2, {"third": copy.deepcopy(second)})
     elif kind == "try_loop_retry":
-        source["do"] = [{"outer": {"for": {"each": "item", "in": [0, 1]}, "do": [
-            {"protect": {"try": [{"ok": {"set": {"value": 1}}}], "catch": {
-                "retry": {"limit": {"attempt": {"count": 1}}},
-            }}},
-        ]}}]
+        source["do"] = [
+            {
+                "outer": {
+                    "for": {"each": "item", "in": [0, 1]},
+                    "do": [
+                        {
+                            "protect": {
+                                "try": [{"ok": {"set": {"value": 1}}}],
+                                "catch": {
+                                    "retry": {"limit": {"attempt": {"count": 1}}},
+                                },
+                            }
+                        },
+                    ],
+                }
+            }
+        ]
     elif kind in {"try_nested_scope", "catch_nested_scope", "try_run_body"}:
         nested = {"child": {"do": [{"item": {"set": {"value": 1}}}]}}
-        unsupported = {"child": {"run": {"workflow": {
-            "namespace": "tests", "name": "child", "version": "1.0.0",
-        }}}}
-        source["do"] = [{"protect": {
-            "try": [unsupported if kind == "try_run_body" else
-                    nested if kind == "try_nested_scope" else {"ok": {"set": {"value": 1}}}],
-            "catch": {"do": [nested if kind == "catch_nested_scope" else
-                             {"recover": {"set": {"value": 2}}}]},
-        }}]
+        unsupported = {
+            "child": {
+                "run": {
+                    "workflow": {
+                        "namespace": "tests",
+                        "name": "child",
+                        "version": "1.0.0",
+                    }
+                }
+            }
+        }
+        source["do"] = [
+            {
+                "protect": {
+                    "try": [
+                        unsupported
+                        if kind == "try_run_body"
+                        else nested
+                        if kind == "try_nested_scope"
+                        else {"ok": {"set": {"value": 1}}}
+                    ],
+                    "catch": {
+                        "do": [
+                            nested
+                            if kind == "catch_nested_scope"
+                            else {"recover": {"set": {"value": 2}}}
+                        ]
+                    },
+                }
+            }
+        ]
     elif kind == "fork":
-        source["do"] = [{"parallel": {"fork": {"branches": [
-            {"left": {"set": {"value": 1}}}, {"right": {"set": {"value": 2}}}
-        ]}}}]
+        source["do"] = [
+            {
+                "parallel": {
+                    "fork": {
+                        "branches": [
+                            {"left": {"set": {"value": 1}}},
+                            {"right": {"set": {"value": 2}}},
+                        ]
+                    }
+                }
+            }
+        ]
     with pytest.raises(UnsupportedWorkflowFeature):
         await engine.compile(compile_workflow(source))
     assert services.model.calls == []
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("shape", ["try", "catch"])
+@pytest.mark.parametrize("count", [0, 32])
+async def test_subgraph_stream_accepts_two_protected_loops(stream_runtime, shape, count):
+    from open_workflow_agent.workflow import compile_workflow
+
+    services, engine = stream_runtime
+    source = copy.deepcopy(loop_in_protected_waiting_workflow(shape=shape, siblings=True).source)
+    protect = source["do"][0]["protect"]
+    body = protect["catch"]["do"] if shape == "catch" else protect["try"]
+    for item in body:
+        task = next(iter(item.values()))
+        if "for" in task:
+            task["for"]["in"] = list(range(count))
+    await engine.compile(compile_workflow(source))
+    assert services.model.calls == []
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("shape", ["try", "try_caught", "catch"])
+@pytest.mark.parametrize("siblings", [False, True])
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
     indirect=True,
 )
-async def test_protected_loop_stream_preserves_waits_and_effects(stream_runtime, shape):
+async def test_protected_loop_stream_preserves_waits_and_effects(stream_runtime, shape, siblings):
     services, engine = stream_runtime
-    plan = loop_in_protected_waiting_workflow(shape=shape)
+    plan = loop_in_protected_waiting_workflow(shape=shape, siblings=siblings)
     owner, _ = await invoke(stream_runtime, plan=plan)
-    total = 3 if shape == "try_caught" else 2
+    total = (4 if siblings else 2) + (shape == "try_caught")
     assert services.invocations.get(owner.invocation_id).status == "waiting"
     for count in range(1, total + 1):
         with authority_scope(authority(services, "alice")):
@@ -360,21 +519,26 @@ async def test_protected_loop_stream_preserves_waits_and_effects(stream_runtime,
         assert response.status_code == 200, response.text
         refs = [item["task_reference"] for item in frames(response)]
         assert refs.count(scope + "/0/loop/do/2/last") == 2
+        assert refs.count(scope + "/1/second/do/2/last") == (2 if siblings else 0)
         assert ("/do/0/protect/catch/do/0/recover" in refs) == (shape == "try_caught")
         assert re.search(r"task_[0-9a-f]{64}", response.text) is None
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("skip_protected", [False, True])
+@pytest.mark.parametrize("siblings", [False, True])
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
     indirect=True,
 )
-async def test_protected_loop_profile_resumes_unrelated_wait(stream_runtime, skip_protected):
+async def test_protected_loop_profile_resumes_unrelated_wait(
+    stream_runtime, skip_protected, siblings
+):
     from open_workflow_agent.workflow import compile_workflow
 
     services, engine = stream_runtime
-    source = copy.deepcopy(loop_in_protected_waiting_workflow().source)
+    source = copy.deepcopy(loop_in_protected_waiting_workflow(siblings=siblings).source)
     if skip_protected:
         source["do"][0]["protect"]["if"] = "${ false }"
     source["do"].insert(0, {"before": {"wait": {"seconds": 300}}})
@@ -385,31 +549,39 @@ async def test_protected_loop_profile_resumes_unrelated_wait(stream_runtime, ski
     assert result.status == ("completed" if skip_protected else "waiting"), result.error
     assert len(services.model.calls) == (0 if skip_protected else 1)
     if not skip_protected:
-        for count in (1, 2):
+        total = 4 if siblings else 2
+        for count in range(1, total + 1):
             with authority_scope(authority(services, "alice")):
                 result = await engine.resume(owner, {}, plan)
-            assert result.status == ("completed" if count == 2 else "waiting"), result.error
-        assert len(services.model.calls) == 2
+            assert result.status == ("completed" if count == total else "waiting"), result.error
+        assert len(services.model.calls) == total
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("shape", ["try", "try_caught", "catch"])
+@pytest.mark.parametrize("siblings", [False, True])
 @pytest.mark.parametrize(
     "stream_runtime",
-    [("sqlite", {"max_events": 128, "lineage": True, "lineage_timeout": 30}),
-     ("postgresql", {"max_events": 128, "lineage": True, "lineage_timeout": 30})],
+    [
+        ("sqlite", {"max_events": 128, "lineage": True, "lineage_timeout": 30}),
+        ("postgresql", {"max_events": 128, "lineage": True, "lineage_timeout": 30}),
+    ],
     indirect=True,
 )
-async def test_protected_loop_stream_preserves_replay_evidence(stream_runtime, shape):
+async def test_protected_loop_stream_preserves_replay_evidence(stream_runtime, shape, siblings):
     from open_workflow_agent.workflow import compile_workflow
 
     services, _ = stream_runtime
-    source = copy.deepcopy(loop_in_protected_waiting_workflow(shape=shape).source)
+    source = copy.deepcopy(
+        loop_in_protected_waiting_workflow(shape=shape, siblings=siblings).source
+    )
     metadata = source["document"]["metadata"]["owa"]
-    metadata["nativeExtensions"].extend([
-        {"name": "langgraph.state.read", "version": "1.0.0"},
-        {"name": "langgraph.state.replay", "version": "1.0.0"},
-    ])
+    metadata["nativeExtensions"].extend(
+        [
+            {"name": "langgraph.state.read", "version": "1.0.0"},
+            {"name": "langgraph.state.replay", "version": "1.0.0"},
+        ]
+    )
     metadata["nativeExtensionData"] = {
         "langgraph.state.replay@1.0.0": {
             "authorizationPolicyRef": services.config.execution_authorization.id,
@@ -418,18 +590,23 @@ async def test_protected_loop_stream_preserves_replay_evidence(stream_runtime, s
     }
     protect = source["do"][0]["protect"]
     body = protect["catch"]["do"] if shape == "catch" else protect["try"]
-    body[0]["loop"]["do"] = [task for task in body[0]["loop"]["do"] if "pause" not in task]
+    for item in body:
+        task = next(iter(item.values()))
+        if "for" in task:
+            task["do"] = [child for child in task["do"] if "pause" not in child]
     if shape == "try_caught":
-        protect["catch"]["do"] = [task for task in protect["catch"]["do"]
-                                   if "catchpause" not in task]
+        protect["catch"]["do"] = [
+            task for task in protect["catch"]["do"] if "catchpause" not in task
+        ]
     owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
-    calls = 3 if shape == "try_caught" else 2
+    calls = (4 if siblings else 2) + (shape == "try_caught")
     assert len(services.model.calls) == calls
     async with client_for(stream_runtime) as client:
         history = await client.get(f"/v1/invocations/{owner.invocation_id}/states")
         assert history.status_code == 200, history.text
         reference = next(
-            item["reference"] for item in history.json()["items"]
+            item["reference"]
+            for item in history.json()["items"]
             if item["root_task_visits"] == {"/do/0/protect": 1}
         )
         replay = await client.post(
@@ -441,7 +618,9 @@ async def test_protected_loop_stream_preserves_replay_evidence(stream_runtime, s
         target = replay.json()["invocation_id"]
         async with asyncio.timeout(180):
             while services.invocations.get(target).status not in {
-                "completed", "faulted", "cancelled"
+                "completed",
+                "faulted",
+                "cancelled",
             }:
                 await asyncio.sleep(0.1)
         assert services.invocations.get(target).status == "completed"
@@ -454,7 +633,8 @@ async def test_protected_loop_stream_preserves_replay_evidence(stream_runtime, s
 @pytest.mark.parametrize("levels", [1, 3])
 @pytest.mark.parametrize("fault", [False, True])
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 256}), ("postgresql", {"max_events": 256})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 256}), ("postgresql", {"max_events": 256})],
     indirect=True,
 )
 async def test_loop_try_subgraph_preserves_waits_and_effects(stream_runtime, fault, levels):
@@ -468,8 +648,9 @@ async def test_loop_try_subgraph_preserves_waits_and_effects(stream_runtime, fau
             result = await engine.resume(owner, {}, plan)
         assert result.status == ("completed" if count == total else "waiting"), result.error
         assert len(services.model.calls) == min(count + 1, total)
-    protect = next(task.reference for scope in plan.scopes for task in scope.tasks
-                   if task.name == "protect")
+    protect = next(
+        task.reference for scope in plan.scopes for task in scope.tasks if task.name == "protect"
+    )
     async with client_for(stream_runtime) as client:
         response = await client.get(
             f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "subgraphs"}
@@ -484,7 +665,8 @@ async def test_loop_try_subgraph_preserves_waits_and_effects(stream_runtime, fau
 @pytest.mark.asyncio
 @pytest.mark.parametrize("skip_loop", [False, True])
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
     indirect=True,
 )
 async def test_loop_try_profile_resumes_unrelated_wait(stream_runtime, skip_loop):
@@ -512,7 +694,8 @@ async def test_loop_try_profile_resumes_unrelated_wait(stream_runtime, skip_loop
 @pytest.mark.asyncio
 @pytest.mark.parametrize("fault", [False, True])
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
     indirect=True,
 )
 async def test_subgraph_stream_observes_try_and_catch_with_waits(stream_runtime, fault):
@@ -543,7 +726,8 @@ async def test_subgraph_stream_observes_try_and_catch_with_waits(stream_runtime,
 @pytest.mark.asyncio
 @pytest.mark.parametrize("fault", [False, True])
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
     indirect=True,
 )
 async def test_subgraph_stream_repeated_try_scope_preserves_occurrences(stream_runtime, fault):
@@ -553,15 +737,28 @@ async def test_subgraph_stream_repeated_try_scope_preserves_occurrences(stream_r
     source["document"]["metadata"]["owa"]["nativeExtensions"].append(
         {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
     )
-    action = {"raise": {"error": {
-        "type": "urn:test:controlled", "status": 503, "title": "Controlled", "detail": "failure",
-    }}} if fault else {"set": {"count": "${ .count }"}}
+    action = (
+        {
+            "raise": {
+                "error": {
+                    "type": "urn:test:controlled",
+                    "status": 503,
+                    "title": "Controlled",
+                    "detail": "failure",
+                }
+            }
+        }
+        if fault
+        else {"set": {"count": "${ .count }"}}
+    )
     source["do"] = [
         {"first": {"set": {"count": 0}}},
-        {"protect": {
-            "try": [{"increment": {"set": {"count": "${ .count + 1 }"}}}, {"action": action}],
-            "catch": {"do": [{"recover": {"set": {"count": "${ .count }"}}}]},
-        }},
+        {
+            "protect": {
+                "try": [{"increment": {"set": {"count": "${ .count + 1 }"}}}, {"action": action}],
+                "catch": {"do": [{"recover": {"set": {"count": "${ .count }"}}}]},
+            }
+        },
         {"route": {"switch": [{"again": {"when": "${ .count < 2 }", "then": "protect"}}]}},
         {"done": {"set": {"done": True}}},
     ]
@@ -572,8 +769,11 @@ async def test_subgraph_stream_repeated_try_scope_preserves_occurrences(stream_r
         )
         assert response.status_code == 200, response.text
         events = frames(response)
-        incremented = [item["data"]["data"]["count"] for item in events
-                       if item["task_reference"].endswith("/increment")]
+        incremented = [
+            item["data"]["data"]["count"]
+            for item in events
+            if item["task_reference"].endswith("/increment")
+        ]
         assert incremented == [1, 2]
         recovered = [item for item in events if item["task_reference"].endswith("/recover")]
         assert len(recovered) == (2 if fault else 0)
@@ -584,8 +784,10 @@ async def test_subgraph_stream_repeated_try_scope_preserves_occurrences(stream_r
 @pytest.mark.parametrize("fault", [False, True])
 @pytest.mark.parametrize(
     "stream_runtime",
-    [("sqlite", {"max_events": 128, "lineage": True, "lineage_timeout": 30}),
-     ("postgresql", {"max_events": 128, "lineage": True, "lineage_timeout": 30})],
+    [
+        ("sqlite", {"max_events": 128, "lineage": True, "lineage_timeout": 30}),
+        ("postgresql", {"max_events": 128, "lineage": True, "lineage_timeout": 30}),
+    ],
     indirect=True,
 )
 async def test_try_subgraph_stream_preserves_replay_evidence(stream_runtime, fault, nested_loop):
@@ -594,34 +796,55 @@ async def test_try_subgraph_stream_preserves_replay_evidence(stream_runtime, fau
     services, _ = stream_runtime
     source = copy.deepcopy(workflow().source)
     metadata = source["document"]["metadata"]["owa"]
-    metadata["nativeExtensions"].extend([
-        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"},
-        {"name": "langgraph.state.read", "version": "1.0.0"},
-        {"name": "langgraph.state.replay", "version": "1.0.0"},
-    ])
+    metadata["nativeExtensions"].extend(
+        [
+            {"name": "langgraph.streams.subgraphs", "version": "1.0.0"},
+            {"name": "langgraph.state.read", "version": "1.0.0"},
+            {"name": "langgraph.state.replay", "version": "1.0.0"},
+        ]
+    )
     metadata["nativeExtensionData"] = {
         "langgraph.state.replay@1.0.0": {
             "authorizationPolicyRef": services.config.execution_authorization.id,
             "replayEffectPolicy": "reexecute",
         }
     }
-    action = {"raise": {"error": {
-        "type": "urn:test:controlled", "status": 503, "title": "Controlled", "detail": "failure",
-    }}} if fault else {"set": {"ok": True}}
-    source["do"] = [{"protect": {
-        "try": [{"call": {"call": "llm:1.0.0@default"}}, {"action": action}],
-        "catch": {"do": [{"recover": {"set": {"recovered": True}}}]},
-    }}, {"done": {"set": {"done": True}}}]
+    action = (
+        {
+            "raise": {
+                "error": {
+                    "type": "urn:test:controlled",
+                    "status": 503,
+                    "title": "Controlled",
+                    "detail": "failure",
+                }
+            }
+        }
+        if fault
+        else {"set": {"ok": True}}
+    )
+    source["do"] = [
+        {
+            "protect": {
+                "try": [{"call": {"call": "llm:1.0.0@default"}}, {"action": action}],
+                "catch": {"do": [{"recover": {"set": {"recovered": True}}}]},
+            }
+        },
+        {"done": {"set": {"done": True}}},
+    ]
     if nested_loop:
-        source["do"] = [{"outer": {"for": {"each": "item", "in": [0, 1]},
-                                    "do": [source["do"][0]]}}, source["do"][1]]
+        source["do"] = [
+            {"outer": {"for": {"each": "item", "in": [0, 1]}, "do": [source["do"][0]]}},
+            source["do"][1],
+        ]
     owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
     root_reference = "/do/0/outer" if nested_loop else "/do/0/protect"
     async with client_for(stream_runtime) as client:
         history = await client.get(f"/v1/invocations/{owner.invocation_id}/states")
         assert history.status_code == 200, history.text
         reference = next(
-            item["reference"] for item in history.json()["items"]
+            item["reference"]
+            for item in history.json()["items"]
             if item["root_task_visits"] == {root_reference: 1}
         )
         replay = await client.post(
@@ -633,7 +856,9 @@ async def test_try_subgraph_stream_preserves_replay_evidence(stream_runtime, fau
         target = replay.json()["invocation_id"]
         async with asyncio.timeout(180):
             while services.invocations.get(target).status not in {
-                "completed", "faulted", "cancelled"
+                "completed",
+                "faulted",
+                "cancelled",
             }:
                 await asyncio.sleep(0.1)
         assert services.invocations.get(target).status == "completed"
@@ -654,9 +879,14 @@ async def test_subgraph_admission_accepts_many_independent_loop_scopes(stream_ru
         {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
     )
     source["do"] = [
-        {f"loop_{index}": {"for": {"each": "value", "in": [0]}, "do": [
-            {"item": {"set": {"value": "${ $value }"}}},
-        ]}}
+        {
+            f"loop_{index}": {
+                "for": {"each": "value", "in": [0]},
+                "do": [
+                    {"item": {"set": {"value": "${ $value }"}}},
+                ],
+            }
+        }
         for index in range(128)
     ]
     plan = compile_workflow(source)
@@ -669,7 +899,8 @@ async def test_subgraph_admission_accepts_many_independent_loop_scopes(stream_ru
 @pytest.mark.parametrize("waiting", [False, True])
 @pytest.mark.parametrize("nested_parent", [False, True])
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
     indirect=True,
 )
 async def test_subgraph_stream_projects_bounded_loop_occurrences(
@@ -732,7 +963,8 @@ async def test_subgraph_stream_projects_bounded_loop_occurrences(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 256}), ("postgresql", {"max_events": 256})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 256}), ("postgresql", {"max_events": 256})],
     indirect=True,
 )
 async def test_subgraph_stream_accepts_the_maximum_literal_loop(stream_runtime):
@@ -742,10 +974,14 @@ async def test_subgraph_stream_accepts_the_maximum_literal_loop(stream_runtime):
     source["document"]["metadata"]["owa"]["nativeExtensions"].append(
         {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
     )
-    source["do"] = [{"loop": {
-        "for": {"each": "turn", "in": list(range(32))},
-        "do": [{"item": {"set": {"turn": "${ $turn }"}}}],
-    }}]
+    source["do"] = [
+        {
+            "loop": {
+                "for": {"each": "turn", "in": list(range(32))},
+                "do": [{"item": {"set": {"turn": "${ $turn }"}}}],
+            }
+        }
+    ]
     owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
     async with client_for(stream_runtime) as client:
         observed = await client.get(
@@ -758,7 +994,8 @@ async def test_subgraph_stream_accepts_the_maximum_literal_loop(stream_runtime):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("waiting", [False, True])
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
     indirect=True,
 )
 async def test_subgraph_stream_projects_two_nested_loops(stream_runtime, waiting):
@@ -777,9 +1014,14 @@ async def test_subgraph_stream_projects_two_nested_loops(stream_runtime, waiting
         {"last": {"set": {"a": "${ $a }", "b": "${ $b }"}}},
     ]
     source["do"] = [
-        {"outer": {"for": {"each": "a", "in": [0, 1]}, "do": [
-            {"inner": {"for": {"each": "b", "in": [0, 1]}, "do": leaf}},
-        ]}},
+        {
+            "outer": {
+                "for": {"each": "a", "in": [0, 1]},
+                "do": [
+                    {"inner": {"for": {"each": "b", "in": [0, 1]}, "do": leaf}},
+                ],
+            }
+        },
         {"done": {"set": {"done": True}}},
     ]
     owner, plan = await invoke(stream_runtime, plan=compile_workflow(source))
@@ -798,7 +1040,8 @@ async def test_subgraph_stream_projects_two_nested_loops(stream_runtime, waiting
         )
         assert observed.status_code == 200, observed.text
         results = [
-            item["data"]["data"] for item in frames(observed)
+            item["data"]["data"]
+            for item in frames(observed)
             if item["task_reference"].endswith("/last")
         ]
         assert results == [{"a": a, "b": b} for a in (0, 1) for b in (0, 1)]
@@ -809,9 +1052,7 @@ async def test_subgraph_stream_projects_two_nested_loops(stream_runtime, waiting
     )
     executor = LangGraphScopeExecutor(plan, None, owner.invocation_id)
     async with saver_type.from_conn_string(path) as saver:
-        for scope, occurrences in [
-            ("/do/0/outer/do", 2), ("/do/0/outer/do/0/inner/do", 4)
-        ]:
+        for scope, occurrences in [("/do/0/outer/do", 2), ("/do/0/outer/do/0/inner/do", 4)]:
             for occurrence in range(1, occurrences + 1):
                 checkpoint = await saver.aget_tuple(executor.checkpoint_config(scope, occurrence))
                 assert checkpoint is not None
@@ -821,7 +1062,8 @@ async def test_subgraph_stream_projects_two_nested_loops(stream_runtime, waiting
 @pytest.mark.asyncio
 @pytest.mark.parametrize("waiting", [False, True])
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
     indirect=True,
 )
 async def test_subgraph_stream_projects_three_nested_loops(stream_runtime, waiting):
@@ -832,15 +1074,50 @@ async def test_subgraph_stream_projects_three_nested_loops(stream_runtime, waiti
     source["document"]["metadata"]["owa"]["nativeExtensions"].append(
         {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
     )
-    source["do"] = [{"outer": {"for": {"each": "a", "in": [0, 1]}, "do": [
-        {"inner": {"for": {"each": "b", "in": [0, 1]}, "do": [
-            {"deep": {"for": {"each": "c", "in": [0]}, "do": [
-                {"call": {"call": "llm:1.0.0@default", "with": {"prompt": "${ [$a, $b, $c] }"}}},
-                *([{"pause": {"wait": {"seconds": 300}}}] if waiting else []),
-                {"last": {"set": {"a": "${ $a }", "b": "${ $b }", "c": "${ $c }"}}},
-            ]}},
-        ]}},
-    ]}}, {"done": {"set": {"done": True}}}]
+    source["do"] = [
+        {
+            "outer": {
+                "for": {"each": "a", "in": [0, 1]},
+                "do": [
+                    {
+                        "inner": {
+                            "for": {"each": "b", "in": [0, 1]},
+                            "do": [
+                                {
+                                    "deep": {
+                                        "for": {"each": "c", "in": [0]},
+                                        "do": [
+                                            {
+                                                "call": {
+                                                    "call": "llm:1.0.0@default",
+                                                    "with": {"prompt": "${ [$a, $b, $c] }"},
+                                                }
+                                            },
+                                            *(
+                                                [{"pause": {"wait": {"seconds": 300}}}]
+                                                if waiting
+                                                else []
+                                            ),
+                                            {
+                                                "last": {
+                                                    "set": {
+                                                        "a": "${ $a }",
+                                                        "b": "${ $b }",
+                                                        "c": "${ $c }",
+                                                    }
+                                                }
+                                            },
+                                        ],
+                                    }
+                                },
+                            ],
+                        }
+                    },
+                ],
+            }
+        },
+        {"done": {"set": {"done": True}}},
+    ]
     owner, plan = await invoke(stream_runtime, plan=compile_workflow(source))
     if waiting:
         for count in range(1, 5):
@@ -855,15 +1132,19 @@ async def test_subgraph_stream_projects_three_nested_loops(stream_runtime, waiti
             f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "subgraphs"}
         )
         assert observed.status_code == 200, observed.text
-        results = [item["data"]["data"] for item in frames(observed)
-                   if item["task_reference"].endswith("/last")]
+        results = [
+            item["data"]["data"]
+            for item in frames(observed)
+            if item["task_reference"].endswith("/last")
+        ]
         assert results == [{"a": a, "b": b, "c": 0} for a in (0, 1) for b in (0, 1)]
         assert re.search(r"task_[0-9a-f]{64}", observed.text) is None
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 512}), ("postgresql", {"max_events": 512})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 512}), ("postgresql", {"max_events": 512})],
     indirect=True,
 )
 async def test_subgraph_stream_accepts_the_maximum_nested_loop_occurrences(stream_runtime):
@@ -873,11 +1154,23 @@ async def test_subgraph_stream_accepts_the_maximum_nested_loop_occurrences(strea
     source["document"]["metadata"]["owa"]["nativeExtensions"].append(
         {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
     )
-    source["do"] = [{"outer": {"for": {"each": "a", "in": list(range(8))}, "do": [
-        {"inner": {"for": {"each": "b", "in": list(range(8))}, "do": [
-            {"item": {"set": {"a": "${ $a }", "b": "${ $b }"}}},
-        ]}},
-    ]}}]
+    source["do"] = [
+        {
+            "outer": {
+                "for": {"each": "a", "in": list(range(8))},
+                "do": [
+                    {
+                        "inner": {
+                            "for": {"each": "b", "in": list(range(8))},
+                            "do": [
+                                {"item": {"set": {"a": "${ $a }", "b": "${ $b }"}}},
+                            ],
+                        }
+                    },
+                ],
+            }
+        }
+    ]
     owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
     async with client_for(stream_runtime) as client:
         observed = await client.get(
@@ -885,7 +1178,8 @@ async def test_subgraph_stream_accepts_the_maximum_nested_loop_occurrences(strea
         )
         assert observed.status_code == 200, observed.text
         results = [
-            item["data"]["data"] for item in frames(observed)
+            item["data"]["data"]
+            for item in frames(observed)
             if item["task_reference"].endswith("/item")
         ]
         assert results == [{"a": a, "b": b} for a in range(8) for b in range(8)]
@@ -893,7 +1187,8 @@ async def test_subgraph_stream_accepts_the_maximum_nested_loop_occurrences(strea
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 512}), ("postgresql", {"max_events": 512})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 512}), ("postgresql", {"max_events": 512})],
     indirect=True,
 )
 async def test_subgraph_stream_accepts_maximum_three_level_occurrences(stream_runtime):
@@ -903,21 +1198,49 @@ async def test_subgraph_stream_accepts_maximum_three_level_occurrences(stream_ru
     source["document"]["metadata"]["owa"]["nativeExtensions"].append(
         {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
     )
-    source["do"] = [{"outer": {"for": {"each": "a", "in": list(range(4))}, "do": [
-        {"inner": {"for": {"each": "b", "in": list(range(4))}, "do": [
-            {"deep": {"for": {"each": "c", "in": list(range(4))}, "do": [
-                {"item": {"set": {"a": "${ $a }", "b": "${ $b }", "c": "${ $c }"}}},
-            ]}},
-        ]}},
-    ]}}]
+    source["do"] = [
+        {
+            "outer": {
+                "for": {"each": "a", "in": list(range(4))},
+                "do": [
+                    {
+                        "inner": {
+                            "for": {"each": "b", "in": list(range(4))},
+                            "do": [
+                                {
+                                    "deep": {
+                                        "for": {"each": "c", "in": list(range(4))},
+                                        "do": [
+                                            {
+                                                "item": {
+                                                    "set": {
+                                                        "a": "${ $a }",
+                                                        "b": "${ $b }",
+                                                        "c": "${ $c }",
+                                                    }
+                                                }
+                                            },
+                                        ],
+                                    }
+                                },
+                            ],
+                        }
+                    },
+                ],
+            }
+        }
+    ]
     owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
     async with client_for(stream_runtime) as client:
         observed = await client.get(
             f"/v1/invocations/{owner.invocation_id}/stream", params={"mode": "subgraphs"}
         )
         assert observed.status_code == 200, observed.text
-        results = [item["data"]["data"] for item in frames(observed)
-                   if item["task_reference"].endswith("/item")]
+        results = [
+            item["data"]["data"]
+            for item in frames(observed)
+            if item["task_reference"].endswith("/item")
+        ]
         assert results == [
             {"a": a, "b": b, "c": c} for a in range(4) for b in range(4) for c in range(4)
         ]
@@ -925,7 +1248,8 @@ async def test_subgraph_stream_accepts_maximum_three_level_occurrences(stream_ru
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
     indirect=True,
 )
 async def test_subgraph_stream_resumes_sibling_nested_loops(stream_runtime):
@@ -938,11 +1262,18 @@ async def test_subgraph_stream_resumes_sibling_nested_loops(stream_runtime):
     )
     siblings = []
     for name in ("left", "right"):
-        siblings.append({name: {"for": {"each": "b", "in": [0]}, "do": [
-            {"call": {"call": "llm:1.0.0@default", "with": {"prompt": "${ $a }"}}},
-            {"pause": {"wait": {"seconds": 300}}},
-            {"last": {"set": {"a": "${ $a }", "side": name}}},
-        ]}})
+        siblings.append(
+            {
+                name: {
+                    "for": {"each": "b", "in": [0]},
+                    "do": [
+                        {"call": {"call": "llm:1.0.0@default", "with": {"prompt": "${ $a }"}}},
+                        {"pause": {"wait": {"seconds": 300}}},
+                        {"last": {"set": {"a": "${ $a }", "side": name}}},
+                    ],
+                }
+            }
+        )
     source["do"] = [
         {"outer": {"for": {"each": "a", "in": [0, 1]}, "do": siblings}},
         {"done": {"set": {"done": True}}},
@@ -959,18 +1290,20 @@ async def test_subgraph_stream_resumes_sibling_nested_loops(stream_runtime):
         )
         assert observed.status_code == 200, observed.text
         results = [
-            item["data"]["data"] for item in frames(observed)
+            item["data"]["data"]
+            for item in frames(observed)
             if item["task_reference"].endswith("/last")
         ]
-        assert results == [
-            {"a": a, "side": name} for a in (0, 1) for name in ("left", "right")
-        ]
+        assert results == [{"a": a, "side": name} for a in (0, 1) for name in ("left", "right")]
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("shape", ["nested_loop", "try_loop", "protected_loop"])
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
+    "shape", ["nested_loop", "try_loop", "protected_loop", "protected_siblings"]
+)
+@pytest.mark.parametrize(
+    "stream_runtime",
+    [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
     indirect=True,
 )
 async def test_nested_loop_resume_rejects_mismatched_interrupt_identity(
@@ -985,6 +1318,7 @@ async def test_nested_loop_resume_rejects_mismatched_interrupt_identity(
         "nested_loop": nested_loop_subgraph_waiting_workflow,
         "try_loop": try_loop_subgraph_waiting_workflow,
         "protected_loop": loop_in_protected_waiting_workflow,
+        "protected_siblings": lambda: loop_in_protected_waiting_workflow(siblings=True),
     }[shape]()
     owner, plan = await invoke(stream_runtime, plan=plan)
     assert services.invocations.get(owner.invocation_id).status == "waiting"
@@ -1013,7 +1347,8 @@ async def test_nested_loop_resume_rejects_mismatched_interrupt_identity(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("skip_nested", [False, True])
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 128}), ("postgresql", {"max_events": 128})],
     indirect=True,
 )
 async def test_nested_loop_profile_resumes_an_unrelated_scope(stream_runtime, skip_nested):
@@ -1024,20 +1359,32 @@ async def test_nested_loop_profile_resumes_an_unrelated_scope(stream_runtime, sk
     source["document"]["metadata"]["owa"]["nativeExtensions"].append(
         {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
     )
-    nested = {"for": {"each": "a", "in": [0]}, "do": [
-        {"inner": {"for": {"each": "b", "in": [0]}, "do": [
-            {"value": {"set": {"value": 1}}},
-        ]}},
-    ]}
+    nested = {
+        "for": {"each": "a", "in": [0]},
+        "do": [
+            {
+                "inner": {
+                    "for": {"each": "b", "in": [0]},
+                    "do": [
+                        {"value": {"set": {"value": 1}}},
+                    ],
+                }
+            },
+        ],
+    }
     if skip_nested:
         nested["if"] = "${ false }"
     source["do"] = [
         {"nested": nested},
-        {"later": {"do": [
-            {"call": {"call": "llm:1.0.0@default"}},
-            {"pause": {"wait": {"seconds": 300}}},
-            {"last": {"set": {"done": True}}},
-        ]}},
+        {
+            "later": {
+                "do": [
+                    {"call": {"call": "llm:1.0.0@default"}},
+                    {"pause": {"wait": {"seconds": 300}}},
+                    {"last": {"set": {"done": True}}},
+                ]
+            }
+        },
     ]
     owner, plan = await invoke(stream_runtime, plan=compile_workflow(source))
     assert services.invocations.get(owner.invocation_id).status == "waiting"
@@ -1050,29 +1397,42 @@ async def test_nested_loop_profile_resumes_an_unrelated_scope(stream_runtime, sk
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 256, "state": True}),
-                       ("postgresql", {"max_events": 256, "state": True})],
+    "stream_runtime",
+    [
+        ("sqlite", {"max_events": 256, "state": True}),
+        ("postgresql", {"max_events": 256, "state": True}),
+    ],
     indirect=True,
 )
 async def test_nested_loop_stream_profiles_can_coexist(stream_runtime):
     from open_workflow_agent.workflow import compile_workflow
 
-    source = copy.deepcopy(workflow(
-        task_stream=True, checkpoint_stream=True, debug_stream=True, custom_stream=True
-    ).source)
-    metadata = source["document"]["metadata"]["owa"]
-    metadata["nativeExtensions"].append(
-        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
+    source = copy.deepcopy(
+        workflow(
+            task_stream=True, checkpoint_stream=True, debug_stream=True, custom_stream=True
+        ).source
     )
+    metadata = source["document"]["metadata"]["owa"]
+    metadata["nativeExtensions"].append({"name": "langgraph.streams.subgraphs", "version": "1.0.0"})
     metadata["nativeExtensionData"]["langgraph.streams.custom@1.0.0"]["events"] = [
         {"task": "/do/1", "name": "done", "data": {"literal": "ready"}}
     ]
     source["do"] = [
-        {"outer": {"for": {"each": "a", "in": [0]}, "do": [
-            {"inner": {"for": {"each": "b", "in": [0]}, "do": [
-                {"value": {"set": {"a": "${ $a }", "b": "${ $b }"}}},
-            ]}},
-        ]}},
+        {
+            "outer": {
+                "for": {"each": "a", "in": [0]},
+                "do": [
+                    {
+                        "inner": {
+                            "for": {"each": "b", "in": [0]},
+                            "do": [
+                                {"value": {"set": {"a": "${ $a }", "b": "${ $b }"}}},
+                            ],
+                        }
+                    },
+                ],
+            }
+        },
         {"last": {"set": {"done": True}}},
     ]
     owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
@@ -1091,20 +1451,29 @@ async def test_nested_loop_stream_profiles_can_coexist(stream_runtime):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
     indirect=True,
 )
 async def test_optional_loop_subgraph_declaration_does_not_enable_observation(stream_runtime):
     from open_workflow_agent.workflow import compile_workflow
 
     source = copy.deepcopy(workflow().source)
-    source["document"]["metadata"]["owa"]["nativeExtensions"].append({
-        "name": "langgraph.streams.subgraphs", "version": "1.0.0", "required": False,
-    })
-    source["do"] = [{"loop": {
-        "for": {"each": "turn", "in": [0, 1]},
-        "do": [{"item": {"set": {"turn": "${ $turn }"}}}],
-    }}]
+    source["document"]["metadata"]["owa"]["nativeExtensions"].append(
+        {
+            "name": "langgraph.streams.subgraphs",
+            "version": "1.0.0",
+            "required": False,
+        }
+    )
+    source["do"] = [
+        {
+            "loop": {
+                "for": {"each": "turn", "in": [0, 1]},
+                "do": [{"item": {"set": {"turn": "${ $turn }"}}}],
+            }
+        }
+    ]
     owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
     async with client_for(stream_runtime) as client:
         observed = await client.get(
@@ -1116,7 +1485,8 @@ async def test_optional_loop_subgraph_declaration_does_not_enable_observation(st
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
     indirect=True,
 )
 async def test_loop_subgraph_checkpoint_history_preserves_logical_namespace(stream_runtime):
@@ -1130,10 +1500,14 @@ async def test_loop_subgraph_checkpoint_history_preserves_logical_namespace(stre
     source["document"]["metadata"]["owa"]["nativeExtensions"].append(
         {"name": "langgraph.streams.subgraphs", "version": "1.0.0"}
     )
-    source["do"] = [{"loop": {
-        "for": {"each": "turn", "in": [0, 1]},
-        "do": [{"item": {"set": {"turn": "${ $turn }"}}}],
-    }}]
+    source["do"] = [
+        {
+            "loop": {
+                "for": {"each": "turn", "in": [0, 1]},
+                "do": [{"item": {"set": {"turn": "${ $turn }"}}}],
+            }
+        }
+    ]
     owner, plan = await invoke(stream_runtime, plan=compile_workflow(source))
     path = services.engine_database_path("langgraph", create_namespace=False)
     saver_type = (
@@ -1165,8 +1539,10 @@ async def test_loop_subgraph_checkpoint_history_preserves_logical_namespace(stre
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "stream_runtime",
-    [("sqlite", {"max_events": 64, "lineage": True, "lineage_timeout": 30}),
-     ("postgresql", {"max_events": 64, "lineage": True, "lineage_timeout": 30})],
+    [
+        ("sqlite", {"max_events": 64, "lineage": True, "lineage_timeout": 30}),
+        ("postgresql", {"max_events": 64, "lineage": True, "lineage_timeout": 30}),
+    ],
     indirect=True,
 )
 @pytest.mark.parametrize("nested", [False, True, "three"])
@@ -1176,11 +1552,13 @@ async def test_loop_subgraph_stream_preserves_replay_evidence(stream_runtime, ne
     services, _ = stream_runtime
     source = copy.deepcopy(workflow().source)
     metadata = source["document"]["metadata"]["owa"]
-    metadata["nativeExtensions"].extend([
-        {"name": "langgraph.streams.subgraphs", "version": "1.0.0"},
-        {"name": "langgraph.state.read", "version": "1.0.0"},
-        {"name": "langgraph.state.replay", "version": "1.0.0"},
-    ])
+    metadata["nativeExtensions"].extend(
+        [
+            {"name": "langgraph.streams.subgraphs", "version": "1.0.0"},
+            {"name": "langgraph.state.read", "version": "1.0.0"},
+            {"name": "langgraph.state.replay", "version": "1.0.0"},
+        ]
+    )
     metadata["nativeExtensionData"] = {
         "langgraph.state.replay@1.0.0": {
             "authorizationPolicyRef": services.config.execution_authorization.id,
@@ -1188,18 +1566,26 @@ async def test_loop_subgraph_stream_preserves_replay_evidence(stream_runtime, ne
         }
     }
     if nested:
-        leaf = [{"call": {"call": "llm:1.0.0@default", "with": {
-            "prompt": "${ [$a, $b] }"
-        }}}]
+        leaf = [{"call": {"call": "llm:1.0.0@default", "with": {"prompt": "${ [$a, $b] }"}}}]
         if nested == "three":
             leaf = [{"deep": {"for": {"each": "c", "in": [0]}, "do": leaf}}]
-        loop = {"loop": {"for": {"each": "a", "in": [0, 1]}, "do": [
-            {"inner": {"for": {"each": "b", "in": [0, 1]}, "do": leaf}},
-        ]}}
+        loop = {
+            "loop": {
+                "for": {"each": "a", "in": [0, 1]},
+                "do": [
+                    {"inner": {"for": {"each": "b", "in": [0, 1]}, "do": leaf}},
+                ],
+            }
+        }
     else:
-        loop = {"loop": {"for": {"each": "turn", "in": [0, 1]}, "do": [
-            {"call": {"call": "llm:1.0.0@default", "with": {"prompt": "${ $turn }"}}},
-        ]}}
+        loop = {
+            "loop": {
+                "for": {"each": "turn", "in": [0, 1]},
+                "do": [
+                    {"call": {"call": "llm:1.0.0@default", "with": {"prompt": "${ $turn }"}}},
+                ],
+            }
+        }
     source["do"] = [loop, {"done": {"set": {"done": True}}}]
     owner, _ = await invoke(stream_runtime, plan=compile_workflow(source))
     expected_calls = 4 if nested else 2
@@ -1208,7 +1594,8 @@ async def test_loop_subgraph_stream_preserves_replay_evidence(stream_runtime, ne
         history = await client.get(f"/v1/invocations/{owner.invocation_id}/states")
         assert history.status_code == 200, history.text
         reference = next(
-            item["reference"] for item in history.json()["items"]
+            item["reference"]
+            for item in history.json()["items"]
             if item["root_task_visits"] == {"/do/0/loop": 1}
         )
         replay = await client.post(
@@ -1220,7 +1607,9 @@ async def test_loop_subgraph_stream_preserves_replay_evidence(stream_runtime, ne
         target = replay.json()["invocation_id"]
         async with asyncio.timeout(180):
             while services.invocations.get(target).status not in {
-                "completed", "faulted", "cancelled"
+                "completed",
+                "faulted",
+                "cancelled",
             }:
                 await asyncio.sleep(0.1)
         assert services.invocations.get(target).status == "completed"
@@ -1231,7 +1620,8 @@ async def test_loop_subgraph_stream_preserves_replay_evidence(stream_runtime, ne
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
     indirect=True,
 )
 async def test_subgraph_stream_repeated_direct_scope_keeps_distinct_checkpoints(stream_runtime):
@@ -1274,7 +1664,8 @@ async def test_subgraph_stream_repeated_direct_scope_keeps_distinct_checkpoints(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
     indirect=True,
 )
 @pytest.mark.parametrize("profile", [False, True])
@@ -1289,11 +1680,15 @@ async def test_repeated_subgraph_wait_resume_preserves_each_effect(stream_runtim
         )
     source["do"] = [
         {"first": {"set": {"count": 0}}},
-        {"outer": {"do": [
-            {"call": {"call": "llm:1.0.0@default"}},
-            {"pause": {"wait": {"seconds": 300}}},
-            {"increment": {"set": {"count": "${ .response.count + 1 }"}}},
-        ]}},
+        {
+            "outer": {
+                "do": [
+                    {"call": {"call": "llm:1.0.0@default"}},
+                    {"pause": {"wait": {"seconds": 300}}},
+                    {"increment": {"set": {"count": "${ .response.count + 1 }"}}},
+                ]
+            }
+        },
         {"route": {"switch": [{"again": {"when": "${ .count < 2 }", "then": "outer"}}]}},
         {"last": {"set": {"done": True}}},
     ]
@@ -1311,14 +1706,21 @@ async def test_repeated_subgraph_wait_resume_preserves_each_effect(stream_runtim
         )
         assert response.status_code == 200, response.text
         assert second.status == "completed", (
-            second.error, services.model.calls,
+            second.error,
+            services.model.calls,
             [(event["task_reference"], event["data"]) for event in frames(response)],
         )
         assert len(services.model.calls) == 2
-        assert [item["task_reference"] for item in frames(response)] == ([
-            "/do/1/outer/do/0/call", "/do/1/outer/do/1/pause",
-            "/do/1/outer/do/2/increment",
-        ] * 2 if profile else [])
+        assert [item["task_reference"] for item in frames(response)] == (
+            [
+                "/do/1/outer/do/0/call",
+                "/do/1/outer/do/1/pause",
+                "/do/1/outer/do/2/increment",
+            ]
+            * 2
+            if profile
+            else []
+        )
 
 
 @pytest.mark.asyncio
@@ -2463,40 +2865,71 @@ async def test_actual_process_exit_loses_observation_replay_but_not_native_resum
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "stream_runtime", [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
+    "stream_runtime",
+    [("sqlite", {"max_events": 64}), ("postgresql", {"max_events": 64})],
     indirect=True,
 )
 @pytest.mark.parametrize(
-    "shape", ["direct", "repeated", "loop", "nested_loop", "three_nested_loop", "try", "catch",
-              "try_loop", "catch_loop", "protected_loop_try", "protected_loop_try_caught",
-              "protected_loop_catch"]
+    "shape",
+    [
+        "direct",
+        "repeated",
+        "loop",
+        "nested_loop",
+        "three_nested_loop",
+        "try",
+        "catch",
+        "try_loop",
+        "catch_loop",
+        "protected_loop_try",
+        "protected_loop_try_caught",
+        "protected_loop_catch",
+        "protected_siblings_try",
+        "protected_siblings_try_caught",
+        "protected_siblings_catch",
+    ],
 )
 async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_path, shape):
+    siblings = shape.startswith("protected_siblings_")
+    shape = shape.replace("protected_siblings_", "protected_loop_")
     services, engine = stream_runtime
     config_path = tmp_path / "worker-config.json"
     result_path = tmp_path / "worker-result.json"
-    config_path.write_text(json.dumps({
-        "config": services.config.model_dump(mode="json", exclude={"sandbox"}),
-        "root": str(services.database_root) if services.database_root is not None else None,
-        "subgraph_stream": shape == "direct",
-        "repeated_subgraph_stream": shape == "repeated",
-        "loop_subgraph_stream": shape == "loop",
-        "nested_loop_subgraph_stream": shape == "nested_loop",
-        "three_nested_loop_subgraph_stream": shape == "three_nested_loop",
-        "try_subgraph_stream": shape in {"try", "catch"},
-        "catch_subgraph_stream": shape == "catch",
-        "try_loop_subgraph_stream": shape in {"try_loop", "catch_loop"},
-        "catch_loop_subgraph_stream": shape == "catch_loop",
-        "loop_in_protected_stream": {
-            "protected_loop_try": "try", "protected_loop_try_caught": "try_caught",
-            "protected_loop_catch": "catch",
-        }.get(shape),
-    }), encoding="utf-8")
+    config_path.write_text(
+        json.dumps(
+            {
+                "config": services.config.model_dump(mode="json", exclude={"sandbox"}),
+                "root": str(services.database_root) if services.database_root is not None else None,
+                "subgraph_stream": shape == "direct",
+                "repeated_subgraph_stream": shape == "repeated",
+                "loop_subgraph_stream": shape == "loop",
+                "nested_loop_subgraph_stream": shape == "nested_loop",
+                "three_nested_loop_subgraph_stream": shape == "three_nested_loop",
+                "try_subgraph_stream": shape in {"try", "catch"},
+                "catch_subgraph_stream": shape == "catch",
+                "try_loop_subgraph_stream": shape in {"try_loop", "catch_loop"},
+                "catch_loop_subgraph_stream": shape == "catch_loop",
+                "loop_in_protected_stream": {
+                    "protected_loop_try": "try",
+                    "protected_loop_try_caught": "try_caught",
+                    "protected_loop_catch": "catch",
+                }.get(shape),
+                "protected_sibling_loops": siblings,
+            }
+        ),
+        encoding="utf-8",
+    )
     completed = await asyncio.to_thread(
         subprocess.run,
-        [sys.executable, str(Path(__file__).with_name("native_stream_restart_worker.py")),
-         str(config_path), str(result_path)],
-        capture_output=True, text=True, timeout=60 if shape in {"direct", "try"} else 180,
+        [
+            sys.executable,
+            str(Path(__file__).with_name("native_stream_restart_worker.py")),
+            str(config_path),
+            str(result_path),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60 if shape in {"direct", "try"} else 180,
         cwd=Path(__file__).resolve().parents[2],
     )
     assert completed.returncode == 0, completed.stderr[-4000:]
@@ -2518,11 +2951,13 @@ async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_
                 "catch": lambda: try_subgraph_waiting_workflow(fault=True),
                 "try_loop": try_loop_subgraph_waiting_workflow,
                 "catch_loop": lambda: try_loop_subgraph_waiting_workflow(fault=True),
-                "protected_loop_try": loop_in_protected_waiting_workflow,
+                "protected_loop_try": lambda: loop_in_protected_waiting_workflow(siblings=siblings),
                 "protected_loop_try_caught": lambda: loop_in_protected_waiting_workflow(
-                    shape="try_caught"
+                    shape="try_caught", siblings=siblings
                 ),
-                "protected_loop_catch": lambda: loop_in_protected_waiting_workflow(shape="catch"),
+                "protected_loop_catch": lambda: loop_in_protected_waiting_workflow(
+                    shape="catch", siblings=siblings
+                ),
             }[shape]()
             result = await engine.resume(owner, {}, plan)
         assert result.status == "completed", result.error
@@ -2532,30 +2967,56 @@ async def test_subgraph_stream_survives_actual_process_exit(stream_runtime, tmp_
             "direct": ["/do/0/outer/do/1/pause", "/do/0/outer/do/2/childlast"],
             "repeated": ["/do/1/outer/do/1/pause", "/do/1/outer/do/2/increment"],
             "loop": ["/do/0/loop/do/1/pause", "/do/0/loop/do/2/last"],
-            "nested_loop": ["/do/0/outer/do/0/inner/do/1/pause",
-                            "/do/0/outer/do/0/inner/do/2/last",
-                            "/do/0/outer/do/0/inner"],
-            "three_nested_loop": ["/do/0/outer/do/0/inner/do/0/deep/do/1/pause",
-                                  "/do/0/outer/do/0/inner/do/0/deep/do/2/last",
-                                  "/do/0/outer/do/0/inner/do/0/deep",
-                                  "/do/0/outer/do/0/inner"],
+            "nested_loop": [
+                "/do/0/outer/do/0/inner/do/1/pause",
+                "/do/0/outer/do/0/inner/do/2/last",
+                "/do/0/outer/do/0/inner",
+            ],
+            "three_nested_loop": [
+                "/do/0/outer/do/0/inner/do/0/deep/do/1/pause",
+                "/do/0/outer/do/0/inner/do/0/deep/do/2/last",
+                "/do/0/outer/do/0/inner/do/0/deep",
+                "/do/0/outer/do/0/inner",
+            ],
             "try": ["/do/0/protect/try/1/pause", "/do/0/protect/try/2/action"],
             "catch": ["/do/0/protect/catch/do/1/catchpause", "/do/0/protect/catch/do/2/after"],
-            "try_loop": ["/do/0/loop0/do/0/protect/try/1/pause",
-                         "/do/0/loop0/do/0/protect/try/2/action", "/do/0/loop0/do/0/protect"],
-            "catch_loop": ["/do/0/loop0/do/0/protect/catch/do/1/catchpause",
-                           "/do/0/loop0/do/0/protect/catch/do/2/after",
-                           "/do/0/loop0/do/0/protect"],
-            "protected_loop_try": ["/do/0/protect/try/0/loop/do/1/pause",
-                                   "/do/0/protect/try/0/loop/do/2/last",
-                                   "/do/0/protect/try/0/loop", "/do/0/protect/try/1/action"],
-            "protected_loop_try_caught": ["/do/0/protect/catch/do/1/catchpause",
-                                          "/do/0/protect/catch/do/2/after"],
-            "protected_loop_catch": ["/do/0/protect/catch/do/0/loop/do/1/pause",
-                                     "/do/0/protect/catch/do/0/loop/do/2/last",
-                                     "/do/0/protect/catch/do/0/loop",
-                                     "/do/0/protect/catch/do/1/after"],
+            "try_loop": [
+                "/do/0/loop0/do/0/protect/try/1/pause",
+                "/do/0/loop0/do/0/protect/try/2/action",
+                "/do/0/loop0/do/0/protect",
+            ],
+            "catch_loop": [
+                "/do/0/loop0/do/0/protect/catch/do/1/catchpause",
+                "/do/0/loop0/do/0/protect/catch/do/2/after",
+                "/do/0/loop0/do/0/protect",
+            ],
+            "protected_loop_try": [
+                "/do/0/protect/try/0/loop/do/1/pause",
+                "/do/0/protect/try/0/loop/do/2/last",
+                "/do/0/protect/try/0/loop",
+                "/do/0/protect/try/1/action",
+            ],
+            "protected_loop_try_caught": [
+                "/do/0/protect/catch/do/1/catchpause",
+                "/do/0/protect/catch/do/2/after",
+            ],
+            "protected_loop_catch": [
+                "/do/0/protect/catch/do/0/loop/do/1/pause",
+                "/do/0/protect/catch/do/0/loop/do/2/last",
+                "/do/0/protect/catch/do/0/loop",
+                "/do/0/protect/catch/do/1/after",
+            ],
         }[shape]
+        if siblings and shape in {"protected_loop_try", "protected_loop_catch"}:
+            scope = (
+                "/do/0/protect/try" if shape == "protected_loop_try" else "/do/0/protect/catch/do"
+            )
+            expected = [
+                scope + "/1/second/do/1/pause",
+                scope + "/1/second/do/2/last",
+                scope + "/1/second",
+                scope + ("/2/action" if shape == "protected_loop_try" else "/2/after"),
+            ]
         assert [item["task_reference"] for item in frames(observed)] == expected
     assert services.model.calls == []
 

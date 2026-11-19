@@ -253,7 +253,11 @@ treated as a deferred task or as additional feature completion.
   extends the bound to three levels and passed its `4205f55` hosted PostgreSQL
   workflow. Direct try/catch passed the `2604b12` hosted PostgreSQL workflow;
   try/catch inside bounded loops passed the `366928b` hosted PostgreSQL workflow;
-  bounded loops inside try/catch are under test, and broader shapes remain open.
+  bounded loops inside try/catch passed the `e553f80` hosted PostgreSQL workflow
+  (407 stream cases, zero skips; all 19 jobs passed). Broader shapes remain open.
+  A two-direct-loop candidate passes 100 focused Windows cases and 600 frozen
+  Linux stream/recovery cases with zero skips; hosted qualification remains
+  pending. Its existing loop/nesting limits and rejection gates are preserved.
   See [stream acceptance](docs/s4-02-native-streams-acceptance.md).
   PR #93 (`b363f10`) adds immutable replay/branch policies, explicit effect
   acknowledgement and selected-checkpoint preflight with historical root/scope

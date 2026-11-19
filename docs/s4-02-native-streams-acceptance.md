@@ -1,5 +1,51 @@
 # S4-02 native stream observations
 
+## Two direct loops per protected body candidate — 2026-11-19
+
+Six temporary admission-bypass probes passed on SQLite and PostgreSQL in
+529.00 seconds, covering two sequential two-item loops in `try`, a caught error
+after both loops, and two loops in `catch`. Each case checked every explicit
+wake, the exact model-call count and public observations for both loops. These
+probes used the previous runtime gate and do not qualify changed admission.
+
+The candidate admits at most two direct literal loops per protected body.
+Each loop retains its 32-item bound, so a body has at most 64 direct loop
+occurrences. Three sibling loops, nested loops inside the body, alternating
+loop/protected nesting and retries remain rejected. The regression matrix now
+covers both one- and two-loop forms, empty/maximum admission, unrelated waits,
+interruption identity corruption, selected-checkpoint replay and actual process
+exit. The hosted stream job also requires the new boundary witness.
+
+The replacement Windows selection passed **100 cases with zero skips** in
+2225.54 seconds. The frozen-image Linux selection passed **600 cases with zero
+skips** in 2510.06 seconds: the complete 439-case stream selection, including
+all 62 required hosted witnesses, plus the 161 shared checkpoint, fencing,
+native-state consistency and retry/error-context cases. This includes abrupt
+process exit for the one- and two-loop `try`, caught-error and `catch` shapes.
+Two actual ADK admission cases and the six inventory/CI guards also pass.
+
+Linux uses the private test image
+`sha256:d4579c7e641446518382a7cf2c4482d8da9bc40542e80dd65d747fbc5acb03a6`,
+built with the repository's locked native dependencies. It runs without root,
+with a read-only root filesystem, dropped capabilities, no new privileges,
+two CPUs, 2 GiB memory and a bounded temporary filesystem. Dependencies are
+installed at image build time. Windows and Linux use separate fresh PostgreSQL
+databases. All **769 copied source inputs remain unchanged** through the Linux
+run. Reports and manifests are retained in
+`tmp/status-20261119-sibling-candidate-final.xml`,
+`tmp/status-20261119-linux-evidence/` and their corresponding logs.
+
+The first candidate attempt was intentionally stopped after initial admission
+checks to normalize older formatting in four touched Python files; it is not a
+completed validation. After both replacement runs finished, the repository-wide
+format check identified four more pre-existing formatting gaps in the graph,
+subgraph saver and two test files. Those were normalized separately. Parsed
+syntax is identical before and after all eight formatting changes; the final
+production logic change is only the loop admission bound and its diagnostic.
+Repository-wide lint and formatting now pass. Strict typing over 194 source
+files passes. No broader S4-02, T50, repository/release or hosted acceptance is
+claimed for this candidate; exact-source hosted qualification remains pending.
+
 ## Bounded loops inside try/catch candidate — 2026-11-03
 
 An admission-bypass probe with targeted interruption resume passed four
@@ -14,8 +60,14 @@ protected body. The revised source passed 32 focused cases with zero skips on
 both stores, including unsupported admission, unrelated waits, interruption
 identity corruption, replay and actual process exit. The complete revised
 stream selection then passed 407 cases with zero skips on SQLite and
-PostgreSQL, including all 61 required CI witnesses. Shared recovery and
-hosted qualification remain pending.
+PostgreSQL, including all 61 required CI witnesses. The
+[hosted PostgreSQL workflow at `e553f80`](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/41549454558)
+passed all 19 jobs. Its native-stream job passed **407 cases with zero skips**
+in 671.12 seconds. Native recovery, lifecycle recovery, lineage controls,
+generations, Send, replay, branch, common storage, both production container
+persistence checks and matched benchmarks also passed in that workflow.
+This qualifies the finite source profile; broader stream shapes, full T50,
+full-repository and release acceptance remain separate.
 
 The first full selection stopped after 230 passes when the existing
 PostgreSQL repeated-scope restart worker exceeded its 60-second test bound.
@@ -26,8 +78,38 @@ The full selection passed with this corrected harness as recorded above.
 
 The first shared recovery selection stopped after 23 passes when a PostgreSQL
 checkpoint-recovery case exceeded its existing 10-second wait bound. The exact
-case passed on a fresh database (12.38 seconds total test run); the complete
-shared selection is being rerun on another fresh database.
+case passed on a fresh database (12.38 seconds total test run). A later local
+shared attempt (`tmp/protected-loop-shared-5.xml`) stopped after 49 passes when
+the PostgreSQL successful-null-resume witness exceeded its ten-second bound.
+That local attempt remains a failure, independently of the successful hosted
+workflow.
+
+### Status audit and shared recovery follow-up — 2026-11-19
+
+The hosted run above finished on 2026-11-03 and was independently inspected
+during this audit. Its successful conclusion had not yet been reflected in
+`PROJECT.md`, `TODO.md` or the feature tracker; those records now agree. No
+unchecked task or research row is promoted.
+
+Runtime and test inputs remain unchanged from `e553f80`. A fresh Windows
+selection with the locked native SDK, a selector event loop and a dedicated
+local PostgreSQL service passed **161 cases with zero skips in 615.73 seconds**:
+
+- `tests/contract/test_checkpoint_recovery.py`
+- `tests/contract/test_native_checkpoint_fencing.py`
+- `tests/contract/test_native_state_consistency.py`
+- `tests/contract/test_retry_error_context.py`
+
+The selection requires the real LangGraph engine through
+`OWA_TEST_REQUIRED_ENGINE=langgraph` and selects both SQLite and PostgreSQL.
+The report and log are retained as `tmp/status-20261119-recovery-complete.xml`
+and `tmp/status-20261119-recovery-complete.log`. A preceding cold attempt stopped
+on the first SQLite wait's ten-second bound; its failed report is retained as
+`tmp/status-20261119-recovery.xml`. Both that exact SQLite case and the earlier
+PostgreSQL successful-null-resume case then passed separately in 10.78 seconds
+total (`tmp/status-20261119-exact-recovery.xml`). The complete successful run
+uses the original bounds and assertions; no timeout or runtime change was made.
+The six inventory/stream CI guards and relative Markdown link validation pass.
 
 ## Try/catch inside bounded loops candidate — 2026-11-02
 
