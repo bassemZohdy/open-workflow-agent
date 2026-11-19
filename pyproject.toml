@@ -42,11 +42,11 @@ mutation = [
 ]
 
 [project.optional-dependencies]
-model = ["litellm==1.101.0"]
+model = ["litellm==1.101.3"]
 knowledge = [
   "fastembed==0.8.0",
   "numpy==2.5.4",
-  "pypdf==6.21.3",
+  "pypdf==6.21.4",
 ]
 postgres = ["psycopg[binary]==3.3.6"]
 
@@ -60,7 +60,12 @@ packages = ["core/src/open_workflow_agent"]
 [tool.hatch.build.hooks.custom]
 
 [tool.uv]
-constraint-dependencies = ["filelock>=4.2.1,<5"]
+constraint-dependencies = [
+  "filelock>=4.2.1,<5",
+  "opentelemetry-api>=1.45.2,<1.46",
+  "opentelemetry-sdk>=1.45.2,<1.46",
+  "pyasn1>=0.6.5,<0.7",
+]
 override-dependencies = ["pillow>=13.0.0,<14"]
 
 [tool.pytest.ini_options]

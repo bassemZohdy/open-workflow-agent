@@ -587,8 +587,9 @@ shared security profiles
 ```
 
 The path above defines the implementation boundary for the advertised bounded
-profile. Direct acceptance qualification remains gated by the unchecked S3-02
-task in `TODO.md` and its A2A gate record. A2A Tasks, resume, cancellation,
+profile. The finite Python S3-02 qualification is recorded in the
+[A2A acceptance record](docs/s3-02-a2a-acceptance.md); broader protocol and
+independent JavaScript qualification retain their separate gates. A2A Tasks, resume, cancellation,
 approvals, and lifecycle events continue to reuse the common invocation and
 persistence services; they are not a second workflow runtime or checkpoint
 store.

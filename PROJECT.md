@@ -64,6 +64,14 @@ unchanged. The later repository-wide formatting correction preserves parsed
 syntax. Exact-source hosted qualification and full S4-02 remain open; see the
 [stream record](docs/s4-02-native-streams-acceptance.md).
 
+The first full qualification of `ba6d767` exposed a missing optional driver in
+the external-sandbox type-check environment, newly fixable dependency advisories
+and a cold-source setup cost inside a Windows fork watchdog. Corrections pass
+the local seven-environment audit, provider and actual ADK checks; replacement
+hosted qualification remains required. The
+[2026-11-19 audit record](docs/validation-history/project-status-2026-11-19.md)
+retains the failed runs, exact dependency changes and validation scope.
+
 Latest public state-control source `db437d8` passes 420 combined cases and 22
 separate ADK cases on each of Windows and frozen Docker/Linux, plus 841 SDK-free
 core/API cases, all with zero skips and 1,278 unchanged Linux inputs. This

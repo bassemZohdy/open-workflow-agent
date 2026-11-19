@@ -231,6 +231,8 @@ async def test_end_in_fork_cancels_inflight_sibling_and_concludes_workflow(
         return {"finished": True}
 
     services.model.response = operation
+    # Cold source attestation is setup, not part of the fork-cancellation budget.
+    await asyncio.wait_for(services.recovery_definitions.prepare_profile(engine_name), 60)
     result, references = await asyncio.wait_for(
         _run(
             services,

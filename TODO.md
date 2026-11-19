@@ -258,6 +258,9 @@ treated as a deferred task or as additional feature completion.
   A two-direct-loop candidate passes 100 focused Windows cases and 600 frozen
   Linux stream/recovery cases with zero skips; hosted qualification remains
   pending. Its existing loop/nesting limits and rejection gates are preserved.
+  The first full qualification exposed CI setup, dependency-audit and aggregate
+  stream-job allowance gaps; corrections and retained failures are recorded in
+  the [2026-11-19 audit](docs/validation-history/project-status-2026-11-19.md).
   See [stream acceptance](docs/s4-02-native-streams-acceptance.md).
   PR #93 (`b363f10`) adds immutable replay/branch policies, explicit effect
   acknowledgement and selected-checkpoint preflight with historical root/scope
